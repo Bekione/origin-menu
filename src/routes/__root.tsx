@@ -73,7 +73,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Origin Restaurant — Fearless Flavor" },
-      { name: "description", content: "Origin Restaurant menu — fearless flavor served fresh in Addis Ababa. Scan, browse and order." },
+      {
+        name: "description",
+        content:
+          "Origin Restaurant menu — fearless flavor served fresh in Addis Ababa. Scan, browse and order.",
+      },
       { name: "author", content: "Origin Restaurant" },
       { name: "theme-color", content: "#0d0d0d" },
       { property: "og:title", content: "Origin Restaurant — Fearless Flavor" },
@@ -83,6 +87,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/src/assets/apple-touch-icon.png" },
+      { rel: "icon", type: "image/png", sizes: "32x32", href: "/src/assets/favicon-32x32.png" },
+      { rel: "icon", type: "image/png", sizes: "16x16", href: "/src/assets/favicon-16x16.png" },
+      { rel: "manifest", href: "/src/assets/site.webmanifest" },
+      { rel: "shortcut icon", href: "/src/assets/favicon.ico" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },

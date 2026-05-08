@@ -839,32 +839,38 @@ function CategoriesTab({
       </form>
 
       <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-        {localCats
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map((c) => (
-            <CategoryRow
-              key={c.id}
-              cat={c}
-              itemCount={data.items.filter((i) => i.category_id === c.id).length}
-              pw={pw}
-              onChange={onChange}
-              onDragStart={(e) => onDragStart(c.id, e)}
-              onDragOver={(e) => onDragOver(c.id, e)}
-              onDrop={onDrop}
-              isDragging={draggedId === c.id}
-              onSave={async (n, na, so) => {
-                await upsert({
-                  data: { password: pw, id: c.id, name: n, name_am: na || null, sort_order: so },
-                });
-                onChange();
-              }}
-              onDelete={async () => {
-                if (!confirm(`Delete "${c.name}"? Items inside will also be deleted.`)) return;
-                await del({ data: { password: pw, id: c.id } });
-                onChange();
-              }}
-            />
-          ))}
+        {localCats.length === 0 ? (
+          <p className="p-6 text-center text-sm text-muted-foreground">
+            No categories yet — add your first one above.
+          </p>
+        ) : (
+          localCats
+            .sort((a, b) => a.sort_order - b.sort_order)
+            .map((c) => (
+              <CategoryRow
+                key={c.id}
+                cat={c}
+                itemCount={data.items.filter((i) => i.category_id === c.id).length}
+                pw={pw}
+                onChange={onChange}
+                onDragStart={(e) => onDragStart(c.id, e)}
+                onDragOver={(e) => onDragOver(c.id, e)}
+                onDrop={onDrop}
+                isDragging={draggedId === c.id}
+                onSave={async (n, na, so) => {
+                  await upsert({
+                    data: { password: pw, id: c.id, name: n, name_am: na || null, sort_order: so },
+                  });
+                  onChange();
+                }}
+                onDelete={async () => {
+                  if (!confirm(`Delete "${c.name}"? Items inside will also be deleted.`)) return;
+                  await del({ data: { password: pw, id: c.id } });
+                  onChange();
+                }}
+              />
+            ))
+        )}
       </div>
     </div>
   );

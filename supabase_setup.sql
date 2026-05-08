@@ -44,6 +44,10 @@ CREATE TABLE public.restaurant_info (
     map_embed_url TEXT
 );
 
+ALTER TABLE public.categories DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.menu_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_info DISABLE ROW LEVEL SECURITY;
+
 -- Initial Info row (must exist for admin info tab)
 INSERT INTO public.restaurant_info (name) VALUES ('Origin Restaurant');
 
