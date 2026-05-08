@@ -1,16 +1,13 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist/client",
-  "functions": {
-    "api/[[...route]].ts": {
-      "runtime": "nodejs20.x",
-      "includeFiles": "dist/server/**"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/api"
-    }
-  ]
+	"functions": {
+		"api/server.ts": {
+			"runtime": "nodejs18.x"
+		}
+	},
+	"routes": [
+		{
+			"src": "/(.*)",
+			"dest": "/api/server"
+		}
+	]
 }
