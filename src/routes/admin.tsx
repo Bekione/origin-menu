@@ -45,13 +45,11 @@ const PW_KEY = "origin_admin_pw";
 function AdminPage() {
   const initial = Route.useLoaderData() as MenuData;
   const [data, setData] = useState<MenuData>(initial);
-  const [pw, setPw] = useState<string | null>(null);
+  const [pw, setPw] = useState<string | null>(() => {
+    if (typeof sessionStorage !== "undefined") return sessionStorage.getItem(PW_KEY);
+    return null;
+  });
   const [tab, setTab] = useState<"items" | "categories" | "info">("items");
-
-  useEffect(() => {
-    const stored = sessionStorage.getItem(PW_KEY);
-    if (stored) setPw(stored);
-  }, []);
 
   const refresh = async () => {
     const fresh = await getMenuData();
@@ -384,6 +382,7 @@ function ItemRow({
   const toggle = useServerFn(toggleAvailability);
   const del = useServerFn(deleteMenuItem);
   const [busy, setBusy] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleToggle = async () => {
     setBusy(true);
@@ -395,65 +394,106 @@ function ItemRow({
     }
   };
   const handleDelete = async () => {
-    if (!confirm(`Delete "${item.name}"?`)) return;
     setBusy(true);
     try {
       await del({ data: { password: pw, id: item.id } });
       onChanged();
     } finally {
       setBusy(false);
+      setShowConfirm(false);
     }
   };
 
   return (
-    <div
-      className={`flex items-center gap-3 px-4 py-3 ${isDragging ? "opacity-50 bg-muted/20" : ""}`}
-      draggable={!!onDragStart}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDrop}
-    >
-      <GripVertical
-        className={`h-4 w-4 shrink-0 text-muted-foreground/40 ${onDragStart ? "cursor-grab active:cursor-grabbing hover:text-primary" : ""}`}
-      />
-      {item.image_url ? (
-        <img src={item.image_url} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
-      ) : (
-        <div className="h-10 w-10 shrink-0 rounded bg-muted" />
-      )}
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold">{item.name}</p>
-        <div className="flex items-center gap-2 mt-0.5">
-          <p className="truncate text-xs text-muted-foreground">{Number(item.price)} ETB</p>
-          {item.is_featured && (
-            <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-              Chef's Pick
-            </span>
-          )}
+    <>
+      <div
+        className={`flex items-center gap-3 px-4 py-3 ${isDragging ? "opacity-50 bg-muted/20" : ""}`}
+        draggable={!!onDragStart}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDragEnd={onDrop}
+      >
+        <GripVertical
+          className={`h-4 w-4 shrink-0 text-muted-foreground/40 ${onDragStart ? "cursor-grab active:cursor-grabbing hover:text-primary" : ""}`}
+        />
+        {item.image_url ? (
+          <img src={item.image_url} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+        ) : (
+          <div className="h-10 w-10 shrink-0 rounded bg-muted" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold">{item.name}</p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <p className="truncate text-xs text-muted-foreground">{Number(item.price)} ETB</p>
+            {item.is_featured && (
+              <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+                Chef's Pick
+              </span>
+            )}
+          </div>
         </div>
+        <button
+          onClick={handleToggle}
+          disabled={busy}
+          className={`rounded flex w-10 justify-center px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${item.is_available ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}
+        >
+          {busy ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : item.is_available ? (
+            "IN"
+          ) : (
+            "OUT"
+          )}
+        </button>
+        <button
+          onClick={onEdit}
+          className="rounded border border-border p-1.5 text-muted-foreground hover:text-foreground"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => setShowConfirm(true)}
+          disabled={busy}
+          className="rounded border border-border p-1.5 text-muted-foreground hover:border-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
       </div>
-      <button
-        onClick={handleToggle}
-        disabled={busy}
-        className={`rounded px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${item.is_available ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}
-      >
-        {item.is_available ? "In" : "Out"}
-      </button>
-      <button
-        onClick={onEdit}
-        className="rounded border border-border p-1.5 text-muted-foreground hover:text-foreground"
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </button>
-      <button
-        onClick={handleDelete}
-        disabled={busy}
-        className="rounded border border-border p-1.5 text-muted-foreground hover:border-destructive hover:text-destructive"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-    </div>
+
+      {showConfirm && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm"
+          onPointerDown={() => setShowConfirm(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center shadow-2xl"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Trash2 className="mx-auto mb-4 h-10 w-10 text-destructive/80" />
+            <h3 className="font-display text-xl text-foreground">Delete Item</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Are you sure you want to delete "{item.name}"? This action cannot be undone.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 rounded-md border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={busy}
+                onClick={handleDelete}
+                className="flex-1 flex items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-wider text-destructive-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -920,6 +960,7 @@ function CategoryRow({
   const [na, setNa] = useState(cat.name_am ?? "");
   const [so, setSo] = useState(cat.sort_order);
   const [busy, setBusy] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   if (editing) {
     return (
@@ -954,37 +995,80 @@ function CategoryRow({
   }
 
   return (
-    <div
-      className={`flex items-center gap-3 p-3 ${isDragging ? "opacity-50 bg-muted/20" : ""}`}
-      draggable={!!onDragStart}
-      onDragStart={onDragStart}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
-      onDragEnd={onDrop}
-    >
-      <GripVertical
-        className={`h-4 w-4 shrink-0 text-muted-foreground/40 ${onDragStart ? "cursor-grab active:cursor-grabbing hover:text-primary" : ""}`}
-      />
-      <span className="w-8 text-center text-xs text-muted-foreground">{cat.sort_order}</span>
-      <div className="flex-1">
-        <p className="text-sm font-semibold">{cat.name}</p>
-        <p className="text-xs text-muted-foreground">
-          {cat.name_am ?? "—"} · {itemCount} item{itemCount !== 1 ? "s" : ""}
-        </p>
+    <>
+      <div
+        className={`flex items-center gap-3 p-3 ${isDragging ? "opacity-50 bg-muted/20" : ""}`}
+        draggable={!!onDragStart}
+        onDragStart={onDragStart}
+        onDragOver={onDragOver}
+        onDrop={onDrop}
+        onDragEnd={onDrop}
+      >
+        <GripVertical
+          className={`h-4 w-4 shrink-0 text-muted-foreground/40 ${onDragStart ? "cursor-grab active:cursor-grabbing hover:text-primary" : ""}`}
+        />
+        <span className="w-8 text-center text-xs text-muted-foreground">{cat.sort_order}</span>
+        <div className="flex-1">
+          <p className="text-sm font-semibold">{cat.name}</p>
+          <p className="text-xs text-muted-foreground">
+            {cat.name_am ?? "—"} · {itemCount} item{itemCount !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <button
+          onClick={() => setEditing(true)}
+          className="rounded border border-border p-1.5 text-muted-foreground hover:text-foreground"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button
+          onClick={() => setShowConfirm(true)}
+          className="rounded border border-border p-1.5 text-muted-foreground hover:border-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
       </div>
-      <button
-        onClick={() => setEditing(true)}
-        className="rounded border border-border p-1.5 text-muted-foreground hover:text-foreground"
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </button>
-      <button
-        onClick={onDelete}
-        className="rounded border border-border p-1.5 text-muted-foreground hover:border-destructive hover:text-destructive"
-      >
-        <Trash2 className="h-3.5 w-3.5" />
-      </button>
-    </div>
+
+      {showConfirm && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm"
+          onPointerDown={() => setShowConfirm(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center shadow-2xl"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Trash2 className="mx-auto mb-4 h-10 w-10 text-destructive/80" />
+            <h3 className="font-display text-xl text-foreground">Delete Category</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Are you sure you want to delete "{cat.name}"? The {itemCount} items inside it will
+              also be deleted. This cannot be undone.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 rounded-md border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await onDelete();
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+                className="flex-1 flex items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-wider text-destructive-foreground hover:opacity-90 disabled:opacity-50"
+              >
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

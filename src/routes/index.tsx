@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { getMenuData, type MenuData, type MenuItem } from "@/server/menu.functions";
 import logo from "@/assets/origin-logo.jpg";
+import ScrollFade from "@/components/ScrollFade";
 
 export const Route = createFileRoute("/")({
   loader: () => getMenuData(),
@@ -97,24 +98,25 @@ function MenuPage() {
           </div>
         </div>
 
-        {/* Sticky category strip */}
         <div className="border-t border-border">
           <div className="mx-auto max-w-3xl">
-            <div className="scrollbar-none flex gap-2 overflow-x-auto px-4 py-2">
-              {categories.map((c) => (
-                <button
-                  key={c.id}
-                  onClick={() => scrollTo(c.id)}
-                  className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
-                    activeCat === c.id
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border text-muted-foreground hover:border-primary hover:text-primary"
-                  }`}
-                >
-                  {lang === "am" ? (c.name_am ?? c.name) : c.name}
-                </button>
-              ))}
-            </div>
+            <ScrollFade direction="horizontal">
+              <div className="scrollbar-none flex gap-2 overflow-x-auto px-4 py-2">
+                {categories.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => scrollTo(c.id)}
+                    className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
+                      activeCat === c.id
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+                    }`}
+                  >
+                    {lang === "am" ? (c.name_am ?? c.name) : c.name}
+                  </button>
+                ))}
+              </div>
+            </ScrollFade>
           </div>
         </div>
       </header>
@@ -122,7 +124,7 @@ function MenuPage() {
       <main className="mx-auto max-w-3xl px-4 pb-32 pt-6">
         {/* Hero */}
         <section className="mb-6 overflow-hidden rounded-2xl border border-border bg-card p-6 text-center shadow-card">
-          <h1 className="font-display text-4xl text-primary">
+          <h1 className="font-display text-4xl tracking-widest text-primary">
             {lang === "am" ? "እንኳን ደህና መጡ" : "Welcome to Origin"}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -150,11 +152,13 @@ function MenuPage() {
               label={lang === "am" ? "የቤቱ ምርጥ" : "Chef's Picks"}
               icon={<Sparkles className="h-3 w-3" />}
             />
-            <div className="scrollbar-none -mx-4 mt-3 flex gap-3 overflow-x-auto px-4">
-              {featured.map((i) => (
-                <FeaturedCard key={i.id} item={i} lang={lang} />
-              ))}
-            </div>
+            <ScrollFade direction="horizontal" className="-mx-4 mt-3">
+              <div className="scrollbar-none flex gap-3 overflow-x-auto px-4">
+                {featured.map((i) => (
+                  <FeaturedCard key={i.id} item={i} lang={lang} />
+                ))}
+              </div>
+            </ScrollFade>
           </section>
         )}
 
@@ -297,7 +301,7 @@ function SectionTitle({ label, icon }: { label: string; icon?: React.ReactNode }
   return (
     <div className="flex items-center gap-2">
       <span className="h-5 w-1 rounded bg-primary" />
-      <h2 className="font-display text-xl uppercase tracking-wider text-primary">{label}</h2>
+      <h2 className="font-display text-xl uppercase tracking-widest text-primary">{label}</h2>
       {icon && <span className="text-primary">{icon}</span>}
     </div>
   );
