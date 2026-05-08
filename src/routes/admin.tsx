@@ -499,8 +499,16 @@ function ItemForm({
     setUploading(true);
     setError("");
     try {
-      const buf = await file.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = reader.result as string;
+          resolve(res.includes(",") ? res.split(",")[1] : res);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
       const res = await upload({
         data: { password: pw, filename: file.name, contentType: file.type, base64 },
       });
