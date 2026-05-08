@@ -1,13 +1,4 @@
 {
-	"functions": {
-		"api/server.ts": {
-			"runtime": "nodejs18.x"
-		}
-	},
-	"routes": [
-		{
-			"src": "/(.*)",
-			"dest": "/api/server"
-		}
-	]
+  "buildCommand": "vite build",
+  "framework": null
 }
