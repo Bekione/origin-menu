@@ -172,21 +172,33 @@ function MenuPage() {
         )}
 
         {/* Categories */}
-        {grouped.map(({ cat, items: list }) =>
-          list.length === 0 && query !== "" ? null : (
-            <section key={cat.id} id={`cat-${cat.id}`} className="mb-8 scroll-mt-32">
-              <SectionTitle label={lang === "am" ? (cat.name_am ?? cat.name) : cat.name} />
-              <div className="mt-3 space-y-3">
-                {list.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {lang === "am" ? "ምንም የሚታይ ምግብ የለም።" : "No items yet."}
-                  </p>
-                ) : (
-                  list.map((i) => <ItemCard key={i.id} item={i} lang={lang} />)
-                )}
-              </div>
-            </section>
-          ),
+        {items.length === 0 && query === "" ? (
+          <div className="py-16 text-center text-muted-foreground">
+            <UtensilsCrossed className="mx-auto mb-4 h-12 w-12 opacity-20" />
+            <p className="text-lg font-medium">
+              {lang === "am" ? "ምንም ምግቦች አልተገኙም።" : "No menu items available."}
+            </p>
+            <p className="mt-2 text-sm">
+              {lang === "am" ? "እባክዎ ቆየት ብለው ይሞክሩ።" : "Check back later when items are added."}
+            </p>
+          </div>
+        ) : (
+          grouped.map(({ cat, items: list }) =>
+            list.length === 0 && query !== "" ? null : (
+              <section key={cat.id} id={`cat-${cat.id}`} className="mb-8 scroll-mt-32">
+                <SectionTitle label={lang === "am" ? (cat.name_am ?? cat.name) : cat.name} />
+                <div className="mt-3 space-y-3">
+                  {list.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      {lang === "am" ? "ምንም የሚታይ ምግብ የለም።" : "No items yet."}
+                    </p>
+                  ) : (
+                    list.map((i) => <ItemCard key={i.id} item={i} lang={lang} />)
+                  )}
+                </div>
+              </section>
+            ),
+          )
         )}
 
         {grouped.every(({ items: l }) => l.length === 0) && query !== "" && (
