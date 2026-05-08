@@ -44,9 +44,13 @@ CREATE TABLE public.restaurant_info (
     map_embed_url TEXT
 );
 
-ALTER TABLE public.categories DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.menu_items DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.restaurant_info DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.menu_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_info ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Public Read Categories" ON public.categories FOR SELECT USING (true);
+CREATE POLICY "Public Read Menu Items" ON public.menu_items FOR SELECT USING (true);
+CREATE POLICY "Public Read Restaurant Info" ON public.restaurant_info FOR SELECT USING (true);
 
 -- Initial Info row (must exist for admin info tab)
 INSERT INTO public.restaurant_info (name) VALUES ('Origin Restaurant');
