@@ -553,164 +553,171 @@ function ItemForm({
   };
 
   return (
-    <form onSubmit={submit} className="rounded-xl border border-primary/40 bg-card p-5 shadow-card">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="font-display text-lg uppercase tracking-wider text-primary">
-          {item ? "Edit Item" : "Add New Item"}
-        </h3>
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-muted-foreground hover:text-foreground"
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 px-4 py-12 backdrop-blur-sm sm:items-center sm:py-8">
+      <div className="w-full max-w-2xl">
+        <form
+          onSubmit={submit}
+          className="rounded-xl border border-primary/40 bg-card p-5 shadow-2xl"
         >
-          <X className="h-5 w-5" />
-        </button>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Name (English)">
-          <input
-            required
-            value={form.name}
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Name (አማርኛ)">
-          <input
-            value={form.name_am}
-            onChange={(e) => setForm({ ...form, name_am: e.target.value })}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Description (English)">
-          <input
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            className={inputCls}
-            placeholder="Ingredients / notes"
-          />
-        </Field>
-        <Field label="Description (አማርኛ)">
-          <input
-            value={form.description_am}
-            onChange={(e) => setForm({ ...form, description_am: e.target.value })}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Category">
-          <select
-            value={form.category_id ?? ""}
-            onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-            className={inputCls}
-          >
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Price (ETB)">
-          <input
-            required
-            type="number"
-            min="0"
-            step="1"
-            value={form.price}
-            onChange={(e) => setForm({ ...form, price: e.target.value })}
-            className={inputCls}
-          />
-        </Field>
-      </div>
-
-      <div className="mt-4">
-        <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Photo
-        </label>
-        <div className="flex items-center gap-3">
-          {form.image_url ? (
-            <img src={form.image_url} alt="" className="h-16 w-16 rounded-lg object-cover" />
-          ) : (
-            <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
-              <Upload className="h-5 w-5" />
-            </div>
-          )}
-          <label className="cursor-pointer rounded-md border border-border px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary">
-            {uploading ? "Uploading…" : form.image_url ? "Replace" : "Upload"}
-            <input
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) onFile(f);
-              }}
-            />
-          </label>
-          {form.image_url && (
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="font-display text-lg uppercase tracking-wider text-primary">
+              {item ? "Edit Item" : "Add New Item"}
+            </h3>
             <button
               type="button"
-              onClick={() => setForm({ ...form, image_url: "" })}
-              className="text-xs text-muted-foreground hover:text-destructive"
+              onClick={onClose}
+              className="text-muted-foreground hover:text-foreground"
             >
-              Remove
+              <X className="h-5 w-5" />
             </button>
-          )}
-        </div>
-      </div>
+          </div>
 
-      <div className="mt-4 flex flex-wrap gap-3">
-        <Toggle
-          label="Available"
-          value={form.is_available}
-          onChange={(v) => setForm({ ...form, is_available: v })}
-        />
-        <Toggle
-          label="Featured"
-          value={form.is_featured}
-          onChange={(v) => setForm({ ...form, is_featured: v })}
-        />
-        <Toggle
-          label="Vegetarian"
-          value={form.is_vegetarian}
-          onChange={(v) => setForm({ ...form, is_vegetarian: v })}
-        />
-        <Toggle
-          label="Spicy"
-          value={form.is_spicy}
-          onChange={(v) => setForm({ ...form, is_spicy: v })}
-        />
-        <Toggle
-          label="Fasting (ጾም)"
-          value={form.is_fasting}
-          onChange={(v) => setForm({ ...form, is_fasting: v })}
-        />
-      </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Name (English)">
+              <input
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Name (አማርኛ)">
+              <input
+                value={form.name_am}
+                onChange={(e) => setForm({ ...form, name_am: e.target.value })}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Description (English)">
+              <input
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className={inputCls}
+                placeholder="Ingredients / notes"
+              />
+            </Field>
+            <Field label="Description (አማርኛ)">
+              <input
+                value={form.description_am}
+                onChange={(e) => setForm({ ...form, description_am: e.target.value })}
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Category">
+              <select
+                value={form.category_id ?? ""}
+                onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                className={inputCls}
+              >
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Price (ETB)">
+              <input
+                required
+                type="number"
+                min="0"
+                step="1"
+                value={form.price}
+                onChange={(e) => setForm({ ...form, price: e.target.value })}
+                className={inputCls}
+              />
+            </Field>
+          </div>
 
-      {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+          <div className="mt-4">
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Photo
+            </label>
+            <div className="flex items-center gap-3">
+              {form.image_url ? (
+                <img src={form.image_url} alt="" className="h-16 w-16 rounded-lg object-cover" />
+              ) : (
+                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
+                  <Upload className="h-5 w-5" />
+                </div>
+              )}
+              <label className="cursor-pointer rounded-md border border-border px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary">
+                {uploading ? "Uploading…" : form.image_url ? "Replace" : "Upload"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) onFile(f);
+                  }}
+                />
+              </label>
+              {form.image_url && (
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, image_url: "" })}
+                  className="text-xs text-muted-foreground hover:text-destructive"
+                >
+                  Remove
+                </button>
+              )}
+            </div>
+          </div>
 
-      <div className="mt-5 flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-md border border-border px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          Cancel
-        </button>
-        <button
-          disabled={saving}
-          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-5 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:opacity-90 disabled:opacity-50"
-        >
-          {saving ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Check className="h-3.5 w-3.5" />
-          )}
-          {item ? "Save" : "Add"}
-        </button>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Toggle
+              label="Available"
+              value={form.is_available}
+              onChange={(v) => setForm({ ...form, is_available: v })}
+            />
+            <Toggle
+              label="Featured"
+              value={form.is_featured}
+              onChange={(v) => setForm({ ...form, is_featured: v })}
+            />
+            <Toggle
+              label="Vegetarian"
+              value={form.is_vegetarian}
+              onChange={(v) => setForm({ ...form, is_vegetarian: v })}
+            />
+            <Toggle
+              label="Spicy"
+              value={form.is_spicy}
+              onChange={(v) => setForm({ ...form, is_spicy: v })}
+            />
+            <Toggle
+              label="Fasting (ጾም)"
+              value={form.is_fasting}
+              onChange={(v) => setForm({ ...form, is_fasting: v })}
+            />
+          </div>
+
+          {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
+
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-md border border-border px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={saving}
+              className="inline-flex items-center gap-1.5 rounded-md bg-primary px-5 py-2 text-xs font-bold uppercase tracking-widest text-primary-foreground hover:opacity-90 disabled:opacity-50"
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
+              {item ? "Save" : "Add"}
+            </button>
+          </div>
+        </form>
       </div>
-    </form>
+    </div>
   );
 }
 
