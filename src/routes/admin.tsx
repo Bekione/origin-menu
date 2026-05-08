@@ -553,8 +553,11 @@ function ItemForm({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 px-4 py-12 backdrop-blur-sm sm:items-center sm:py-8">
-      <div className="w-full max-w-2xl">
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 px-4 py-12 backdrop-blur-sm sm:items-center sm:py-8"
+      onPointerDown={onClose}
+    >
+      <div className="w-full max-w-2xl" onPointerDown={(e) => e.stopPropagation()}>
         <form
           onSubmit={submit}
           className="rounded-xl border border-primary/40 bg-card p-5 shadow-2xl"
