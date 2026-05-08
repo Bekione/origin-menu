@@ -45,14 +45,19 @@ const PW_KEY = "origin_admin_pw";
 function AdminPage() {
   const initial = Route.useLoaderData() as MenuData;
   const [data, setData] = useState<MenuData>(initial);
-  const [pw, setPw] = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
+  const [authState, setAuthState] = useState<{ mounted: boolean; pw: string | null }>({
+    mounted: false,
+    pw: null,
+  });
+  const pw = authState.pw;
+
   const [tab, setTab] = useState<"items" | "categories" | "info">("items");
 
   useEffect(() => {
-    setMounted(true);
-    const stored = sessionStorage.getItem(PW_KEY);
-    if (stored) setPw(stored);
+    setAuthState({
+      mounted: true,
+      pw: sessionStorage.getItem(PW_KEY),
+    });
   }, []);
 
   const refresh = async () => {
@@ -60,21 +65,21 @@ function AdminPage() {
     setData(fresh);
   };
 
-  if (!mounted) return <div className="min-h-screen bg-background" />;
+  if (!authState.mounted) return <div className="min-h-screen bg-background" />;
 
   if (!pw)
     return (
       <Login
         onSuccess={(p) => {
           sessionStorage.setItem(PW_KEY, p);
-          setPw(p);
+          setAuthState({ mounted: true, pw: p });
         }}
       />
     );
 
   const logout = () => {
     sessionStorage.removeItem(PW_KEY);
-    setPw(null);
+    setAuthState({ mounted: true, pw: null });
   };
 
   return (

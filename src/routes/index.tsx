@@ -317,7 +317,8 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
   const unavailable = !item.is_available;
   return (
     <article
-      className={`flex gap-3 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-card transition ${
+      id={`item-${item.id}`}
+      className={`flex gap-3 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-card transition-all duration-500 ${
         unavailable ? "opacity-50" : "hover:border-primary/40"
       }`}
     >
