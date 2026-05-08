@@ -1,7 +1,4 @@
 {
-  "buildCommand": "NITRO_PRESET=vercel npm run build",
-  "outputDirectory": ".vercel/output",
-  "env": {
-    "VITE_SERVER_BASE": "/api"
-  }
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist"
 }
