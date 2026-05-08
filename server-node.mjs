@@ -1,18 +1,40 @@
 /**
- * Custom Node.js HTTP server entry point for Render/Railway deployment.
+ * Custom Node.js HTTP server entry point for Render deployment.
  *
- * TanStack Start's build output (`dist/server/server.js`) exports a Web Fetch API
- * handler ({ fetch }). This wrapper bridges it to a Node.js HTTP server so it
- * can listen on process.env.PORT as required by Render.
+ * Serves static assets from dist/client/ directly,
+ * and passes all other requests to the TanStack Start SSR handler.
  */
 
 // @ts-check
 import { createServer } from "node:http";
 import { Readable } from "node:stream";
+import { createReadStream, existsSync, statSync } from "node:fs";
+import { join, extname } from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const PORT = process.env.PORT || 3000;
+const CLIENT_DIR = join(__dirname, "dist", "client");
 
-// Dynamically import the built handler
+// MIME types for static assets
+const MIME_TYPES = {
+  ".html": "text/html",
+  ".js": "application/javascript",
+  ".mjs": "application/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+  ".webp": "image/webp",
+};
+
+// Dynamically import the built SSR handler
 const { default: app } = await import("./dist/server/server.js");
 
 if (!app || !app.fetch) {
@@ -22,11 +44,26 @@ if (!app || !app.fetch) {
 
 const server = createServer(async (req, res) => {
   try {
-    // Build request URL
-    const host = req.headers.host || `localhost:${PORT}`;
-    const url = new URL(req.url, `http://${host}`);
+    const url = req.url || "/";
 
-    // Collect body
+    // Serve static assets from dist/client/
+    const filePath = join(CLIENT_DIR, url.split("?")[0]);
+    if (existsSync(filePath) && statSync(filePath).isFile()) {
+      const ext = extname(filePath);
+      const contentType = MIME_TYPES[ext] || "application/octet-stream";
+      res.setHeader("Content-Type", contentType);
+      // Cache static assets aggressively (they have content hashes in filenames)
+      if (url.startsWith("/assets/")) {
+        res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+      }
+      createReadStream(filePath).pipe(res);
+      return;
+    }
+
+    // SSR: pass to TanStack Start handler
+    const host = req.headers.host || `localhost:${PORT}`;
+    const fullUrl = new URL(url, `http://${host}`);
+
     const chunks = [];
     for await (const chunk of req) {
       chunks.push(chunk);
@@ -36,8 +73,7 @@ const server = createServer(async (req, res) => {
         ? Buffer.concat(chunks)
         : undefined;
 
-    // Build Web API Request
-    const request = new Request(url.toString(), {
+    const request = new Request(fullUrl.toString(), {
       method: req.method,
       headers: Object.entries(req.headers).reduce((acc, [k, v]) => {
         if (v !== undefined) acc[k] = Array.isArray(v) ? v.join(", ") : v;
@@ -47,10 +83,8 @@ const server = createServer(async (req, res) => {
       duplex: "half",
     });
 
-    // Call TanStack Start handler
     const response = await app.fetch(request);
 
-    // Write response
     res.statusCode = response.status;
     response.headers.forEach((value, key) => {
       res.setHeader(key, value);
