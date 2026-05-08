@@ -282,14 +282,18 @@ function MenuPage() {
             <p className="text-center text-[11px] uppercase tracking-widest text-muted-foreground">
               © {new Date().getFullYear()} {info?.name ?? "Origin"} · All Rights Reserved
             </p>
-            <a
-              href="https://kidusportfoloio.netlify.app/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[10px] uppercase tracking-widest text-muted-foreground/60 hover:text-primary"
-            >
-              Crafted by Kidus
-            </a>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
+              Crafted by{" "}
+              <a
+                href="https://kidusportfoloio.netlify.app/"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-primary"
+              >
+                {" "}
+                Kidus{" "}
+              </a>
+            </p>
           </div>
         </div>
       </footer>
@@ -363,7 +367,29 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
 function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
   const name = lang === "am" ? (item.name_am ?? item.name) : item.name;
   return (
-    <div className="relative w-44 shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-card">
+    <button
+      onClick={() => {
+        const el = document.getElementById(`item-${item.id}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          el.classList.remove("border-border");
+          el.classList.add(
+            "border-primary",
+            "scale-[1.02]",
+            "shadow-[0_0_15px_rgba(234,88,12,0.3)]",
+          );
+          setTimeout(() => {
+            el.classList.add("border-border");
+            el.classList.remove(
+              "border-primary",
+              "scale-[1.02]",
+              "shadow-[0_0_15px_rgba(234,88,12,0.3)]",
+            );
+          }, 1500);
+        }
+      }}
+      className="relative w-44 shrink-0 overflow-hidden rounded-xl border border-border bg-card text-left shadow-card transition hover:border-primary"
+    >
       {item.image_url ? (
         <img src={item.image_url} alt={name} className="h-28 w-full object-cover" />
       ) : (
@@ -377,7 +403,7 @@ function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
           {formatBirr(Number(item.price))} <span className="text-[9px]">ETB</span>
         </p>
       </div>
-    </div>
+    </button>
   );
 }
 

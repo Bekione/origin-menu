@@ -45,16 +45,22 @@ const PW_KEY = "origin_admin_pw";
 function AdminPage() {
   const initial = Route.useLoaderData() as MenuData;
   const [data, setData] = useState<MenuData>(initial);
-  const [pw, setPw] = useState<string | null>(() => {
-    if (typeof sessionStorage !== "undefined") return sessionStorage.getItem(PW_KEY);
-    return null;
-  });
+  const [pw, setPw] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [tab, setTab] = useState<"items" | "categories" | "info">("items");
+
+  useEffect(() => {
+    setMounted(true);
+    const stored = sessionStorage.getItem(PW_KEY);
+    if (stored) setPw(stored);
+  }, []);
 
   const refresh = async () => {
     const fresh = await getMenuData();
     setData(fresh);
   };
+
+  if (!mounted) return <div className="min-h-screen bg-background" />;
 
   if (!pw)
     return (
@@ -463,7 +469,7 @@ function ItemRow({
 
       {showConfirm && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm"
+          className="fixed inset-0 z-60 flex items-center justify-center bg-background/80 px-4 backdrop-blur-xs"
           onPointerDown={() => setShowConfirm(false)}
         >
           <div
