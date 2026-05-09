@@ -3,20 +3,19 @@
  * This allows the browser to smoothly interpolate the length values.
  */
 @property --start-fade {
-  syntax: "<length>";
+  syntax: '<length>';
   inherits: false;
   initial-value: 0px;
 }
 
 @property --end-fade {
-  syntax: "<length>";
+  syntax: '<length>';
   inherits: false;
   initial-value: 0px;
 }
 
-@import "tailwindcss" source(none);
-@source "../src";
-@import "tw-animate-css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -47,13 +46,23 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-display: "Bebas Neue", "Oswald", system-ui, sans-serif;
-  --font-sans: "Inter", system-ui, sans-serif;
-  --shadow-glow: 0 8px 32px -8px color-mix(in oklab, var(--primary) 45%, transparent);
+  --font-display: 'Bebas Neue', 'Oswald', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --shadow-glow: 0 8px 32px -8px
+    color-mix(in oklab, var(--primary) 45%, transparent);
   --shadow-card:
-    0 1px 0 0 color-mix(in oklab, white 6%, transparent) inset, 0 8px 24px -12px rgb(0 0 0 / 0.6);
-  --gradient-primary: linear-gradient(135deg, oklch(0.74 0.18 45), oklch(0.62 0.22 35));
-  --gradient-surface: linear-gradient(180deg, oklch(0.18 0.01 60), oklch(0.13 0.005 60));
+    0 1px 0 0 color-mix(in oklab, white 6%, transparent) inset,
+    0 8px 24px -12px rgb(0 0 0 / 0.6);
+  --gradient-primary: linear-gradient(
+    135deg,
+    oklch(0.74 0.18 45),
+    oklch(0.62 0.22 35)
+  );
+  --gradient-surface: linear-gradient(
+    180deg,
+    oklch(0.18 0.01 60),
+    oklch(0.13 0.005 60)
+  );
 }
 
 :root {
