@@ -17,15 +17,29 @@ export type MenuData = {
 
 export const getMenuData = createServerFn({ method: 'GET' }).handler(
   async (): Promise<MenuData> => {
-    const [cats, items, info] = await Promise.all([
-      supabaseAdmin.from('categories').select('*').order('sort_order'),
-      supabaseAdmin.from('menu_items').select('*').order('sort_order'),
-      supabaseAdmin.from('restaurant_info').select('*').limit(1).maybeSingle(),
-    ])
-    return {
-      categories: cats.data ?? [],
-      items: items.data ?? [],
-      info: info.data ?? null,
+    try {
+      const [cats, items, info] = await Promise.all([
+        supabaseAdmin.from('categories').select('*').order('sort_order'),
+        supabaseAdmin.from('menu_items').select('*').order('sort_order'),
+        supabaseAdmin
+          .from('restaurant_info')
+          .select('*')
+          .limit(1)
+          .maybeSingle(),
+      ])
+
+      if (cats.error) console.error('Supabase categories error:', cats.error)
+      if (items.error) console.error('Supabase items error:', items.error)
+      if (info.error) console.error('Supabase info error:', info.error)
+
+      return {
+        categories: cats.data ?? [],
+        items: items.data ?? [],
+        info: info.data ?? null,
+      }
+    } catch (err) {
+      console.error('getMenuData fatal error:', err)
+      throw err
     }
   },
 )
