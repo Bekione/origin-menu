@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
-import { useServerFn } from "@tanstack/react-start";
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { useEffect, useState } from 'react'
+import { useServerFn } from '@tanstack/react-start'
+import { authClient } from '#/lib/auth-client'
+import { getAuthSession } from '@/server/auth-helpers'
 import {
   getMenuData,
-  verifyAdminPassword,
   upsertMenuItem,
   deleteMenuItem,
   toggleAvailability,
@@ -17,7 +18,7 @@ import {
   type MenuItem,
   type RestaurantInfo,
   type MenuData,
-} from "@/server/menu.functions";
+} from '@/server/menu.functions'
 import {
   LogOut,
   Plus,
@@ -32,62 +33,46 @@ import {
   Layers,
   Store,
   GripVertical,
-} from "lucide-react";
-import logo from "@/assets/origin-logo.jpg";
+} from 'lucide-react'
+import logo from '@/assets/origin-logo.jpg'
 
-export const Route = createFileRoute("/admin")({
+export const Route = createFileRoute('/admin')({
+  beforeLoad: async () => {
+    const session = await getAuthSession()
+    if (!session?.user) {
+      throw redirect({ to: '/login' })
+    }
+  },
   loader: () => getMenuData(),
   component: AdminPage,
-});
-
-const PW_KEY = "origin_admin_pw";
+})
 
 function AdminPage() {
-  const initial = Route.useLoaderData() as MenuData;
-  const [data, setData] = useState<MenuData>(initial);
-  const [authState, setAuthState] = useState<{ mounted: boolean; pw: string | null }>({
-    mounted: false,
-    pw: null,
-  });
-  const pw = authState.pw;
-
-  const [tab, setTab] = useState<"items" | "categories" | "info">("items");
-
-  useEffect(() => {
-    setAuthState({
-      mounted: true,
-      pw: sessionStorage.getItem(PW_KEY),
-    });
-  }, []);
+  const initial = Route.useLoaderData() as MenuData
+  const [data, setData] = useState<MenuData>(initial)
+  const [tab, setTab] = useState<'items' | 'categories' | 'info'>('items')
+  const navigate = Route.useNavigate()
 
   const refresh = async () => {
-    const fresh = await getMenuData();
-    setData(fresh);
-  };
+    const fresh = await getMenuData()
+    setData(fresh)
+  }
 
-  if (!authState.mounted) return <div className="min-h-screen bg-background" />;
-
-  if (!pw)
-    return (
-      <Login
-        onSuccess={(p) => {
-          sessionStorage.setItem(PW_KEY, p);
-          setAuthState({ mounted: true, pw: p });
-        }}
-      />
-    );
-
-  const logout = () => {
-    sessionStorage.removeItem(PW_KEY);
-    setAuthState({ mounted: true, pw: null });
-  };
+  const logout = async () => {
+    await authClient.signOut()
+    navigate({ to: '/login' })
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
-            <img src={logo} alt="" className="h-9 w-9 rounded-full bg-white p-1" />
+            <img
+              src={logo}
+              alt=""
+              className="h-9 w-9 rounded-full bg-white p-1"
+            />
             <div>
               <h1 className="font-display text-2xl text-primary">CONSOLE</h1>
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -112,22 +97,22 @@ function AdminPage() {
         </div>
         <div className="mx-auto flex max-w-5xl gap-1 px-4">
           <TabButton
-            active={tab === "items"}
-            onClick={() => setTab("items")}
+            active={tab === 'items'}
+            onClick={() => setTab('items')}
             icon={<UtensilsCrossed className="h-4 w-4" />}
           >
             Menu Items
           </TabButton>
           <TabButton
-            active={tab === "categories"}
-            onClick={() => setTab("categories")}
+            active={tab === 'categories'}
+            onClick={() => setTab('categories')}
             icon={<Layers className="h-4 w-4" />}
           >
             Categories
           </TabButton>
           <TabButton
-            active={tab === "info"}
-            onClick={() => setTab("info")}
+            active={tab === 'info'}
+            onClick={() => setTab('info')}
             icon={<Store className="h-4 w-4" />}
           >
             Restaurant Info
@@ -136,65 +121,14 @@ function AdminPage() {
       </header>
 
       <main className="mx-auto max-w-5xl px-4 py-8">
-        {tab === "items" && <ItemsTab data={data} pw={pw} onChange={refresh} />}
-        {tab === "categories" && <CategoriesTab data={data} pw={pw} onChange={refresh} />}
-        {tab === "info" && <InfoTab info={data.info} pw={pw} onChange={refresh} />}
+        {tab === 'items' && <ItemsTab data={data} onChange={refresh} />}
+        {tab === 'categories' && (
+          <CategoriesTab data={data} onChange={refresh} />
+        )}
+        {tab === 'info' && <InfoTab info={data.info} onChange={refresh} />}
       </main>
     </div>
-  );
-}
-
-function Login({ onSuccess }: { onSuccess: (pw: string) => void }) {
-  const [pw, setPw] = useState("");
-  const [err, setErr] = useState("");
-  const [loading, setLoading] = useState(false);
-  const verify = useServerFn(verifyAdminPassword);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr("");
-    setLoading(true);
-    try {
-      await verify({ data: { password: pw } });
-      onSuccess(pw);
-    } catch {
-      setErr("Invalid password");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <form
-        onSubmit={submit}
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-card"
-      >
-        <div className="mb-6 flex flex-col items-center gap-3">
-          <img src={logo} alt="Origin" className="h-14 w-14 rounded-full bg-white p-1.5" />
-          <h1 className="font-display text-3xl text-primary">ORIGIN</h1>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            Enter Admin Password
-          </p>
-        </div>
-        <input
-          type="password"
-          autoFocus
-          value={pw}
-          onChange={(e) => setPw(e.target.value)}
-          className="h-12 w-full rounded-lg border border-border bg-background px-4 text-sm outline-none focus:border-primary"
-          placeholder="••••••••"
-        />
-        {err && <p className="mt-2 text-xs text-destructive">{err}</p>}
-        <button
-          disabled={loading || !pw}
-          className="mt-4 inline-flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-bold uppercase tracking-widest text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
-        >
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Login"}
-        </button>
-      </form>
-    </div>
-  );
+  )
 }
 
 function TabButton({
@@ -203,71 +137,88 @@ function TabButton({
   icon,
   children,
 }: {
-  active: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-  children: React.ReactNode;
+  active: boolean
+  onClick: () => void
+  icon: React.ReactNode
+  children: React.ReactNode
 }) {
   return (
     <button
       onClick={onClick}
-      className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition ${active ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+      className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition ${active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
     >
       {icon} {children}
     </button>
-  );
+  )
 }
 
 /* ------------------------ ITEMS TAB ------------------------ */
-function ItemsTab({ data, pw, onChange }: { data: MenuData; pw: string; onChange: () => void }) {
-  const [editing, setEditing] = useState<MenuItem | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [localItems, setLocalItems] = useState(data.items);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const reorder = useServerFn(reorderMenuItems);
+function ItemsTab({
+  data,
+  onChange,
+}: {
+  data: MenuData
+  onChange: () => void
+}) {
+  const [editing, setEditing] = useState<MenuItem | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [localItems, setLocalItems] = useState(data.items)
+  const [draggedId, setDraggedId] = useState<string | null>(null)
+  const reorder = useServerFn(reorderMenuItems)
 
   useEffect(() => {
-    setLocalItems(data.items);
-  }, [data.items]);
+    setLocalItems(data.items)
+  }, [data.items])
 
   const onDragStart = (id: string, e: React.DragEvent) => {
-    setDraggedId(id);
-    e.dataTransfer.effectAllowed = "move";
-  };
-  const onDragOver = (id: string, catId: string | null, e: React.DragEvent) => {
-    e.preventDefault();
-    if (!draggedId || draggedId === id) return;
-    const draggedItem = localItems.find((i) => i.id === draggedId);
-    const targetItem = localItems.find((i) => i.id === id);
-    if (!draggedItem || !targetItem || draggedItem.category_id !== targetItem.category_id) return;
+    setDraggedId(id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
+  const onDragOver = (id: string, e: React.DragEvent) => {
+    e.preventDefault()
+    if (!draggedId || draggedId === id) return
+    const draggedItem = localItems.find((i) => i.id === draggedId)
+    const targetItem = localItems.find((i) => i.id === id)
+    if (
+      !draggedItem ||
+      !targetItem ||
+      draggedItem.category_id !== targetItem.category_id
+    )
+      return
 
-    const newList = [...localItems];
-    const draggedIdx = newList.findIndex((i) => i.id === draggedId);
-    const targetIdx = newList.findIndex((i) => i.id === id);
-    const [moved] = newList.splice(draggedIdx, 1);
-    newList.splice(targetIdx, 0, moved);
+    const newList = [...localItems]
+    const draggedIdx = newList.findIndex((i) => i.id === draggedId)
+    const targetIdx = newList.findIndex((i) => i.id === id)
+    const [moved] = newList.splice(draggedIdx, 1)
+    newList.splice(targetIdx, 0, moved)
 
-    const catItems = newList.filter((i) => i.category_id === targetItem.category_id);
+    const catItems = newList.filter(
+      (i) => i.category_id === targetItem.category_id,
+    )
     catItems.forEach((itm, idx) => {
-      const gIdx = newList.findIndex((gi) => gi.id === itm.id);
-      newList[gIdx] = { ...newList[gIdx], sort_order: idx };
-    });
-    setLocalItems(newList);
-  };
+      const gIdx = newList.findIndex((gi) => gi.id === itm.id)
+      newList[gIdx] = { ...newList[gIdx], sort_order: idx }
+    })
+    setLocalItems(newList)
+  }
   const onDrop = async () => {
-    const item = localItems.find((i) => i.id === draggedId);
-    setDraggedId(null);
+    const item = localItems.find((i) => i.id === draggedId)
+    setDraggedId(null)
     if (item) {
-      const catItems = localItems.filter((i) => i.category_id === item.category_id);
+      const catItems = localItems.filter(
+        (i) => i.category_id === item.category_id,
+      )
       await reorder({
         data: {
-          password: pw,
-          updates: catItems.map((i) => ({ id: i.id, sort_order: i.sort_order })),
+          updates: catItems.map((i) => ({
+            id: i.id,
+            sort_order: i.sort_order,
+          })),
         },
-      });
-      onChange();
+      })
+      onChange()
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -277,8 +228,8 @@ function ItemsTab({ data, pw, onChange }: { data: MenuData; pw: string; onChange
         </h2>
         <button
           onClick={() => {
-            setEditing(null);
-            setShowForm(true);
+            setEditing(null)
+            setShowForm(true)
           }}
           className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground hover:opacity-90"
         >
@@ -290,11 +241,10 @@ function ItemsTab({ data, pw, onChange }: { data: MenuData; pw: string; onChange
         <ItemForm
           item={editing}
           categories={data.categories}
-          pw={pw}
           onClose={() => setShowForm(false)}
           onSaved={() => {
-            setShowForm(false);
-            onChange();
+            setShowForm(false)
+            onChange()
           }}
         />
       )}
@@ -309,8 +259,8 @@ function ItemsTab({ data, pw, onChange }: { data: MenuData; pw: string; onChange
           {data.categories.map((cat) => {
             const list = localItems
               .filter((i) => i.category_id === cat.id)
-              .sort((a, b) => a.sort_order - b.sort_order);
-            if (list.length === 0) return null;
+              .sort((a, b) => a.sort_order - b.sort_order)
+            if (list.length === 0) return null
             return (
               <div key={cat.id}>
                 <div className="bg-muted/30 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-primary">
@@ -320,27 +270,30 @@ function ItemsTab({ data, pw, onChange }: { data: MenuData; pw: string; onChange
                   <ItemRow
                     key={item.id}
                     item={item}
-                    pw={pw}
                     onEdit={() => {
-                      setEditing(item);
-                      setShowForm(true);
+                      setEditing(item)
+                      setShowForm(true)
                     }}
                     onChanged={onChange}
                     onDragStart={(e) => onDragStart(item.id, e)}
-                    onDragOver={(e) => onDragOver(item.id, item.category_id, e)}
+                    onDragOver={(e) => onDragOver(item.id, e)}
                     onDrop={onDrop}
                     isDragging={draggedId === item.id}
                   />
                 ))}
               </div>
-            );
+            )
           })}
           {/* uncategorised */}
           {(() => {
             const orphan = localItems
-              .filter((i) => !i.category_id || !data.categories.find((c) => c.id === i.category_id))
-              .sort((a, b) => a.sort_order - b.sort_order);
-            if (orphan.length === 0) return null;
+              .filter(
+                (i) =>
+                  !i.category_id ||
+                  !data.categories.find((c) => c.id === i.category_id),
+              )
+              .sort((a, b) => a.sort_order - b.sort_order)
+            if (orphan.length === 0) return null
             return (
               <div>
                 <div className="bg-muted/30 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
@@ -350,30 +303,28 @@ function ItemsTab({ data, pw, onChange }: { data: MenuData; pw: string; onChange
                   <ItemRow
                     key={item.id}
                     item={item}
-                    pw={pw}
                     onEdit={() => {
-                      setEditing(item);
-                      setShowForm(true);
+                      setEditing(item)
+                      setShowForm(true)
                     }}
                     onChanged={onChange}
                     onDragStart={(e) => onDragStart(item.id, e)}
-                    onDragOver={(e) => onDragOver(item.id, item.category_id, e)}
+                    onDragOver={(e) => onDragOver(item.id, e)}
                     onDrop={onDrop}
                     isDragging={draggedId === item.id}
                   />
                 ))}
               </div>
-            );
+            )
           })()}
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function ItemRow({
   item,
-  pw,
   onEdit,
   onChanged,
   onDragStart,
@@ -381,44 +332,45 @@ function ItemRow({
   onDrop,
   isDragging,
 }: {
-  item: MenuItem;
-  pw: string;
-  onEdit: () => void;
-  onChanged: () => void;
-  onDragStart?: (e: any) => void;
-  onDragOver?: (e: any) => void;
-  onDrop?: () => void;
-  isDragging?: boolean;
+  item: MenuItem
+  onEdit: () => void
+  onChanged: () => void
+  onDragStart?: (e: any) => void
+  onDragOver?: (e: any) => void
+  onDrop?: () => void
+  isDragging?: boolean
 }) {
-  const toggle = useServerFn(toggleAvailability);
-  const del = useServerFn(deleteMenuItem);
-  const [busy, setBusy] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const toggle = useServerFn(toggleAvailability)
+  const del = useServerFn(deleteMenuItem)
+  const [busy, setBusy] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   const handleToggle = async () => {
-    setBusy(true);
+    setBusy(true)
     try {
-      await toggle({ data: { password: pw, id: item.id, is_available: !item.is_available } });
-      onChanged();
+      await toggle({
+        data: { id: item.id, is_available: !item.is_available },
+      })
+      onChanged()
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
   const handleDelete = async () => {
-    setBusy(true);
+    setBusy(true)
     try {
-      await del({ data: { password: pw, id: item.id } });
-      onChanged();
+      await del({ data: { id: item.id } })
+      onChanged()
     } finally {
-      setBusy(false);
-      setShowConfirm(false);
+      setBusy(false)
+      setShowConfirm(false)
     }
-  };
+  }
 
   return (
     <>
       <div
-        className={`flex items-center gap-3 px-4 py-3 ${isDragging ? "opacity-50 bg-muted/20" : ""}`}
+        className={`flex items-center gap-3 px-4 py-3 ${isDragging ? 'opacity-50 bg-muted/20' : ''}`}
         draggable={!!onDragStart}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
@@ -426,17 +378,23 @@ function ItemRow({
         onDragEnd={onDrop}
       >
         <GripVertical
-          className={`h-4 w-4 shrink-0 text-muted-foreground/40 ${onDragStart ? "cursor-grab active:cursor-grabbing hover:text-primary" : ""}`}
+          className={`h-4 w-4 shrink-0 text-muted-foreground/40 ${onDragStart ? 'cursor-grab active:cursor-grabbing hover:text-primary' : ''}`}
         />
         {item.image_url ? (
-          <img src={item.image_url} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+          <img
+            src={item.image_url}
+            alt=""
+            className="h-10 w-10 shrink-0 rounded object-cover"
+          />
         ) : (
           <div className="h-10 w-10 shrink-0 rounded bg-muted" />
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{item.name}</p>
           <div className="flex items-center gap-2 mt-0.5">
-            <p className="truncate text-xs text-muted-foreground">{Number(item.price)} ETB</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {Number(item.price)} ETB
+            </p>
             {item.is_featured && (
               <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
                 Chef's Pick
@@ -447,14 +405,14 @@ function ItemRow({
         <button
           onClick={handleToggle}
           disabled={busy}
-          className={`rounded flex w-10 justify-center px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${item.is_available ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"}`}
+          className={`rounded flex w-10 justify-center px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${item.is_available ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'}`}
         >
           {busy ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : item.is_available ? (
-            "IN"
+            'IN'
           ) : (
-            "OUT"
+            'OUT'
           )}
         </button>
         <button
@@ -482,9 +440,12 @@ function ItemRow({
             onPointerDown={(e) => e.stopPropagation()}
           >
             <Trash2 className="mx-auto mb-4 h-10 w-10 text-destructive/80" />
-            <h3 className="font-display text-xl text-foreground">Delete Item</h3>
+            <h3 className="font-display text-xl text-foreground">
+              Delete Item
+            </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Are you sure you want to delete "{item.name}"? This action cannot be undone.
+              Are you sure you want to delete "{item.name}"? This action cannot
+              be undone.
             </p>
             <div className="mt-6 flex gap-3">
               <button
@@ -498,87 +459,92 @@ function ItemRow({
                 onClick={handleDelete}
                 className="flex-1 flex items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-wider text-destructive-foreground hover:opacity-90 disabled:opacity-50"
               >
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}
+                {busy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  'Delete'
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
     </>
-  );
+  )
 }
 
 function ItemForm({
   item,
   categories,
-  pw,
   onClose,
   onSaved,
 }: {
-  item: MenuItem | null;
-  categories: Category[];
-  pw: string;
-  onClose: () => void;
-  onSaved: () => void;
+  item: MenuItem | null
+  categories: Category[]
+  onClose: () => void
+  onSaved: () => void
 }) {
   const [form, setForm] = useState({
-    name: item?.name ?? "",
-    name_am: item?.name_am ?? "",
-    description: item?.description ?? "",
-    description_am: item?.description_am ?? "",
-    category_id: item?.category_id ?? categories[0]?.id ?? "",
-    price: String(item?.price ?? ""),
-    image_url: item?.image_url ?? "",
+    name: item?.name ?? '',
+    name_am: item?.name_am ?? '',
+    description: item?.description ?? '',
+    description_am: item?.description_am ?? '',
+    category_id: item?.category_id ?? categories[0]?.id ?? '',
+    price: String(item?.price ?? ''),
+    image_url: item?.image_url ?? '',
     is_available: item?.is_available ?? true,
     is_vegetarian: item?.is_vegetarian ?? false,
     is_spicy: item?.is_spicy ?? false,
     is_fasting: item?.is_fasting ?? false,
     is_featured: item?.is_featured ?? false,
     sort_order: item?.sort_order ?? 0,
-  });
-  const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState("");
-  const upsert = useServerFn(upsertMenuItem);
-  const upload = useServerFn(uploadItemImage);
+  })
+  const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+  const upsert = useServerFn(upsertMenuItem)
+  const upload = useServerFn(uploadItemImage)
 
   const onFile = async (file: File) => {
     if (file.size > 4 * 1024 * 1024) {
-      setError("Image must be under 4MB");
-      return;
+      setError('Image must be under 4MB')
+      return
     }
-    setUploading(true);
-    setError("");
+    setUploading(true)
+    setError('')
     try {
       const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
+        const reader = new FileReader()
         reader.onload = () => {
-          const res = reader.result as string;
-          resolve(res.includes(",") ? res.split(",")[1] : res);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+          const res = reader.result as string
+          resolve(res.includes(',') ? res.split(',')[1] : res)
+        }
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
 
       const res = await upload({
-        data: { password: pw, filename: file.name, contentType: file.type, base64 },
-      });
-      setForm((f) => ({ ...f, image_url: res.url }));
+        data: {
+          filename: file.name,
+          contentType: file.type,
+          base64,
+        },
+      })
+      setForm((f) => ({ ...f, image_url: res.url }))
     } catch (e: any) {
-      setError(e?.message ?? "Upload failed");
+      setError(e?.message ?? 'Upload failed')
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
+    e.preventDefault()
+    setSaving(true)
+    setError('')
     try {
       await upsert({
         data: {
-          password: pw,
           id: item?.id,
           category_id: form.category_id || null,
           name: form.name.trim(),
@@ -594,28 +560,31 @@ function ItemForm({
           is_featured: form.is_featured,
           sort_order: form.sort_order,
         },
-      });
-      onSaved();
+      })
+      onSaved()
     } catch (e: any) {
-      setError(e?.message ?? "Save failed");
+      setError(e?.message ?? 'Save failed')
     } finally {
-      setSaving(false);
+      setSaving(false)
     }
-  };
+  }
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 px-4 py-12 backdrop-blur-sm sm:items-center sm:py-8"
       onPointerDown={onClose}
     >
-      <div className="w-full max-w-2xl" onPointerDown={(e) => e.stopPropagation()}>
+      <div
+        className="w-full max-w-2xl"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
         <form
           onSubmit={submit}
           className="rounded-xl border border-primary/40 bg-card p-5 shadow-2xl"
         >
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-display text-lg uppercase tracking-wider text-primary">
-              {item ? "Edit Item" : "Add New Item"}
+              {item ? 'Edit Item' : 'Add New Item'}
             </h3>
             <button
               type="button"
@@ -645,7 +614,9 @@ function ItemForm({
             <Field label="Description (English)">
               <input
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, description: e.target.value })
+                }
                 className={inputCls}
                 placeholder="Ingredients / notes"
               />
@@ -653,14 +624,18 @@ function ItemForm({
             <Field label="Description (አማርኛ)">
               <input
                 value={form.description_am}
-                onChange={(e) => setForm({ ...form, description_am: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, description_am: e.target.value })
+                }
                 className={inputCls}
               />
             </Field>
             <Field label="Category">
               <select
-                value={form.category_id ?? ""}
-                onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                value={form.category_id ?? ''}
+                onChange={(e) =>
+                  setForm({ ...form, category_id: e.target.value })
+                }
                 className={inputCls}
               >
                 {categories.map((c) => (
@@ -689,28 +664,36 @@ function ItemForm({
             </label>
             <div className="flex items-center gap-3">
               {form.image_url ? (
-                <img src={form.image_url} alt="" className="h-16 w-16 rounded-lg object-cover" />
+                <img
+                  src={form.image_url}
+                  alt=""
+                  className="h-16 w-16 rounded-lg object-cover"
+                />
               ) : (
                 <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
                   <Upload className="h-5 w-5" />
                 </div>
               )}
               <label className="cursor-pointer rounded-md border border-border px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary">
-                {uploading ? "Uploading…" : form.image_url ? "Replace" : "Upload"}
+                {uploading
+                  ? 'Uploading…'
+                  : form.image_url
+                    ? 'Replace'
+                    : 'Upload'}
                 <input
                   type="file"
                   accept="image/*"
                   hidden
                   onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) onFile(f);
+                    const f = e.target.files?.[0]
+                    if (f) onFile(f)
                   }}
                 />
               </label>
               {form.image_url && (
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, image_url: "" })}
+                  onClick={() => setForm({ ...form, image_url: '' })}
                   className="text-xs text-muted-foreground hover:text-destructive"
                 >
                   Remove
@@ -766,19 +749,25 @@ function ItemForm({
               ) : (
                 <Check className="h-3.5 w-3.5" />
               )}
-              {item ? "Save" : "Add"}
+              {item ? 'Save' : 'Add'}
             </button>
           </div>
         </form>
       </div>
     </div>
-  );
+  )
 }
 
 const inputCls =
-  "h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary";
+  'h-10 w-full rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-primary'
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
   return (
     <div>
       <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -786,7 +775,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       </label>
       {children}
     </div>
-  );
+  )
 }
 
 function Toggle({
@@ -794,95 +783,95 @@ function Toggle({
   value,
   onChange,
 }: {
-  label: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
+  label: string
+  value: boolean
+  onChange: (v: boolean) => void
 }) {
   return (
     <button
       type="button"
       onClick={() => onChange(!value)}
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${value ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"}`}
+      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${value ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'}`}
     >
-      <span className={`h-2 w-2 rounded-full ${value ? "bg-primary" : "bg-muted-foreground/40"}`} />{" "}
+      <span
+        className={`h-2 w-2 rounded-full ${value ? 'bg-primary' : 'bg-muted-foreground/40'}`}
+      />{' '}
       {label}
     </button>
-  );
+  )
 }
 
 /* ------------------------ CATEGORIES TAB ------------------------ */
 function CategoriesTab({
   data,
-  pw,
   onChange,
 }: {
-  data: MenuData;
-  pw: string;
-  onChange: () => void;
+  data: MenuData
+  onChange: () => void
 }) {
-  const [name, setName] = useState("");
-  const [nameAm, setNameAm] = useState("");
-  const [busy, setBusy] = useState(false);
-  const upsert = useServerFn(upsertCategory);
-  const del = useServerFn(deleteCategory);
-  const reorder = useServerFn(reorderCategories);
-  const [localCats, setLocalCats] = useState(data.categories);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [name, setName] = useState('')
+  const [nameAm, setNameAm] = useState('')
+  const [busy, setBusy] = useState(false)
+  const upsert = useServerFn(upsertCategory)
+  const del = useServerFn(deleteCategory)
+  const reorder = useServerFn(reorderCategories)
+  const [localCats, setLocalCats] = useState(data.categories)
+  const [draggedId, setDraggedId] = useState<string | null>(null)
 
   useEffect(() => {
-    setLocalCats(data.categories);
-  }, [data.categories]);
+    setLocalCats(data.categories)
+  }, [data.categories])
 
   const onDragStart = (id: string, e: React.DragEvent) => {
-    setDraggedId(id);
-    e.dataTransfer.effectAllowed = "move";
-  };
+    setDraggedId(id)
+    e.dataTransfer.effectAllowed = 'move'
+  }
   const onDragOver = (id: string, e: React.DragEvent) => {
-    e.preventDefault();
-    if (!draggedId || draggedId === id) return;
-    const newList = [...localCats];
-    const draggedIdx = newList.findIndex((c) => c.id === draggedId);
-    const targetIdx = newList.findIndex((c) => c.id === id);
-    const [moved] = newList.splice(draggedIdx, 1);
-    newList.splice(targetIdx, 0, moved);
-    newList.forEach((c, idx) => (c.sort_order = idx));
-    setLocalCats(newList);
-  };
+    e.preventDefault()
+    if (!draggedId || draggedId === id) return
+    const newList = [...localCats]
+    const draggedIdx = newList.findIndex((c) => c.id === draggedId)
+    const targetIdx = newList.findIndex((c) => c.id === id)
+    const [moved] = newList.splice(draggedIdx, 1)
+    newList.splice(targetIdx, 0, moved)
+    newList.forEach((c, idx) => (c.sort_order = idx))
+    setLocalCats(newList)
+  }
   const onDrop = async () => {
-    setDraggedId(null);
+    setDraggedId(null)
     await reorder({
       data: {
-        password: pw,
         updates: localCats.map((c) => ({ id: c.id, sort_order: c.sort_order })),
       },
-    });
-    onChange();
-  };
+    })
+    onChange()
+  }
 
   const add = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    setBusy(true);
+    e.preventDefault()
+    if (!name.trim()) return
+    setBusy(true)
     try {
       await upsert({
         data: {
-          password: pw,
           name: name.trim(),
           name_am: nameAm.trim() || null,
           sort_order: data.categories.length + 1,
         },
-      });
-      setName("");
-      setNameAm("");
-      onChange();
+      })
+      setName('')
+      setNameAm('')
+      onChange()
     } finally {
-      setBusy(false);
+      setBusy(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
-      <h2 className="font-display text-xl uppercase tracking-wider">Categories</h2>
+      <h2 className="font-display text-xl uppercase tracking-wider">
+        Categories
+      </h2>
       <form
         onSubmit={add}
         className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-[1fr_1fr_auto]"
@@ -919,30 +908,40 @@ function CategoriesTab({
               <CategoryRow
                 key={c.id}
                 cat={c}
-                itemCount={data.items.filter((i) => i.category_id === c.id).length}
-                pw={pw}
-                onChange={onChange}
+                itemCount={
+                  data.items.filter((i) => i.category_id === c.id).length
+                }
                 onDragStart={(e) => onDragStart(c.id, e)}
                 onDragOver={(e) => onDragOver(c.id, e)}
                 onDrop={onDrop}
                 isDragging={draggedId === c.id}
                 onSave={async (n, na, so) => {
                   await upsert({
-                    data: { password: pw, id: c.id, name: n, name_am: na || null, sort_order: so },
-                  });
-                  onChange();
+                    data: {
+                      id: c.id,
+                      name: n,
+                      name_am: na || null,
+                      sort_order: so,
+                    },
+                  })
+                  onChange()
                 }}
                 onDelete={async () => {
-                  if (!confirm(`Delete "${c.name}"? Items inside will also be deleted.`)) return;
-                  await del({ data: { password: pw, id: c.id } });
-                  onChange();
+                  if (
+                    !confirm(
+                      `Delete "${c.name}"? Items inside will also be deleted.`,
+                    )
+                  )
+                    return
+                  await del({ data: { id: c.id } })
+                  onChange()
                 }}
               />
             ))
         )}
       </div>
     </div>
-  );
+  )
 }
 
 function CategoryRow({
@@ -955,29 +954,35 @@ function CategoryRow({
   onDrop,
   isDragging,
 }: {
-  cat: Category;
-  itemCount: number;
-  pw: string;
-  onChange: () => void;
-  onSave: (n: string, na: string, so: number) => Promise<void>;
-  onDelete: () => Promise<void>;
-  onDragStart?: (e: any) => void;
-  onDragOver?: (e: any) => void;
-  onDrop?: () => void;
-  isDragging?: boolean;
+  cat: Category
+  itemCount: number
+  onSave: (n: string, na: string, so: number) => Promise<void>
+  onDelete: () => Promise<void>
+  onDragStart?: (e: any) => void
+  onDragOver?: (e: any) => void
+  onDrop?: () => void
+  isDragging?: boolean
 }) {
-  const [editing, setEditing] = useState(false);
-  const [n, setN] = useState(cat.name);
-  const [na, setNa] = useState(cat.name_am ?? "");
-  const [so, setSo] = useState(cat.sort_order);
-  const [busy, setBusy] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [editing, setEditing] = useState(false)
+  const [n, setN] = useState(cat.name)
+  const [na, setNa] = useState(cat.name_am ?? '')
+  const [so, setSo] = useState(cat.sort_order)
+  const [busy, setBusy] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   if (editing) {
     return (
       <div className="grid gap-2 p-3 sm:grid-cols-[1fr_1fr_80px_auto]">
-        <input value={n} onChange={(e) => setN(e.target.value)} className={inputCls} />
-        <input value={na} onChange={(e) => setNa(e.target.value)} className={inputCls} />
+        <input
+          value={n}
+          onChange={(e) => setN(e.target.value)}
+          className={inputCls}
+        />
+        <input
+          value={na}
+          onChange={(e) => setNa(e.target.value)}
+          className={inputCls}
+        />
         <input
           type="number"
           value={so}
@@ -988,27 +993,30 @@ function CategoryRow({
           <button
             disabled={busy}
             onClick={async () => {
-              setBusy(true);
-              await onSave(n, na, so);
-              setBusy(false);
-              setEditing(false);
+              setBusy(true)
+              await onSave(n, na, so)
+              setBusy(false)
+              setEditing(false)
             }}
             className="rounded bg-primary p-2 text-primary-foreground"
           >
             <Check className="h-3.5 w-3.5" />
           </button>
-          <button onClick={() => setEditing(false)} className="rounded border border-border p-2">
+          <button
+            onClick={() => setEditing(false)}
+            className="rounded border border-border p-2"
+          >
             <X className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
-    );
+    )
   }
 
   return (
     <>
       <div
-        className={`flex items-center gap-3 p-3 ${isDragging ? "opacity-50 bg-muted/20" : ""}`}
+        className={`flex items-center gap-3 p-3 ${isDragging ? 'opacity-50 bg-muted/20' : ''}`}
         draggable={!!onDragStart}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
@@ -1016,13 +1024,15 @@ function CategoryRow({
         onDragEnd={onDrop}
       >
         <GripVertical
-          className={`h-4 w-4 shrink-0 text-muted-foreground/40 ${onDragStart ? "cursor-grab active:cursor-grabbing hover:text-primary" : ""}`}
+          className={`h-4 w-4 shrink-0 text-muted-foreground/40 ${onDragStart ? 'cursor-grab active:cursor-grabbing hover:text-primary' : ''}`}
         />
-        <span className="w-8 text-center text-xs text-muted-foreground">{cat.sort_order}</span>
+        <span className="w-8 text-center text-xs text-muted-foreground">
+          {cat.sort_order}
+        </span>
         <div className="flex-1">
           <p className="text-sm font-semibold">{cat.name}</p>
           <p className="text-xs text-muted-foreground">
-            {cat.name_am ?? "—"} · {itemCount} item{itemCount !== 1 ? "s" : ""}
+            {cat.name_am ?? '—'} · {itemCount} item{itemCount !== 1 ? 's' : ''}
           </p>
         </div>
         <button
@@ -1041,7 +1051,7 @@ function CategoryRow({
 
       {showConfirm && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm"
+          className="fixed inset-0 z-60 flex items-center justify-center bg-background/80 px-4 backdrop-blur-sm"
           onPointerDown={() => setShowConfirm(false)}
         >
           <div
@@ -1049,10 +1059,12 @@ function CategoryRow({
             onPointerDown={(e) => e.stopPropagation()}
           >
             <Trash2 className="mx-auto mb-4 h-10 w-10 text-destructive/80" />
-            <h3 className="font-display text-xl text-foreground">Delete Category</h3>
+            <h3 className="font-display text-xl text-foreground">
+              Delete Category
+            </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Are you sure you want to delete "{cat.name}"? The {itemCount} items inside it will
-              also be deleted. This cannot be undone.
+              Are you sure you want to delete "{cat.name}"? The {itemCount}{' '}
+              items inside it will also be deleted. This cannot be undone.
             </p>
             <div className="mt-6 flex gap-3">
               <button
@@ -1064,71 +1076,77 @@ function CategoryRow({
               <button
                 disabled={busy}
                 onClick={async () => {
-                  setBusy(true);
+                  setBusy(true)
                   try {
-                    await onDelete();
+                    await onDelete()
                   } finally {
-                    setBusy(false);
+                    setBusy(false)
                   }
                 }}
                 className="flex-1 flex items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-wider text-destructive-foreground hover:opacity-90 disabled:opacity-50"
               >
-                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Delete"}
+                {busy ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  'Delete'
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
     </>
-  );
+  )
 }
 
 /* ------------------------ INFO TAB ------------------------ */
 function InfoTab({
   info,
-  pw,
   onChange,
 }: {
-  info: RestaurantInfo | null;
-  pw: string;
-  onChange: () => void;
+  info: RestaurantInfo | null
+  onChange: () => void
 }) {
   const initialHours = Array.isArray(info?.hours)
     ? (info!.hours as Array<{ day: string; hours: string }>)
-    : [];
+    : []
   const [form, setForm] = useState({
-    name: info?.name ?? "ORIGIN",
-    tagline: info?.tagline ?? "",
-    address: info?.address ?? "",
-    phone: info?.phone ?? "",
-    instagram_url: info?.instagram_url ?? "",
-    tiktok_url: info?.tiktok_url ?? "",
-    map_url: info?.map_url ?? "",
-    hours: initialHours.length ? initialHours : [{ day: "Mon–Fri", hours: "10:00 – 22:00" }],
-  });
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
-  const update = useServerFn(updateRestaurantInfo);
+    name: info?.name ?? 'ORIGIN',
+    tagline: info?.tagline ?? '',
+    address: info?.address ?? '',
+    phone: info?.phone ?? '',
+    instagram_url: info?.instagram_url ?? '',
+    tiktok_url: info?.tiktok_url ?? '',
+    map_url: info?.map_url ?? '',
+    hours: initialHours.length
+      ? initialHours
+      : [{ day: 'Mon–Fri', hours: '10:00 – 22:00' }],
+  })
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+  const update = useServerFn(updateRestaurantInfo)
 
   const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
-    setMsg("");
+    e.preventDefault()
+    setSaving(true)
+    setMsg('')
     try {
-      await update({ data: { password: pw, ...form } });
-      setMsg("Saved");
-      onChange();
+      await update({ data: { ...form } })
+      setMsg('Saved')
+      onChange()
     } catch (e: any) {
-      setMsg(e?.message ?? "Failed");
+      setMsg(e?.message ?? 'Failed')
     } finally {
-      setSaving(false);
-      setTimeout(() => setMsg(""), 2500);
+      setSaving(false)
+      setTimeout(() => setMsg(''), 2500)
     }
-  };
+  }
 
   return (
     <form onSubmit={submit} className="space-y-6">
-      <h2 className="font-display text-xl uppercase tracking-wider">Restaurant Info</h2>
+      <h2 className="font-display text-xl uppercase tracking-wider">
+        Restaurant Info
+      </h2>
       <div className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
         <Field label="Restaurant Name">
           <input
@@ -1163,7 +1181,9 @@ function InfoTab({
           <input
             className={inputCls}
             value={form.instagram_url}
-            onChange={(e) => setForm({ ...form, instagram_url: e.target.value })}
+            onChange={(e) =>
+              setForm({ ...form, instagram_url: e.target.value })
+            }
             placeholder="https://instagram.com/…"
           />
         </Field>
@@ -1192,10 +1212,17 @@ function InfoTab({
 
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="font-display text-sm uppercase tracking-wider">Opening Hours</h3>
+          <h3 className="font-display text-sm uppercase tracking-wider">
+            Opening Hours
+          </h3>
           <button
             type="button"
-            onClick={() => setForm({ ...form, hours: [...form.hours, { day: "", hours: "" }] })}
+            onClick={() =>
+              setForm({
+                ...form,
+                hours: [...form.hours, { day: '', hours: '' }],
+              })
+            }
             className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
           >
             <Plus className="h-3 w-3" /> Add row
@@ -1209,9 +1236,9 @@ function InfoTab({
                 value={h.day}
                 placeholder="Mon–Fri"
                 onChange={(e) => {
-                  const a = [...form.hours];
-                  a[i] = { ...a[i], day: e.target.value };
-                  setForm({ ...form, hours: a });
+                  const a = [...form.hours]
+                  a[i] = { ...a[i], day: e.target.value }
+                  setForm({ ...form, hours: a })
                 }}
               />
               <input
@@ -1219,14 +1246,19 @@ function InfoTab({
                 value={h.hours}
                 placeholder="10:00 – 22:00"
                 onChange={(e) => {
-                  const a = [...form.hours];
-                  a[i] = { ...a[i], hours: e.target.value };
-                  setForm({ ...form, hours: a });
+                  const a = [...form.hours]
+                  a[i] = { ...a[i], hours: e.target.value }
+                  setForm({ ...form, hours: a })
                 }}
               />
               <button
                 type="button"
-                onClick={() => setForm({ ...form, hours: form.hours.filter((_, j) => j !== i) })}
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    hours: form.hours.filter((_, j) => j !== i),
+                  })
+                }
                 className="rounded border border-border p-2 text-muted-foreground hover:border-destructive hover:text-destructive"
               >
                 <Trash2 className="h-3.5 w-3.5" />
@@ -1251,5 +1283,5 @@ function InfoTab({
         </button>
       </div>
     </form>
-  );
+  )
 }
