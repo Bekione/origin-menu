@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   Outlet,
   Link,
@@ -6,16 +6,18 @@ import {
   useRouter,
   HeadContent,
   Scripts,
-} from "@tanstack/react-router";
+} from '@tanstack/react-router'
 
-import appCss from "../styles.css?url";
+import appCss from '../styles.css?url'
 
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
         <h1 className="font-display text-7xl text-primary">404</h1>
-        <h2 className="mt-4 font-display text-2xl tracking-widest text-primary">PAGE NOT FOUND</h2>
+        <h2 className="mt-4 font-display text-2xl tracking-widest text-primary">
+          PAGE NOT FOUND
+        </h2>
         <p className="mt-2 text-sm text-muted-foreground">
           The page you're looking for doesn't exist or has been moved.
         </p>
@@ -29,12 +31,12 @@ function NotFoundComponent() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  console.error(error);
-  const router = useRouter();
+  console.error(error)
+  const router = useRouter()
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -43,13 +45,14 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
           SERVER ERROR
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+          Something went wrong on our end. You can try refreshing or head back
+          home.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
-              router.invalidate();
-              reset();
+              router.invalidate()
+              reset()
             }}
             className="inline-flex items-center justify-center rounded-md border border-primary px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/10"
           >
@@ -64,48 +67,74 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Origin Restaurant — Fearless Flavor" },
-      {
-        name: "description",
-        content:
-          "Origin Restaurant menu — fearless flavor served fresh in Addis Ababa. Scan, browse and order.",
-      },
-      { name: "author", content: "Origin Restaurant" },
-      { name: "theme-color", content: "#0d0d0d" },
-      { property: "og:title", content: "Origin Restaurant — Fearless Flavor" },
-      { property: "og:description", content: "Browse Origin Restaurant's menu." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-    ],
-    links: [
-      { rel: "apple-touch-icon", sizes: "180x180", href: "/src/assets/apple-touch-icon.png" },
-      { rel: "icon", type: "image/png", sizes: "32x32", href: "/src/assets/favicon-32x32.png" },
-      { rel: "icon", type: "image/png", sizes: "16x16", href: "/src/assets/favicon-16x16.png" },
-      { rel: "manifest", href: "/src/assets/site.webmanifest" },
-      { rel: "shortcut icon", href: "/src/assets/favicon.ico" },
-      { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;600&display=swap",
-      },
-    ],
-  }),
-  shellComponent: RootShell,
-  component: RootComponent,
-  notFoundComponent: NotFoundComponent,
-  errorComponent: ErrorComponent,
-});
+export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
+  {
+    head: () => ({
+      meta: [
+        { charSet: 'utf-8' },
+        { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+        { title: 'Origin Restaurant — Fearless Flavor' },
+        {
+          name: 'description',
+          content:
+            'Origin Restaurant menu — fearless flavor served fresh in Addis Ababa. Scan, browse and order.',
+        },
+        { name: 'author', content: 'Origin Restaurant' },
+        { name: 'theme-color', content: '#0d0d0d' },
+        {
+          property: 'og:title',
+          content: 'Origin Restaurant — Fearless Flavor',
+        },
+        {
+          property: 'og:description',
+          content: "Browse Origin Restaurant's menu.",
+        },
+        { property: 'og:type', content: 'website' },
+        { name: 'twitter:card', content: 'summary' },
+        { name: 'twitter:site', content: '@Lovable' },
+      ],
+      links: [
+        {
+          rel: 'apple-touch-icon',
+          sizes: '180x180',
+          href: '/src/assets/apple-touch-icon.png',
+        },
+        {
+          rel: 'icon',
+          type: 'image/png',
+          sizes: '32x32',
+          href: '/src/assets/favicon-32x32.png',
+        },
+        {
+          rel: 'icon',
+          type: 'image/png',
+          sizes: '16x16',
+          href: '/src/assets/favicon-16x16.png',
+        },
+        { rel: 'manifest', href: '/src/assets/site.webmanifest' },
+        { rel: 'shortcut icon', href: '/src/assets/favicon.ico' },
+        { rel: 'stylesheet', href: appCss },
+        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+        {
+          rel: 'preconnect',
+          href: 'https://fonts.gstatic.com',
+          crossOrigin: 'anonymous',
+        },
+        {
+          rel: 'stylesheet',
+          href: 'https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;600&display=swap',
+        },
+      ],
+    }),
+    shellComponent: RootShell,
+    component: RootComponent,
+    notFoundComponent: NotFoundComponent,
+    errorComponent: ErrorComponent,
+  },
+)
 
 function RootShell({ children }: { children: React.ReactNode }) {
   return (
@@ -118,15 +147,15 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
-  );
+  )
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
+  const { queryClient } = Route.useRouteContext()
 
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
     </QueryClientProvider>
-  );
+  )
 }

@@ -1,1 +1,0 @@
-DROP POLICY "public read menu-images" ON storage.objects;
