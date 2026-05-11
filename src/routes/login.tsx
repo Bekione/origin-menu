@@ -27,25 +27,34 @@ function LoginPage() {
     setError(null)
     setLoading(true)
 
-    if (!navigator.onLine) {
-      setError('No internet connection. Please check your network.')
+    try {
+      const { error: signInError } = await authClient.signIn.email({
+        email,
+        password,
+        callbackURL: '/admin',
+      })
+
+      if (signInError) {
+        // Better-Auth returns specific error codes we can inspect
+        setError('Invalid email or password.')
+        setLoading(false)
+        return
+      }
+
+      navigate({ to: '/admin' })
+    } catch (err: any) {
+      // TypeError: Failed to fetch = network is down / DNS failure
+      const isNetworkError =
+        err instanceof TypeError ||
+        err?.message?.toLowerCase().includes('fetch') ||
+        err?.message?.toLowerCase().includes('network')
+      setError(
+        isNetworkError
+          ? 'Connection failed. Please check your internet and try again.'
+          : 'Something went wrong. Please try again.',
+      )
       setLoading(false)
-      return
     }
-
-    const { error: signInError } = await authClient.signIn.email({
-      email,
-      password,
-      callbackURL: '/admin',
-    })
-
-    if (signInError) {
-      setError('Invalid email or password.')
-      setLoading(false)
-      return
-    }
-
-    navigate({ to: '/admin' })
   }
 
   return (

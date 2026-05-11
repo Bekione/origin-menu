@@ -102,22 +102,22 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         {
           rel: 'apple-touch-icon',
           sizes: '180x180',
-          href: '/src/assets/apple-touch-icon.png',
+          href: '/apple-touch-icon.png',
         },
         {
           rel: 'icon',
           type: 'image/png',
           sizes: '32x32',
-          href: '/src/assets/favicon-32x32.png',
+          href: '/favicon-32x32.png',
         },
         {
           rel: 'icon',
           type: 'image/png',
           sizes: '16x16',
-          href: '/src/assets/favicon-16x16.png',
+          href: '/favicon-16x16.png',
         },
-        { rel: 'manifest', href: '/src/assets/site.webmanifest' },
-        { rel: 'shortcut icon', href: '/src/assets/favicon.ico' },
+        { rel: 'manifest', href: '/site.webmanifest' },
+        { rel: 'shortcut icon', href: '/favicon.ico' },
         { rel: 'stylesheet', href: appCss },
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         {
