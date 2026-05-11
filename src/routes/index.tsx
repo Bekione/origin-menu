@@ -1,5 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Search,
   MapPin,
@@ -12,55 +12,66 @@ import {
   Clock,
   Phone,
   UtensilsCrossed,
-} from "lucide-react";
-import { getMenuData, type MenuData, type MenuItem } from "@/server/menu.functions";
-import logo from "@/assets/origin-logo.jpg";
-import ScrollFade from "@/components/ScrollFade";
+} from 'lucide-react'
+import {
+  getMenuData,
+  type MenuData,
+  type MenuItem,
+} from '@/server/menu.functions'
+import logo from '@/assets/origin-logo.jpg'
+import ScrollFade from '@/components/ScrollFade'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute('/')({
   loader: () => getMenuData(),
   component: MenuPage,
-});
+  pendingComponent: MenuSkeleton,
+})
 
-type Lang = "en" | "am";
+type Lang = 'en' | 'am'
 
 function formatBirr(n: number) {
-  return new Intl.NumberFormat("en-US").format(n);
+  return new Intl.NumberFormat('en-US').format(n)
 }
 
 function MenuPage() {
-  const { categories, items, info } = Route.useLoaderData() as MenuData;
-  const [lang, setLang] = useState<Lang>("en");
-  const [query, setQuery] = useState("");
-  const [activeCat, setActiveCat] = useState<string | null>(null);
-  const [navOpen, setNavOpen] = useState(false);
+  const { categories, items, info } = Route.useLoaderData() as MenuData
+  const [lang, setLang] = useState<Lang>('en')
+  const [query, setQuery] = useState('')
+  const [activeCat, setActiveCat] = useState<string | null>(null)
+  const [navOpen, setNavOpen] = useState(false)
 
   useEffect(() => {
-    if (!activeCat && categories[0]) setActiveCat(categories[0].id);
-  }, [categories, activeCat]);
+    if (!activeCat && categories[0]) setActiveCat(categories[0].id)
+  }, [categories, activeCat])
 
   const grouped = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim().toLowerCase()
     return categories.map((c) => ({
       cat: c,
       items: items.filter(
         (i) =>
           i.category_id === c.id &&
-          (q === "" ||
+          (q === '' ||
             i.name.toLowerCase().includes(q) ||
-            (i.name_am ?? "").toLowerCase().includes(q) ||
-            (i.description ?? "").toLowerCase().includes(q)),
+            (i.name_am ?? '').toLowerCase().includes(q) ||
+            (i.description ?? '').toLowerCase().includes(q)),
       ),
-    }));
-  }, [categories, items, query]);
+    }))
+  }, [categories, items, query])
 
-  const featured = items.filter((i) => i.is_featured && i.is_available).slice(0, 6);
+  const featured = items
+    .filter((i) => i.is_featured && i.is_available)
+    .slice(0, 6)
 
   const scrollTo = (id: string) => {
-    setActiveCat(id);
-    setNavOpen(false);
-    document.getElementById(`cat-${id}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+    setActiveCat(id)
+    setNavOpen(false)
+    document
+      .getElementById(`cat-${id}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -74,26 +85,33 @@ function MenuPage() {
               className="h-14 w-14 rounded-full bg-white p-1.5 shadow-sm"
             />
             <div className="flex flex-col leading-tight">
-              <span className="font-display text-xl text-primary">{info?.name ?? "ORIGIN"}</span>
+              <span className="font-display text-xl text-primary">
+                {info?.name ?? 'ORIGIN'}
+              </span>
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                {info?.tagline ?? "Fearless Flavor."}
+                {info?.tagline ?? 'Fearless Flavor.'}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setLang(lang === "en" ? "am" : "en")}
+              onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
               className="rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground transition hover:border-primary hover:text-primary"
               aria-label="Toggle language"
             >
-              {lang === "en" ? "አማ" : "EN"}
+              {lang === 'en' ? 'አማ' : 'EN'}
             </button>
+            <ThemeToggle />
             <button
               onClick={() => setNavOpen((v) => !v)}
               className="rounded-md border border-border p-1.5 text-primary md:hidden"
               aria-label="Toggle menu"
             >
-              {navOpen ? <X className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
+              {navOpen ? (
+                <X className="h-5 w-5" />
+              ) : (
+                <MenuIcon className="h-5 w-5" />
+              )}
             </button>
           </div>
         </div>
@@ -108,11 +126,11 @@ function MenuPage() {
                     onClick={() => scrollTo(c.id)}
                     className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold uppercase tracking-wide transition ${
                       activeCat === c.id
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border text-muted-foreground hover:border-primary hover:text-primary"
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
                     }`}
                   >
-                    {lang === "am" ? (c.name_am ?? c.name) : c.name}
+                    {lang === 'am' ? (c.name_am ?? c.name) : c.name}
                   </button>
                 ))}
               </div>
@@ -125,12 +143,12 @@ function MenuPage() {
         {/* Hero */}
         <section className="mb-6 overflow-hidden rounded-2xl border border-border bg-card p-6 text-center shadow-card">
           <h1 className="font-display text-4xl tracking-widest text-primary">
-            {lang === "am" ? "እንኳን ደህና መጡ" : "Welcome to Origin"}
+            {lang === 'am' ? 'እንኳን ደህና መጡ' : 'Welcome to Origin'}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            {lang === "am"
-              ? "ደፋር ጣዕም — በትኩስ ምግብና በፍቅር ይዘጋጅ"
-              : "Fearless flavor, served fresh. Browse the menu and order with your server."}
+            {lang === 'am'
+              ? 'ደፋር ጣዕም — በትኩስ ምግብና በፍቅር ይዘጋጅ'
+              : 'Fearless flavor, served fresh. Browse the menu and order with your server.'}
           </p>
         </section>
 
@@ -140,16 +158,16 @@ function MenuPage() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={lang === "am" ? "ምግብ ይፈልጉ…" : "Search the menu…"}
+            placeholder={lang === 'am' ? 'ምግብ ይፈልጉ…' : 'Search the menu…'}
             className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm text-foreground outline-none transition focus:border-primary"
           />
         </div>
 
         {/* Featured */}
-        {featured.length > 0 && query === "" && (
+        {featured.length > 0 && query === '' && (
           <section className="mb-8">
             <SectionTitle
-              label={lang === "am" ? "የቤቱ ምርጥ" : "Chef's Picks"}
+              label={lang === 'am' ? 'የቤቱ ምርጥ' : "Chef's Picks"}
               icon={<Sparkles className="h-3 w-3" />}
             />
             <ScrollFade direction="horizontal" className="-mx-4 mt-3">
@@ -163,27 +181,35 @@ function MenuPage() {
         )}
 
         {/* Empty State */}
-        {items.length === 0 && query === "" && (
+        {items.length === 0 && query === '' && (
           <div className="py-12 text-center text-muted-foreground">
             <UtensilsCrossed className="mx-auto h-12 w-12 opacity-20 mb-4" />
             <p className="text-lg font-medium">
-              {lang === "am" ? "ምንም ምግቦች አልተገኙም።" : "No menu items available."}
+              {lang === 'am' ? 'ምንም ምግቦች አልተገኙም።' : 'No menu items available.'}
             </p>
             <p className="text-sm mt-2">
-              {lang === "am" ? "እባክዎ ቆየት ብለው ይሞክሩ።" : "Check back later when items are added."}
+              {lang === 'am'
+                ? 'እባክዎ ቆየት ብለው ይሞክሩ።'
+                : 'Check back later when items are added.'}
             </p>
           </div>
         )}
 
         {/* Categories */}
         {grouped.map(({ cat, items: list }) =>
-          list.length === 0 && query !== "" ? null : (
-            <section key={cat.id} id={`cat-${cat.id}`} className="mb-8 scroll-mt-32">
-              <SectionTitle label={lang === "am" ? (cat.name_am ?? cat.name) : cat.name} />
+          list.length === 0 && query !== '' ? null : (
+            <section
+              key={cat.id}
+              id={`cat-${cat.id}`}
+              className="mb-8 scroll-mt-32"
+            >
+              <SectionTitle
+                label={lang === 'am' ? (cat.name_am ?? cat.name) : cat.name}
+              />
               <div className="mt-3 space-y-3">
                 {list.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    {lang === "am" ? "ምንም የሚታይ ምግብ የለም።" : "No items yet."}
+                    {lang === 'am' ? 'ምንም የሚታይ ምግብ የለም።' : 'No items yet.'}
                   </p>
                 ) : (
                   list.map((i) => <ItemCard key={i.id} item={i} lang={lang} />)
@@ -193,9 +219,9 @@ function MenuPage() {
           ),
         )}
 
-        {grouped.every(({ items: l }) => l.length === 0) && query !== "" && (
+        {grouped.every(({ items: l }) => l.length === 0) && query !== '' && (
           <p className="mt-12 text-center text-sm text-muted-foreground">
-            {lang === "am" ? "ምንም ውጤት የለም።" : "No matching items."}
+            {lang === 'am' ? 'ምንም ውጤት የለም።' : 'No matching items.'}
           </p>
         )}
       </main>
@@ -206,7 +232,7 @@ function MenuPage() {
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
               <h3 className="font-display text-lg text-primary">
-                {lang === "am" ? "ጎብኙን" : "Visit Us"}
+                {lang === 'am' ? 'ጎብኙን' : 'Visit Us'}
               </h3>
               {info?.address && (
                 <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
@@ -229,20 +255,23 @@ function MenuPage() {
                   rel="noreferrer"
                   className="mt-3 inline-flex text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
                 >
-                  {lang === "am" ? "በካርታ ላይ →" : "Open in Maps →"}
+                  {lang === 'am' ? 'በካርታ ላይ →' : 'Open in Maps →'}
                 </a>
               )}
             </div>
             <div>
               <h3 className="font-display text-lg text-primary">
-                {lang === "am" ? "የሥራ ሰዓት" : "Hours"}
+                {lang === 'am' ? 'የሥራ ሰዓት' : 'Hours'}
               </h3>
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                 {(Array.isArray(info?.hours)
                   ? (info!.hours as Array<{ day: string; hours: string }>)
                   : []
                 ).map((h, i) => (
-                  <li key={i} className="flex items-center justify-between gap-4">
+                  <li
+                    key={i}
+                    className="flex items-center justify-between gap-4"
+                  >
                     <span className="flex items-center gap-2">
                       <Clock className="h-3 w-3 text-primary" />
                       {h.day}
@@ -280,46 +309,56 @@ function MenuPage() {
               )}
             </div>
             <p className="text-center text-[11px] uppercase tracking-widest text-muted-foreground">
-              © {new Date().getFullYear()} {info?.name ?? "Origin"} · All Rights Reserved
+              © {new Date().getFullYear()} {info?.name ?? 'Origin'} · All Rights
+              Reserved
             </p>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
-              Crafted by{" "}
+              Crafted by{' '}
               <a
                 href="https://kidusportfoloio.netlify.app/"
                 target="_blank"
                 rel="noreferrer"
                 className="hover:text-primary"
               >
-                {" "}
-                Kidus{" "}
+                {' '}
+                Kidus{' '}
               </a>
             </p>
           </div>
         </div>
       </footer>
     </div>
-  );
+  )
 }
 
-function SectionTitle({ label, icon }: { label: string; icon?: React.ReactNode }) {
+function SectionTitle({
+  label,
+  icon,
+}: {
+  label: string
+  icon?: React.ReactNode
+}) {
   return (
     <div className="flex items-center gap-2">
       <span className="h-5 w-1 rounded bg-primary" />
-      <h2 className="font-display text-xl uppercase tracking-widest text-primary">{label}</h2>
+      <h2 className="font-display text-xl uppercase tracking-widest text-primary">
+        {label}
+      </h2>
       {icon && <span className="text-primary">{icon}</span>}
     </div>
-  );
+  )
 }
 
 function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
-  const name = lang === "am" ? (item.name_am ?? item.name) : item.name;
-  const desc = lang === "am" ? (item.description_am ?? item.description) : item.description;
-  const unavailable = !item.is_available;
+  const name = lang === 'am' ? (item.name_am ?? item.name) : item.name
+  const desc =
+    lang === 'am' ? (item.description_am ?? item.description) : item.description
+  const unavailable = !item.is_available
   return (
     <article
       id={`item-${item.id}`}
       className={`flex gap-3 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-card transition-all duration-500 ${
-        unavailable ? "opacity-50" : "hover:border-primary/40"
+        unavailable ? 'opacity-50' : 'hover:border-primary/40'
       }`}
     >
       {item.image_url ? (
@@ -331,102 +370,123 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
         />
       ) : (
         <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted">
-          <span className="font-display text-2xl text-primary/50">{name[0]?.toUpperCase()}</span>
+          <span className="font-display text-2xl text-primary/50">
+            {name[0]?.toUpperCase()}
+          </span>
         </div>
       )}
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold text-foreground">{name}</h3>
-            {desc && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{desc}</p>}
+            <h3 className="truncate text-sm font-semibold text-foreground">
+              {name}
+            </h3>
+            {desc && (
+              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                {desc}
+              </p>
+            )}
           </div>
           <div className="shrink-0 text-right">
             <div className="font-display text-base text-primary">
-              {formatBirr(Number(item.price))} <span className="text-[10px]">ETB</span>
+              {formatBirr(Number(item.price))}{' '}
+              <span className="text-[10px]">ETB</span>
             </div>
           </div>
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          {unavailable && <Tag tone="muted">{lang === "am" ? "አልቆ" : "Sold out"}</Tag>}
+          {unavailable && (
+            <Tag tone="muted">{lang === 'am' ? 'አልቆ' : 'Sold out'}</Tag>
+          )}
           {item.is_vegetarian && (
             <Tag tone="success">
-              <Leaf className="h-2.5 w-2.5" /> {lang === "am" ? "ጾም" : "Veg"}
+              <Leaf className="h-2.5 w-2.5" /> {lang === 'am' ? 'ጾም' : 'Veg'}
             </Tag>
           )}
-          {item.is_fasting && <Tag tone="success">{lang === "am" ? "ጾም" : "Fasting"}</Tag>}
+          {item.is_fasting && (
+            <Tag tone="success">{lang === 'am' ? 'ጾም' : 'Fasting'}</Tag>
+          )}
           {item.is_spicy && (
             <Tag tone="primary">
-              <Flame className="h-2.5 w-2.5" /> {lang === "am" ? "ቅመማማ" : "Spicy"}
+              <Flame className="h-2.5 w-2.5" />{' '}
+              {lang === 'am' ? 'ቅመማማ' : 'Spicy'}
             </Tag>
           )}
         </div>
       </div>
     </article>
-  );
+  )
 }
 
 function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
-  const name = lang === "am" ? (item.name_am ?? item.name) : item.name;
+  const name = lang === 'am' ? (item.name_am ?? item.name) : item.name
   return (
     <button
       onClick={() => {
-        const el = document.getElementById(`item-${item.id}`);
+        const el = document.getElementById(`item-${item.id}`)
         if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.classList.remove("border-border");
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el.classList.remove('border-border')
           el.classList.add(
-            "border-primary",
-            "scale-[1.02]",
-            "shadow-[0_0_15px_rgba(234,88,12,0.3)]",
-          );
+            'border-primary',
+            'scale-[1.02]',
+            'shadow-[0_0_15px_rgba(234,88,12,0.3)]',
+          )
           setTimeout(() => {
-            el.classList.add("border-border");
+            el.classList.add('border-border')
             el.classList.remove(
-              "border-primary",
-              "scale-[1.02]",
-              "shadow-[0_0_15px_rgba(234,88,12,0.3)]",
-            );
-          }, 1500);
+              'border-primary',
+              'scale-[1.02]',
+              'shadow-[0_0_15px_rgba(234,88,12,0.3)]',
+            )
+          }, 1500)
         }
       }}
       className="relative w-44 shrink-0 overflow-hidden rounded-xl border border-border bg-card text-left shadow-card transition hover:border-primary"
     >
       {item.image_url ? (
-        <img src={item.image_url} alt={name} className="h-28 w-full object-cover" />
+        <img
+          src={item.image_url}
+          alt={name}
+          className="h-28 w-full object-cover"
+        />
       ) : (
         <div className="flex h-28 items-center justify-center bg-muted">
-          <span className="font-display text-3xl text-primary/50">{name[0]?.toUpperCase()}</span>
+          <span className="font-display text-3xl text-primary/50">
+            {name[0]?.toUpperCase()}
+          </span>
         </div>
       )}
       <div className="p-2.5">
         <p className="truncate text-xs font-semibold">{name}</p>
         <p className="mt-0.5 font-display text-sm text-primary">
-          {formatBirr(Number(item.price))} <span className="text-[9px]">ETB</span>
+          {formatBirr(Number(item.price))}{' '}
+          <span className="text-[9px]">ETB</span>
         </p>
       </div>
     </button>
-  );
+  )
 }
 
 function Tag({
   tone,
   children,
 }: {
-  tone: "primary" | "success" | "muted";
-  children: React.ReactNode;
+  tone: 'primary' | 'success' | 'muted'
+  children: React.ReactNode
 }) {
   const tones = {
-    primary: "bg-primary/15 text-primary",
-    success: "bg-success/15 text-success",
-    muted: "bg-destructive/15 text-destructive",
-  };
+    primary: 'bg-primary/15 text-primary',
+    success: 'bg-success/15 text-success',
+    muted: 'bg-destructive/15 text-destructive',
+  }
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${tones[tone]}`}
     >
       {children}
     </span>
-  );
+  )
 }
 
 function TikTokIcon() {
@@ -434,5 +494,52 @@ function TikTokIcon() {
     <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
       <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.84-.1Z" />
     </svg>
-  );
+  )
+}
+function MenuSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-lg">
+        <div className="mx-auto flex h-20 max-w-3xl items-center justify-between px-4">
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-14 w-14 rounded-full" />
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-5 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-7 w-10 rounded-md" />
+          </div>
+        </div>
+        <div className="border-t border-border">
+          <div className="mx-auto max-w-3xl overflow-hidden px-4 py-2">
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-7 w-20 shrink-0 rounded-full" />
+              ))}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-3xl px-4 pb-32 pt-6">
+        <Skeleton className="mb-6 h-[120px] w-full rounded-2xl" />
+        <Skeleton className="mb-6 h-11 w-full rounded-xl" />
+
+        <div className="space-y-8">
+          {[1, 2].map((i) => (
+            <div key={i} className="space-y-4">
+              <Skeleton className="h-8 w-40" />
+              <div className="grid gap-4">
+                {[1, 2, 3].map((j) => (
+                  <Skeleton key={j} className="h-24 w-full rounded-xl" />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </main>
+    </div>
+  )
 }

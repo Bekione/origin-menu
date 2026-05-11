@@ -9,6 +9,7 @@ import {
 } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { Toaster, toast } from 'sonner'
+import { ThemeProvider, useTheme } from '@/components/ThemeProvider'
 
 import appCss from '../styles.css?url'
 
@@ -155,6 +156,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext()
 
+  return (
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <RootInner />
+      </QueryClientProvider>
+    </ThemeProvider>
+  )
+}
+
+function RootInner() {
+  const { theme } = useTheme()
+
   useEffect(() => {
     const handleOffline = () => {
       toast.error('Connection lost', {
@@ -183,9 +196,9 @@ function RootComponent() {
   }, [])
 
   return (
-    <QueryClientProvider client={queryClient}>
+    <>
       <Outlet />
-      <Toaster position="bottom-right" richColors theme="dark" />
-    </QueryClientProvider>
+      <Toaster position="bottom-right" richColors theme={theme} />
+    </>
   )
 }

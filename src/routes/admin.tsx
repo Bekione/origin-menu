@@ -36,6 +36,8 @@ import {
   GripVertical,
 } from 'lucide-react'
 import logo from '@/assets/origin-logo.jpg'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ThemeToggle } from '@/components/ThemeToggle'
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: async () => {
@@ -46,6 +48,7 @@ export const Route = createFileRoute('/admin')({
   },
   loader: () => getMenuData(),
   component: AdminPage,
+  pendingComponent: AdminSkeleton,
 })
 
 function AdminPage() {
@@ -88,6 +91,7 @@ function AdminPage() {
             >
               View menu
             </Link>
+            <ThemeToggle />
             <button
               onClick={logout}
               className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-destructive hover:text-destructive"
@@ -1356,5 +1360,44 @@ function InfoTab({
         </button>
       </div>
     </form>
+  )
+}
+function AdminSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-card/50">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-3">
+            <Skeleton className="h-9 w-9 rounded-full" />
+            <div className="flex flex-col gap-1.5">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-2 w-16" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Skeleton className="h-4 w-16" />
+            <Skeleton className="h-8 w-24 rounded-md" />
+          </div>
+        </div>
+        <div className="mx-auto flex max-w-5xl gap-1 px-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-10 w-32 rounded-t-md" />
+          ))}
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-5xl px-4 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))}
+        </div>
+      </main>
+    </div>
   )
 }

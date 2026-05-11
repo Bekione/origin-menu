@@ -67,7 +67,32 @@
 
 :root {
   --radius: 0.75rem;
-  /* Origin brand: deep black + fearless orange */
+  /* Light mode: clean white/grey canvas, dark text, same brand orange primary */
+  --background: oklch(0.98 0.005 80);
+  --foreground: oklch(0.13 0.005 60);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.13 0.005 60);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.13 0.005 60);
+  --primary: oklch(0.66 0.2 45);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.93 0.004 80);
+  --secondary-foreground: oklch(0.13 0.005 60);
+  --muted: oklch(0.93 0.004 80);
+  --muted-foreground: oklch(0.45 0.01 60);
+  --accent: oklch(0.66 0.2 45);
+  --accent-foreground: oklch(0.99 0 0);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --success: oklch(0.58 0.18 145);
+  --success-foreground: oklch(0.99 0 0);
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 8%);
+  --ring: oklch(0.66 0.2 45);
+}
+
+.dark {
+  /* Dark mode: original Origin brand colors */
   --background: oklch(0.13 0.005 60);
   --foreground: oklch(0.97 0.005 80);
   --card: oklch(0.18 0.008 60);
@@ -89,11 +114,6 @@
   --border: oklch(1 0 0 / 8%);
   --input: oklch(1 0 0 / 10%);
   --ring: oklch(0.72 0.19 45);
-}
-
-.dark {
-  --background: oklch(0.13 0.005 60);
-  --foreground: oklch(0.97 0.005 80);
 }
 
 @layer base {
