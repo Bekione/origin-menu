@@ -1,5 +1,6 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
 import { authClient } from '#/lib/auth-client'
 import { getAuthSession } from '@/server/auth-helpers'
@@ -205,18 +206,24 @@ function ItemsTab({
     const item = localItems.find((i) => i.id === draggedId)
     setDraggedId(null)
     if (item) {
-      const catItems = localItems.filter(
-        (i) => i.category_id === item.category_id,
-      )
-      await reorder({
-        data: {
-          updates: catItems.map((i) => ({
-            id: i.id,
-            sort_order: i.sort_order,
-          })),
-        },
-      })
-      onChange()
+      try {
+        const catItems = localItems.filter(
+          (i) => i.category_id === item.category_id,
+        )
+        await reorder({
+          data: {
+            updates: catItems.map((i) => ({
+              id: i.id,
+              sort_order: i.sort_order,
+            })),
+          },
+        })
+        onChange()
+      } catch (err: any) {
+        toast.error('Reorder failed', {
+          description: err?.message || 'Check your internet connection.',
+        })
+      }
     }
   }
 
@@ -352,6 +359,12 @@ function ItemRow({
         data: { id: item.id, is_available: !item.is_available },
       })
       onChanged()
+    } catch (err: any) {
+      toast.error('Failed to toggle item', {
+        description: !navigator.onLine
+          ? 'No internet connection'
+          : err?.message || 'Unexpected error',
+      })
     } finally {
       setBusy(false)
     }
@@ -361,6 +374,13 @@ function ItemRow({
     try {
       await del({ data: { id: item.id } })
       onChanged()
+      toast.success('Item deleted')
+    } catch (err: any) {
+      toast.error('Failed to delete item', {
+        description: !navigator.onLine
+          ? 'No internet connection'
+          : err?.message || 'Unexpected error',
+      })
     } finally {
       setBusy(false)
       setShowConfirm(false)
@@ -533,6 +553,11 @@ function ItemForm({
       setForm((f) => ({ ...f, image_url: res.url }))
     } catch (e: any) {
       setError(e?.message ?? 'Upload failed')
+      toast.error('Image upload failed', {
+        description: !navigator.onLine
+          ? 'No internet connection'
+          : (e?.message ?? 'Unexpected error'),
+      })
     } finally {
       setUploading(false)
     }
@@ -562,8 +587,14 @@ function ItemForm({
         },
       })
       onSaved()
+      toast.success(item ? 'Item updated' : 'Item added')
     } catch (e: any) {
       setError(e?.message ?? 'Save failed')
+      toast.error('Failed to save item', {
+        description: !navigator.onLine
+          ? 'No internet connection'
+          : (e?.message ?? 'Unexpected error'),
+      })
     } finally {
       setSaving(false)
     }
@@ -839,12 +870,23 @@ function CategoriesTab({
   }
   const onDrop = async () => {
     setDraggedId(null)
-    await reorder({
-      data: {
-        updates: localCats.map((c) => ({ id: c.id, sort_order: c.sort_order })),
-      },
-    })
-    onChange()
+    try {
+      await reorder({
+        data: {
+          updates: localCats.map((c) => ({
+            id: c.id,
+            sort_order: c.sort_order,
+          })),
+        },
+      })
+      onChange()
+    } catch (err: any) {
+      toast.error('Reorder failed', {
+        description: !navigator.onLine
+          ? 'No internet connection'
+          : err?.message || 'Unexpected error',
+      })
+    }
   }
 
   const add = async (e: React.FormEvent) => {
@@ -862,6 +904,13 @@ function CategoriesTab({
       setName('')
       setNameAm('')
       onChange()
+      toast.success('Category added')
+    } catch (err: any) {
+      toast.error('Failed to add category', {
+        description: !navigator.onLine
+          ? 'No internet connection'
+          : err?.message || 'Unexpected error',
+      })
     } finally {
       setBusy(false)
     }
@@ -916,15 +965,24 @@ function CategoriesTab({
                 onDrop={onDrop}
                 isDragging={draggedId === c.id}
                 onSave={async (n, na, so) => {
-                  await upsert({
-                    data: {
-                      id: c.id,
-                      name: n,
-                      name_am: na || null,
-                      sort_order: so,
-                    },
-                  })
-                  onChange()
+                  try {
+                    await upsert({
+                      data: {
+                        id: c.id,
+                        name: n,
+                        name_am: na || null,
+                        sort_order: so,
+                      },
+                    })
+                    onChange()
+                    toast.success('Category saved')
+                  } catch (err: any) {
+                    toast.error('Failed to save category', {
+                      description: !navigator.onLine
+                        ? 'No internet connection'
+                        : err?.message || 'Unexpected error',
+                    })
+                  }
                 }}
                 onDelete={async () => {
                   if (
@@ -933,8 +991,17 @@ function CategoriesTab({
                     )
                   )
                     return
-                  await del({ data: { id: c.id } })
-                  onChange()
+                  try {
+                    await del({ data: { id: c.id } })
+                    onChange()
+                    toast.success('Category deleted')
+                  } catch (err: any) {
+                    toast.error('Failed to delete category', {
+                      description: !navigator.onLine
+                        ? 'No internet connection'
+                        : err?.message || 'Unexpected error',
+                    })
+                  }
                 }}
               />
             ))
@@ -1134,8 +1201,14 @@ function InfoTab({
       await update({ data: { ...form } })
       setMsg('Saved')
       onChange()
+      toast.success('Restaurant info saved')
     } catch (e: any) {
       setMsg(e?.message ?? 'Failed')
+      toast.error('Failed to save info', {
+        description: !navigator.onLine
+          ? 'No internet connection'
+          : (e?.message ?? 'Unexpected error'),
+      })
     } finally {
       setSaving(false)
       setTimeout(() => setMsg(''), 2500)

@@ -27,6 +27,12 @@ function LoginPage() {
     setError(null)
     setLoading(true)
 
+    if (!navigator.onLine) {
+      setError('No internet connection. Please check your network.')
+      setLoading(false)
+      return
+    }
+
     const { error: signInError } = await authClient.signIn.email({
       email,
       password,

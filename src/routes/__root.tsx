@@ -7,6 +7,8 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { Toaster, toast } from 'sonner'
 
 import appCss from '../styles.css?url'
 
@@ -153,9 +155,37 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext()
 
+  useEffect(() => {
+    const handleOffline = () => {
+      toast.error('Connection lost', {
+        description: 'You are currently offline. Changes may not be saved.',
+        duration: 5000,
+      })
+    }
+    const handleOnline = () => {
+      toast.success('Back online', {
+        description: 'Internet connection is restored.',
+        duration: 3000,
+      })
+    }
+
+    if (!navigator.onLine) {
+      handleOffline()
+    }
+
+    window.addEventListener('offline', handleOffline)
+    window.addEventListener('online', handleOnline)
+
+    return () => {
+      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('online', handleOnline)
+    }
+  }, [])
+
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <Toaster position="bottom-right" richColors theme="dark" />
     </QueryClientProvider>
   )
 }
