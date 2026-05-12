@@ -151,7 +151,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
     })();
   `
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         {/* Blocking script: runs before rendering to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />

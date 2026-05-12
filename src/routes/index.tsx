@@ -12,6 +12,11 @@ import {
   Clock,
   Phone,
   UtensilsCrossed,
+  ShoppingBag,
+  Plus,
+  Minus,
+  Trash2,
+  ChevronUp,
 } from 'lucide-react'
 import {
   getMenuData,
@@ -22,6 +27,7 @@ import logo from '@/assets/origin-logo.jpg'
 import ScrollFade from '@/components/ScrollFade'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { CartProvider, useCart } from '@/components/CartProvider'
 
 export const Route = createFileRoute('/')({
   loader: () => getMenuData(),
@@ -38,10 +44,21 @@ function formatBirr(n: number) {
 
 function MenuPage() {
   const { categories, items, info } = Route.useLoaderData() as MenuData
+
+  return (
+    <CartProvider>
+      <MenuPageInner categories={categories} items={items} info={info} />
+    </CartProvider>
+  )
+}
+
+function MenuPageInner({ categories, items, info }: MenuData) {
   const [lang, setLang] = useState<Lang>('en')
   const [query, setQuery] = useState('')
   const [activeCat, setActiveCat] = useState<string | null>(null)
   const [navOpen, setNavOpen] = useState(false)
+  const [billOpen, setBillOpen] = useState(false)
+  const { count, total } = useCart()
 
   useEffect(() => {
     if (!activeCat && categories[0]) setActiveCat(categories[0].id)
@@ -328,6 +345,35 @@ function MenuPage() {
           </div>
         </div>
       </footer>
+
+      {/* Cart Bar */}
+      {count > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 px-4 py-3 backdrop-blur-lg">
+          <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-sm">
+              <ShoppingBag className="h-4 w-4 text-primary" />
+              <span className="font-semibold">
+                {count} item{count !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <button
+              onClick={() => setBillOpen(true)}
+              className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground shadow-glow transition hover:opacity-90"
+            >
+              <span>View Bill</span>
+              <span className="font-display text-base">
+                {formatBirr(total)} ETB
+              </span>
+              <ChevronUp className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Bill Drawer */}
+      {billOpen && (
+        <BillDrawer lang={lang} onClose={() => setBillOpen(false)} />
+      )}
     </div>
   )
 }
@@ -356,6 +402,10 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
     lang === 'am' ? (item.description_am ?? item.description) : item.description
   const unavailable = !item.is_available
   const [imgLoaded, setImgLoaded] = useState(false)
+  const { add, decrement, items: cartItems } = useCart()
+  const cartItem = cartItems.find((i) => i.id === item.id)
+  const qty = cartItem?.qty ?? 0
+
   return (
     <article
       id={`item-${item.id}`}
@@ -402,23 +452,51 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
             </div>
           </div>
         </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          {unavailable && (
-            <Tag tone="muted">{lang === 'am' ? 'አልቆ' : 'Sold out'}</Tag>
-          )}
-          {item.is_vegetarian && (
-            <Tag tone="success">
-              <Leaf className="h-2.5 w-2.5" /> {lang === 'am' ? 'ጾም' : 'Veg'}
-            </Tag>
-          )}
-          {item.is_fasting && (
-            <Tag tone="success">{lang === 'am' ? 'ጾም' : 'Fasting'}</Tag>
-          )}
-          {item.is_spicy && (
-            <Tag tone="primary">
-              <Flame className="h-2.5 w-2.5" />{' '}
-              {lang === 'am' ? 'ቅመማማ' : 'Spicy'}
-            </Tag>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {unavailable && (
+              <Tag tone="muted">{lang === 'am' ? 'አልቆ' : 'Sold out'}</Tag>
+            )}
+            {item.is_vegetarian && (
+              <Tag tone="success">
+                <Leaf className="h-2.5 w-2.5" />{' '}
+                {lang === 'am' ? 'አትክልት' : 'Veg'}
+              </Tag>
+            )}
+            {item.is_fasting && (
+              <Tag tone="success">{lang === 'am' ? 'ጾም' : 'Fasting'}</Tag>
+            )}
+            {item.is_spicy && (
+              <Tag tone="primary">
+                <Flame className="h-2.5 w-2.5" />{' '}
+                {lang === 'am' ? 'ቅመማማ' : 'Spicy'}
+              </Tag>
+            )}
+          </div>
+          {!unavailable && (
+            <div className="flex shrink-0 items-center gap-1">
+              {qty > 0 && (
+                <>
+                  <button
+                    onClick={() => decrement(item.id)}
+                    className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
+                  >
+                    <Minus className="h-3 w-3" />
+                  </button>
+                  <span className="w-4 text-center text-xs font-bold">
+                    {qty}
+                  </span>
+                </>
+              )}
+              <button
+                onClick={() =>
+                  add({ id: item.id, name, price: Number(item.price) })
+                }
+                className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:opacity-90 active:scale-95"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -429,57 +507,83 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
 function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
   const name = lang === 'am' ? (item.name_am ?? item.name) : item.name
   const [imgLoaded, setImgLoaded] = useState(false)
+  const { add, decrement, items: cartItems } = useCart()
+  const cartItem = cartItems.find((i) => i.id === item.id)
+  const qty = cartItem?.qty ?? 0
+
+  const scrollToItem = () => {
+    const el = document.getElementById(`item-${item.id}`)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el.classList.remove('border-border')
+      el.classList.add(
+        'border-primary',
+        'scale-[1.02]',
+        'shadow-[0_0_15px_rgba(234,88,12,0.3)]',
+      )
+      setTimeout(() => {
+        el.classList.add('border-border')
+        el.classList.remove(
+          'border-primary',
+          'scale-[1.02]',
+          'shadow-[0_0_15px_rgba(234,88,12,0.3)]',
+        )
+      }, 1500)
+    }
+  }
+
   return (
-    <button
-      onClick={() => {
-        const el = document.getElementById(`item-${item.id}`)
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
-          el.classList.remove('border-border')
-          el.classList.add(
-            'border-primary',
-            'scale-[1.02]',
-            'shadow-[0_0_15px_rgba(234,88,12,0.3)]',
-          )
-          setTimeout(() => {
-            el.classList.add('border-border')
-            el.classList.remove(
-              'border-primary',
-              'scale-[1.02]',
-              'shadow-[0_0_15px_rgba(234,88,12,0.3)]',
-            )
-          }, 1500)
-        }
-      }}
-      className="relative w-44 shrink-0 overflow-hidden rounded-xl border border-border bg-card text-left shadow-card transition hover:border-primary"
-    >
-      {item.image_url ? (
-        <div className="relative h-28 w-full">
-          {!imgLoaded && (
-            <Skeleton className="absolute inset-0 h-28 w-full rounded-none" />
-          )}
-          <img
-            src={item.image_url}
-            alt={name}
-            onLoad={() => setImgLoaded(true)}
-            className={`h-28 w-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-          />
+    <div className="relative w-44 shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-card transition hover:border-primary">
+      {/* Image area — click scrolls to item */}
+      <button onClick={scrollToItem} className="w-full text-left">
+        {item.image_url ? (
+          <div className="relative h-28 w-full">
+            {!imgLoaded && (
+              <Skeleton className="absolute inset-0 h-28 w-full rounded-none" />
+            )}
+            <img
+              src={item.image_url}
+              alt={name}
+              onLoad={() => setImgLoaded(true)}
+              className={`h-28 w-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          </div>
+        ) : (
+          <div className="flex h-28 items-center justify-center bg-muted">
+            <span className="font-display text-3xl text-primary/50">
+              {name[0]?.toUpperCase()}
+            </span>
+          </div>
+        )}
+        <div className="p-2.5 pb-1">
+          <p className="truncate text-xs font-semibold">{name}</p>
+          <p className="mt-0.5 font-display text-sm text-primary">
+            {formatBirr(Number(item.price))}{' '}
+            <span className="text-[9px]">ETB</span>
+          </p>
         </div>
-      ) : (
-        <div className="flex h-28 items-center justify-center bg-muted">
-          <span className="font-display text-3xl text-primary/50">
-            {name[0]?.toUpperCase()}
-          </span>
-        </div>
-      )}
-      <div className="p-2.5">
-        <p className="truncate text-xs font-semibold">{name}</p>
-        <p className="mt-0.5 font-display text-sm text-primary">
-          {formatBirr(Number(item.price))}{' '}
-          <span className="text-[9px]">ETB</span>
-        </p>
+      </button>
+      {/* Cart controls */}
+      <div className="flex items-center justify-end gap-1 px-2 pb-2">
+        {qty > 0 && (
+          <>
+            <button
+              onClick={() => decrement(item.id)}
+              className="flex h-5 w-5 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
+            >
+              <Minus className="h-2.5 w-2.5" />
+            </button>
+            <span className="w-4 text-center text-xs font-bold">{qty}</span>
+          </>
+        )}
+        <button
+          onClick={() => add({ id: item.id, name, price: Number(item.price) })}
+          className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90 active:scale-95"
+        >
+          <Plus className="h-2.5 w-2.5" />
+        </button>
       </div>
-    </button>
+    </div>
   )
 }
 
@@ -511,6 +615,115 @@ function TikTokIcon() {
     </svg>
   )
 }
+
+function BillDrawer({ lang, onClose }: { lang: Lang; onClose: () => void }) {
+  const { items, increment, decrement, remove, clear, total } = useCart()
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
+      {/* Backdrop */}
+      <div className="flex-1 bg-black/60 backdrop-blur-sm" />
+      {/* Drawer */}
+      <div
+        className="w-full rounded-t-2xl border-t border-border bg-card shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div className="flex justify-center pt-3 pb-1">
+          <div className="h-1 w-10 rounded-full bg-border" />
+        </div>
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <h2 className="font-display text-lg uppercase tracking-widest text-primary">
+            {lang === 'am' ? 'ሒሳብ' : 'Your Bill'}
+          </h2>
+          <div className="flex items-center gap-2">
+            {items.length > 0 && (
+              <button
+                onClick={clear}
+                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:text-destructive"
+              >
+                <Trash2 className="h-3 w-3" />
+                {lang === 'am' ? 'አጽዳ' : 'Clear'}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="rounded-md p-1 text-muted-foreground transition hover:text-foreground"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        {/* Item list */}
+        <div className="max-h-[50vh] overflow-y-auto px-4 py-2">
+          {items.length === 0 ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">
+              {lang === 'am' ? 'ምናሌ ባዶ ነው' : 'Your cart is empty'}
+            </p>
+          ) : (
+            <ul className="divide-y divide-border">
+              {items.map((item) => (
+                <li key={item.id} className="flex items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{item.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatBirr(item.price)} ETB × {item.qty}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      onClick={() => decrement(item.id)}
+                      className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
+                    >
+                      <Minus className="h-3 w-3" />
+                    </button>
+                    <span className="w-5 text-center text-sm font-bold">
+                      {item.qty}
+                    </span>
+                    <button
+                      onClick={() => increment(item.id)}
+                      className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
+                    >
+                      <Plus className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={() => remove(item.id)}
+                      className="ml-1 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+                  <div className="w-20 shrink-0 text-right font-display text-sm text-primary">
+                    {formatBirr(item.price * item.qty)}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+        {/* Footer */}
+        {items.length > 0 && (
+          <div className="border-t border-border px-4 py-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground uppercase tracking-wider">
+                {lang === 'am' ? 'ጠቅላላ' : 'Total'}
+              </span>
+              <span className="font-display text-2xl text-primary">
+                {formatBirr(total)} <span className="text-sm">ETB</span>
+              </span>
+            </div>
+            <p className="mt-1 text-center text-[10px] text-muted-foreground">
+              {lang === 'am'
+                ? 'ክፍያ ወደ አስተናጋጅ ያሳዩ'
+                : 'Show this bill to your waiter to pay'}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function MenuSkeleton() {
   return (
     <div className="min-h-screen bg-background">
