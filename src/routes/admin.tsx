@@ -49,6 +49,7 @@ export const Route = createFileRoute('/admin')({
   loader: () => getMenuData(),
   component: AdminPage,
   pendingComponent: AdminSkeleton,
+  pendingMs: 0,
 })
 
 function AdminPage() {

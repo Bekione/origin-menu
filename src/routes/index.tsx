@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import {
   Search,
@@ -27,6 +27,7 @@ export const Route = createFileRoute('/')({
   loader: () => getMenuData(),
   component: MenuPage,
   pendingComponent: MenuSkeleton,
+  pendingMs: 0,
 })
 
 type Lang = 'en' | 'am'
@@ -354,6 +355,7 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
   const desc =
     lang === 'am' ? (item.description_am ?? item.description) : item.description
   const unavailable = !item.is_available
+  const [imgLoaded, setImgLoaded] = useState(false)
   return (
     <article
       id={`item-${item.id}`}
@@ -362,12 +364,18 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
       }`}
     >
       {item.image_url ? (
-        <img
-          src={item.image_url}
-          alt={name}
-          loading="lazy"
-          className="h-20 w-20 shrink-0 rounded-lg object-cover"
-        />
+        <div className="relative h-20 w-20 shrink-0">
+          {!imgLoaded && (
+            <Skeleton className="absolute inset-0 h-20 w-20 rounded-lg" />
+          )}
+          <img
+            src={item.image_url}
+            alt={name}
+            loading="lazy"
+            onLoad={() => setImgLoaded(true)}
+            className={`h-20 w-20 rounded-lg object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          />
+        </div>
       ) : (
         <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted">
           <span className="font-display text-2xl text-primary/50">
@@ -420,6 +428,7 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
 
 function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
   const name = lang === 'am' ? (item.name_am ?? item.name) : item.name
+  const [imgLoaded, setImgLoaded] = useState(false)
   return (
     <button
       onClick={() => {
@@ -445,11 +454,17 @@ function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
       className="relative w-44 shrink-0 overflow-hidden rounded-xl border border-border bg-card text-left shadow-card transition hover:border-primary"
     >
       {item.image_url ? (
-        <img
-          src={item.image_url}
-          alt={name}
-          className="h-28 w-full object-cover"
-        />
+        <div className="relative h-28 w-full">
+          {!imgLoaded && (
+            <Skeleton className="absolute inset-0 h-28 w-full rounded-none" />
+          )}
+          <img
+            src={item.image_url}
+            alt={name}
+            onLoad={() => setImgLoaded(true)}
+            className={`h-28 w-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+          />
+        </div>
       ) : (
         <div className="flex h-28 items-center justify-center bg-muted">
           <span className="font-display text-3xl text-primary/50">

@@ -140,9 +140,21 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 )
 
 function RootShell({ children }: { children: React.ReactNode }) {
+  const themeScript = `
+    (function() {
+      try {
+        var theme = localStorage.getItem('theme') || 'dark';
+        document.documentElement.classList.add(theme);
+      } catch (e) {
+        document.documentElement.classList.add('dark');
+      }
+    })();
+  `
   return (
     <html lang="en">
       <head>
+        {/* Blocking script: runs before rendering to prevent theme flash */}
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
         <HeadContent />
       </head>
       <body>
