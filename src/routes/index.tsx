@@ -36,10 +36,16 @@ import {
   recordWaiterCall,
 } from '@/lib/device-fingerprint'
 
+type SearchOptions = {
+  table?: number
+  tags?: string
+}
+
 export const Route = createFileRoute('/')({
   loader: () => getMenuData(),
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): SearchOptions => ({
     table: search.table ? Number(search.table) : undefined,
+    tags: typeof search.tags === 'string' ? search.tags : undefined,
   }),
   component: MenuPage,
   pendingComponent: MenuSkeleton,
@@ -47,6 +53,7 @@ export const Route = createFileRoute('/')({
 })
 
 type Lang = 'en' | 'am'
+type FilterTag = 'veg' | 'fasting' | 'spicy'
 
 function formatBirr(n: number) {
   return new Intl.NumberFormat('en-US').format(n)
@@ -64,9 +71,14 @@ function MenuPage() {
 
 function MenuPageInner({ categories, items, info }: MenuData) {
   const search = Route.useSearch()
+  const navigate = Route.useNavigate()
   const table = search.table
   const [lang, setLang] = useState<Lang>('en')
   const [query, setQuery] = useState('')
+  const activeFilters = useMemo(
+    () => new Set((search.tags ? search.tags.split(',') : []) as FilterTag[]),
+    [search.tags],
+  )
   const [activeCat, setActiveCat] = useState<string | null>(null)
   const [navOpen, setNavOpen] = useState(false)
   const [billOpen, setBillOpen] = useState(false)
@@ -131,23 +143,51 @@ function MenuPageInner({ categories, items, info }: MenuData) {
     if (!activeCat && categories[0]) setActiveCat(categories[0].id)
   }, [categories, activeCat])
 
+  const toggleFilter = (tag: FilterTag) => {
+    const next = new Set(activeFilters)
+    if (next.has(tag)) next.delete(tag)
+    else next.add(tag)
+
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        tags: next.size > 0 ? Array.from(next).join(',') : undefined,
+      }),
+      replace: true,
+    })
+  }
+
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase()
     return categories.map((c) => ({
       cat: c,
-      items: items.filter(
-        (i) =>
-          i.category_id === c.id &&
-          (q === '' ||
-            i.name.toLowerCase().includes(q) ||
-            (i.name_am ?? '').toLowerCase().includes(q) ||
-            (i.description ?? '').toLowerCase().includes(q)),
-      ),
+      items: items.filter((i) => {
+        if (i.category_id !== c.id) return false
+        if (activeFilters.size > 0) {
+          if (activeFilters.has('veg') && !i.is_vegetarian) return false
+          if (activeFilters.has('fasting') && !i.is_fasting) return false
+          if (activeFilters.has('spicy') && !i.is_spicy) return false
+        }
+        return (
+          q === '' ||
+          i.name.toLowerCase().includes(q) ||
+          (i.name_am ?? '').toLowerCase().includes(q) ||
+          (i.description ?? '').toLowerCase().includes(q)
+        )
+      }),
     }))
-  }, [categories, items, query])
+  }, [categories, items, query, activeFilters])
 
   const featured = items
-    .filter((i) => i.is_featured && i.is_available)
+    .filter((i) => {
+      if (!i.is_featured || !i.is_available) return false
+      if (activeFilters.size > 0) {
+        if (activeFilters.has('veg') && !i.is_vegetarian) return false
+        if (activeFilters.has('fasting') && !i.is_fasting) return false
+        if (activeFilters.has('spicy') && !i.is_spicy) return false
+      }
+      return true
+    })
     .slice(0, 6)
 
   const scrollTo = (id: string) => {
@@ -277,7 +317,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
         </section>
 
         {/* Search */}
-        <div className="relative mb-6">
+        <div className="relative mb-4">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={query}
@@ -285,6 +325,42 @@ function MenuPageInner({ categories, items, info }: MenuData) {
             placeholder={lang === 'am' ? 'ምግብ ይፈልጉ…' : 'Search the menu…'}
             className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm text-foreground outline-none transition focus:border-primary"
           />
+        </div>
+
+        {/* Tag Filters */}
+        <div className="scrollbar-none sticky top-32 z-30 -mx-4 mb-8 flex gap-2 overflow-x-auto px-4 py-1 backdrop-blur-md shadow-sm [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)]">
+          <button
+            onClick={() => toggleFilter('veg')}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition ${
+              activeFilters.has('veg')
+                ? 'border-success bg-success/15 text-success'
+                : 'border-border bg-card text-muted-foreground hover:border-success hover:text-success'
+            }`}
+          >
+            <Leaf className="h-3.5 w-3.5" />{' '}
+            {lang === 'am' ? 'የፆም/አትክልት' : 'Veg'}
+          </button>
+          <button
+            onClick={() => toggleFilter('fasting')}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition ${
+              activeFilters.has('fasting')
+                ? 'border-primary bg-primary/15 text-primary'
+                : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary'
+            }`}
+          >
+            <Clock className="h-3.5 w-3.5" />{' '}
+            {lang === 'am' ? 'ለፆም' : 'Fasting'}
+          </button>
+          <button
+            onClick={() => toggleFilter('spicy')}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition ${
+              activeFilters.has('spicy')
+                ? 'border-destructive bg-destructive/15 text-destructive'
+                : 'border-border bg-card text-muted-foreground hover:border-destructive hover:text-destructive'
+            }`}
+          >
+            <Flame className="h-3.5 w-3.5" /> {lang === 'am' ? 'ቅመም' : 'Spicy'}
+          </button>
         </div>
 
         {/* Featured */}
@@ -321,7 +397,8 @@ function MenuPageInner({ categories, items, info }: MenuData) {
 
         {/* Categories */}
         {grouped.map(({ cat, items: list }) =>
-          list.length === 0 && query !== '' ? null : (
+          list.length === 0 &&
+          (query !== '' || activeFilters.size > 0) ? null : (
             <section
               key={cat.id}
               id={`cat-${cat.id}`}
@@ -343,11 +420,12 @@ function MenuPageInner({ categories, items, info }: MenuData) {
           ),
         )}
 
-        {grouped.every(({ items: l }) => l.length === 0) && query !== '' && (
-          <p className="mt-12 text-center text-sm text-muted-foreground">
-            {lang === 'am' ? 'ምንም ውጤት የለም።' : 'No matching items.'}
-          </p>
-        )}
+        {grouped.every(({ items: l }) => l.length === 0) &&
+          (query !== '' || activeFilters.size > 0) && (
+            <p className="mt-12 text-center text-sm text-muted-foreground">
+              {lang === 'am' ? 'ምንም ውጤት የለም።' : 'No matching items.'}
+            </p>
+          )}
       </main>
 
       {/* Footer */}
