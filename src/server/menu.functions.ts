@@ -211,6 +211,8 @@ const InfoSchema = z.object({
   instagram_url: z.string().max(200).nullable().optional().or(z.literal('')),
   tiktok_url: z.string().max(200).nullable().optional().or(z.literal('')),
   map_url: z.string().max(500).nullable().optional().or(z.literal('')),
+  map_embed_url: z.string().max(2000).nullable().optional().or(z.literal('')),
+  max_tables: z.number().int().min(1).max(9999).optional().nullable(),
   hours: z
     .array(z.object({ day: z.string().max(40), hours: z.string().max(80) }))
     .max(14),
@@ -231,6 +233,7 @@ export const updateRestaurantInfo = createServerFn({ method: 'POST' })
       instagram_url: payload.instagram_url || null,
       tiktok_url: payload.tiktok_url || null,
       map_url: payload.map_url || null,
+      map_embed_url: payload.map_embed_url || null,
       updated_at: new Date().toISOString(),
     }
     if (existing) {

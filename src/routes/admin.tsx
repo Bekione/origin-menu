@@ -1,5 +1,5 @@
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { useServerFn } from '@tanstack/react-start'
 import { authClient } from '#/lib/auth-client'
@@ -21,6 +21,11 @@ import {
   type MenuData,
 } from '@/server/menu.functions'
 import {
+  getWaiterCalls,
+  acknowledgeCall,
+  type WaiterCall,
+} from '@/server/table.functions'
+import {
   LogOut,
   Plus,
   Trash2,
@@ -34,10 +39,12 @@ import {
   Layers,
   Store,
   GripVertical,
+  Bell,
 } from 'lucide-react'
 import logo from '@/assets/origin-logo.jpg'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 
 export const Route = createFileRoute('/admin')({
   beforeLoad: async () => {
@@ -52,11 +59,135 @@ export const Route = createFileRoute('/admin')({
   pendingMs: 0,
 })
 
+// Synthesize a clean bell/chime sound using Web Audio API
+// macOS Style
+function playNotification() {
+  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  
+  const masterGain = ctx.createGain();
+  masterGain.gain.value = 0.32;
+  masterGain.connect(ctx.destination);
+
+  const now = ctx.currentTime;
+
+  function createTone(freq: number, delay: number, duration: number, volume: number) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now + delay);
+
+    // Gentle low-pass filter for softness
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(3200, now + delay);
+
+    // Fast but smooth attack + natural decay
+    gain.gain.setValueAtTime(0.001, now + delay);
+    gain.gain.exponentialRampToValueAtTime(volume, now + delay + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + delay + duration);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(masterGain);
+
+    osc.start(now + delay);
+    osc.stop(now + delay + duration + 0.2);
+  }
+
+  // Main macOS-like tones
+  createTone(880,   0.00, 1.2, 0.45);   // A5
+  createTone(1109,  0.00, 1.1, 0.38);   // C#6
+  createTone(1320,  0.05, 0.95, 0.30);  // E6
+
+  // Higher sparkle (decays faster)
+  createTone(1760,  0.03, 0.65, 0.18);  // A6
+  createTone(2200,  0.08, 0.55, 0.12);  // C#7
+
+  // Very subtle second hit (classic macOS double feel)
+  setTimeout(() => {
+    createTone(987.8, 0, 0.8, 0.22);   // B5
+    createTone(1244.5,0.02, 0.7, 0.18); // D#6
+  }, 220);
+}
+
 function AdminPage() {
   const initial = Route.useLoaderData() as MenuData
   const [data, setData] = useState<MenuData>(initial)
   const [tab, setTab] = useState<'items' | 'categories' | 'info'>('items')
+  const [calls, setCalls] = useState<WaiterCall[]>([])
+  const [callsOpen, setCallsOpen] = useState(false)
+  const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null)
   const navigate = Route.useNavigate()
+  const channelRef = useRef<ReturnType<typeof supabaseBrowser.channel> | null>(
+    null,
+  )
+
+  // Load initial pending calls
+  useEffect(() => {
+    getWaiterCalls().then((data) => setCalls(data as WaiterCall[]))
+  }, [])
+
+  // Supabase Realtime — subscribe to waiter call changes
+  useEffect(() => {
+    const channel = supabaseBrowser
+      .channel('waiter-calls-admin', { config: { broadcast: { self: false } } })
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'waiter_calls' },
+        (payload) => {
+          const newCall = payload.new as WaiterCall
+          setCalls((prev) => [newCall, ...prev])
+
+          playNotification() // Play the notification chime
+
+          toast(
+            '🔔 Table ' + newCall.table_number + ' is calling for a waiter!',
+            {
+              duration: 8000,
+              action: {
+                label: 'View',
+                onClick: () => setCallsOpen(true),
+              },
+            },
+          )
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'waiter_calls' },
+        (payload) => {
+          const updated = payload.new as WaiterCall
+          setCalls((prev) =>
+            prev.map((c) => (c.id === updated.id ? updated : c)),
+          )
+        },
+      )
+      .subscribe((status, err) => {
+        if (err) console.error('[Realtime] subscription error:', err)
+        else console.log('[Realtime] waiter-calls status:', status)
+      })
+
+    channelRef.current = channel
+    return () => {
+      supabaseBrowser.removeChannel(channel)
+    }
+  }, [])
+
+  const handleAcknowledge = async (id: string) => {
+    setAcknowledgingId(id)
+    try {
+      await acknowledgeCall({ data: { id } })
+      // Optimistic update — Realtime UPDATE event will also confirm
+      setCalls((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, status: 'acknowledged' } : c)),
+      )
+    } finally {
+      setAcknowledgingId(null)
+    }
+  }
+
+  const pendingCount = calls.filter((c) => c.status === 'pending').length
 
   const refresh = async () => {
     const fresh = await getMenuData()
@@ -86,8 +217,22 @@ function AdminPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Waiter Call Bell */}
+            <button
+              onClick={() => setCallsOpen((v) => !v)}
+              className="relative rounded-md border border-border p-2 text-muted-foreground transition hover:border-primary hover:text-primary"
+              aria-label="Waiter calls"
+            >
+              <Bell className="h-4 w-4" />
+              {pendingCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white">
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </span>
+              )}
+            </button>
             <Link
               to="/"
+              search={{ table: undefined }}
               className="text-xs uppercase tracking-wider text-muted-foreground hover:text-primary"
             >
               View menu
@@ -125,6 +270,114 @@ function AdminPage() {
           </TabButton>
         </div>
       </header>
+
+      {/* Waiter Calls Panel */}
+      {callsOpen && (
+        <div
+          className="fixed inset-0 z-50 flex justify-end"
+          onClick={() => setCallsOpen(false)}
+        >
+          <div className="flex-1 bg-black/40 backdrop-blur-sm" />
+          <div
+            className="flex h-full w-full max-w-sm flex-col border-l border-border bg-card shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Bell className="h-4 w-4 text-primary" />
+                <h2 className="font-display text-sm uppercase tracking-widest text-primary">
+                  Waiter Calls
+                </h2>
+                {pendingCount > 0 && (
+                  <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">
+                    {pendingCount} pending
+                  </span>
+                )}
+              </div>
+              <button
+                onClick={() => setCallsOpen(false)}
+                className="rounded-md p-1 text-muted-foreground transition hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {calls.length === 0 ? (
+                <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">
+                  No waiter calls yet
+                </div>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {calls.map((call) => {
+                    const isPending = call.status === 'pending'
+                    const timeAgo = (() => {
+                      const diff = Math.floor(
+                        (Date.now() - new Date(call.created_at).getTime()) /
+                          1000,
+                      )
+                      if (diff < 60) return `${diff}s ago`
+                      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+                      return `${Math.floor(diff / 3600)}h ago`
+                    })()
+                    return (
+                      <li
+                        key={call.id}
+                        className={`flex items-center justify-between gap-3 px-4 py-3 ${
+                          isPending ? 'bg-destructive/5' : ''
+                        }`}
+                      >
+                        <div>
+                          <p
+                            className={`text-sm font-semibold ${
+                              isPending
+                                ? 'text-foreground'
+                                : 'text-muted-foreground'
+                            }`}
+                          >
+                            Table {call.table_number}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {timeAgo}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isPending ? (
+                            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                              Pending
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                              Done
+                            </span>
+                          )}
+                          {isPending && (
+                            <button
+                              onClick={() => handleAcknowledge(call.id)}
+                              disabled={acknowledgingId === call.id}
+                              className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                            >
+                              {acknowledgingId === call.id ? (
+                                <>
+                                  <Loader2 className="h-3 w-3 animate-spin" />{' '}
+                                  Wait...
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="h-3 w-3" /> OK
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto max-w-5xl px-4 py-8">
         {tab === 'items' && <ItemsTab data={data} onChange={refresh} />}
@@ -1190,6 +1443,8 @@ function InfoTab({
     instagram_url: info?.instagram_url ?? '',
     tiktok_url: info?.tiktok_url ?? '',
     map_url: info?.map_url ?? '',
+    map_embed_url: info?.map_embed_url ?? '',
+    max_tables: info?.max_tables ?? 999,
     hours: initialHours.length
       ? initialHours
       : [{ day: 'Mon–Fri', hours: '10:00 – 22:00' }],
@@ -1271,6 +1526,19 @@ function InfoTab({
             value={form.tiktok_url}
             onChange={(e) => setForm({ ...form, tiktok_url: e.target.value })}
             placeholder="https://tiktok.com/@…"
+          />
+        </Field>
+        <Field label="Max Tables Conf">
+          <input
+            type="number"
+            min={1}
+            max={9999}
+            className={inputCls}
+            value={form.max_tables}
+            onChange={(e) =>
+              setForm({ ...form, max_tables: parseInt(e.target.value) || 999 })
+            }
+            placeholder="Max tables in restaurant"
           />
         </Field>
         <div className="sm:col-span-2">

@@ -27,10 +27,20 @@ import logo from '@/assets/origin-logo.jpg'
 import ScrollFade from '@/components/ScrollFade'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { toast } from 'sonner'
+import { callWaiter } from '@/server/table.functions'
 import { CartProvider, useCart } from '@/components/CartProvider'
+import {
+  getDeviceId,
+  isRateLimitedLocally,
+  recordWaiterCall,
+} from '@/lib/device-fingerprint'
 
 export const Route = createFileRoute('/')({
   loader: () => getMenuData(),
+  validateSearch: (search: Record<string, unknown>) => ({
+    table: search.table ? Number(search.table) : undefined,
+  }),
   component: MenuPage,
   pendingComponent: MenuSkeleton,
   pendingMs: 0,
@@ -53,12 +63,69 @@ function MenuPage() {
 }
 
 function MenuPageInner({ categories, items, info }: MenuData) {
+  const search = Route.useSearch()
+  const table = search.table
   const [lang, setLang] = useState<Lang>('en')
   const [query, setQuery] = useState('')
   const [activeCat, setActiveCat] = useState<string | null>(null)
   const [navOpen, setNavOpen] = useState(false)
   const [billOpen, setBillOpen] = useState(false)
+  const [isCalling, setIsCalling] = useState(false)
   const { count, total } = useCart()
+
+  const handleCallWaiter = async () => {
+    if (!table) return
+    const tableNum = Number(table)
+    const maxTables = info?.max_tables ?? 999
+
+    // Bounds check
+    if (isNaN(tableNum) || tableNum < 1 || tableNum > maxTables) {
+      toast(
+        lang === 'am'
+          ? `የጠረጴዛ ቁጥር ከ ${maxTables} መብለጥ አይችልም`
+          : `Table number cannot exceed ${maxTables}`,
+      )
+      return
+    }
+
+    // Local device rate-limit check (fast fail)
+    if (isRateLimitedLocally(tableNum)) {
+      toast(
+        lang === 'am'
+          ? 'አስተናጋጅ ወደ ጠረጴዛዎ ተጠርቷል። ትንሽ ይጠብቁ።'
+          : 'A waiter is already on the way — please wait a moment.',
+        { duration: 5000 },
+      )
+      return
+    }
+
+    try {
+      setIsCalling(true)
+      const did = await getDeviceId()
+      await callWaiter({ data: { table_number: tableNum, device_id: did } })
+
+      // Success — record block for 10 minutes locally
+      recordWaiterCall(tableNum)
+
+      toast(
+        lang === 'am'
+          ? '🔔 አስተናጋጅ ወደ ጠረጴዛዎ እየመጣ ነው'
+          : '🔔 A waiter is on their way to your table!',
+        { duration: 5000 },
+      )
+    } catch (e: any) {
+      const raw: string = e.message || ''
+      const isRateLimit = raw.toLowerCase().includes('already on their way')
+      const errMsg = isRateLimit
+        ? lang === 'am'
+          ? 'አስተናጋጅ ወደ ጠረጴዛዎ ተጠርቷል። ትንሽ ይጠብቁ።'
+          : 'A waiter is already on the way — please wait a moment.'
+        : raw || (lang === 'am' ? 'ስህተት ተፈጥሯል' : 'Something went wrong')
+      toast(errMsg)
+    } finally {
+      setIsCalling(false)
+    }
+  }
 
   useEffect(() => {
     if (!activeCat && categories[0]) setActiveCat(categories[0].id)
@@ -110,6 +177,25 @@ function MenuPageInner({ categories, items, info }: MenuData) {
                 {info?.tagline ?? 'Fearless Flavor.'}
               </span>
             </div>
+            {/* Table Badge and Waiter Action */}
+            {table && (
+              <div className="hidden items-center gap-2 border-l border-border pl-4 md:flex">
+                <span className="rounded-full bg-primary/10 px-3 py-1 font-display text-sm text-primary">
+                  {lang === 'am' ? 'ጠረጴዛ' : 'Table'} {table}
+                </span>
+                <button
+                  onClick={handleCallWaiter}
+                  disabled={isCalling}
+                  className="rounded-full bg-secondary/80 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
+                >
+                  {isCalling
+                    ? 'Calling...'
+                    : lang === 'am'
+                      ? 'አስተናጋጅ ጥራ'
+                      : 'Call Waiter'}
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -133,6 +219,26 @@ function MenuPageInner({ categories, items, info }: MenuData) {
             </button>
           </div>
         </div>
+
+        {/* Mobile Waiter Bar (visible only below md: breakout if table exists) */}
+        {table && (
+          <div className="flex items-center justify-between border-t border-border bg-card/60 px-4 py-2 md:hidden">
+            <span className="font-display text-sm text-primary">
+              {lang === 'am' ? 'ጠረጴዛ' : 'Table'} {table}
+            </span>
+            <button
+              onClick={handleCallWaiter}
+              disabled={isCalling}
+              className="rounded-full bg-secondary/80 px-4 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
+            >
+              {isCalling
+                ? 'Calling...'
+                : lang === 'am'
+                  ? 'አስተናጋጅ ጥራ'
+                  : 'Call Waiter'}
+            </button>
+          </div>
+        )}
 
         <div className="border-t border-border">
           <div className="mx-auto max-w-3xl">

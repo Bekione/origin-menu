@@ -27,6 +27,7 @@ function NotFoundComponent() {
         <div className="mt-6">
           <Link
             to="/"
+            search={{ table: undefined }}
             className="inline-flex items-center justify-center rounded-md border border-primary px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary transition-colors hover:bg-primary/10"
           >
             Go Home
@@ -210,7 +211,32 @@ function RootInner() {
   return (
     <>
       <Outlet />
-      <Toaster position="bottom-right" richColors theme={theme} />
+      <Toaster
+        position="bottom-right"
+        theme={theme}
+        toastOptions={{
+          style:
+            theme === 'dark'
+              ? {
+                  background: 'oklch(0.18 0.008 60)',
+                  border: '1px solid oklch(1 0 0 / 8%)',
+                  color: 'oklch(0.97 0.005 80)',
+                  boxShadow: '0 8px 32px oklch(0 0 0 / 60%)',
+                }
+              : {
+                  background: 'oklch(1 0 0)',
+                  border: '1px solid oklch(0 0 0 / 10%)',
+                  color: 'oklch(0.13 0.005 60)',
+                  boxShadow: '0 8px 32px oklch(0 0 0 / 12%)',
+                },
+          classNames: {
+            actionButton:
+              theme === 'dark'
+                ? 'bg-[oklch(0.72_0.19_45)] text-[oklch(0.13_0.005_60)] text-xs font-semibold rounded px-2 py-1'
+                : 'bg-[oklch(0.66_0.2_45)] text-white text-xs font-semibold rounded px-2 py-1',
+          },
+        }}
+      />
     </>
   )
 }
