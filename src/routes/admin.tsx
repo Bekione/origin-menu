@@ -62,53 +62,58 @@ export const Route = createFileRoute('/admin')({
 // Synthesize a clean bell/chime sound using Web Audio API
 // macOS Style
 function playNotification() {
-  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  
-  const masterGain = ctx.createGain();
-  masterGain.gain.value = 0.32;
-  masterGain.connect(ctx.destination);
+  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
 
-  const now = ctx.currentTime;
+  const masterGain = ctx.createGain()
+  masterGain.gain.value = 0.32
+  masterGain.connect(ctx.destination)
 
-  function createTone(freq: number, delay: number, duration: number, volume: number) {
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    const filter = ctx.createBiquadFilter();
+  const now = ctx.currentTime
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, now + delay);
+  function createTone(
+    freq: number,
+    delay: number,
+    duration: number,
+    volume: number,
+  ) {
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    const filter = ctx.createBiquadFilter()
+
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(freq, now + delay)
 
     // Gentle low-pass filter for softness
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(3200, now + delay);
+    filter.type = 'lowpass'
+    filter.frequency.setValueAtTime(3200, now + delay)
 
     // Fast but smooth attack + natural decay
-    gain.gain.setValueAtTime(0.001, now + delay);
-    gain.gain.exponentialRampToValueAtTime(volume, now + delay + 0.008);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + delay + duration);
+    gain.gain.setValueAtTime(0.001, now + delay)
+    gain.gain.exponentialRampToValueAtTime(volume, now + delay + 0.008)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + delay + duration)
 
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(masterGain);
+    osc.connect(filter)
+    filter.connect(gain)
+    gain.connect(masterGain)
 
-    osc.start(now + delay);
-    osc.stop(now + delay + duration + 0.2);
+    osc.start(now + delay)
+    osc.stop(now + delay + duration + 0.2)
   }
 
   // Main macOS-like tones
-  createTone(880,   0.00, 1.2, 0.45);   // A5
-  createTone(1109,  0.00, 1.1, 0.38);   // C#6
-  createTone(1320,  0.05, 0.95, 0.30);  // E6
+  createTone(880, 0.0, 1.2, 0.45) // A5
+  createTone(1109, 0.0, 1.1, 0.38) // C#6
+  createTone(1320, 0.05, 0.95, 0.3) // E6
 
   // Higher sparkle (decays faster)
-  createTone(1760,  0.03, 0.65, 0.18);  // A6
-  createTone(2200,  0.08, 0.55, 0.12);  // C#7
+  createTone(1760, 0.03, 0.65, 0.18) // A6
+  createTone(2200, 0.08, 0.55, 0.12) // C#7
 
   // Very subtle second hit (classic macOS double feel)
   setTimeout(() => {
-    createTone(987.8, 0, 0.8, 0.22);   // B5
-    createTone(1244.5,0.02, 0.7, 0.18); // D#6
-  }, 220);
+    createTone(987.8, 0, 0.8, 0.22) // B5
+    createTone(1244.5, 0.02, 0.7, 0.18) // D#6
+  }, 220)
 }
 
 function AdminPage() {
@@ -1445,14 +1450,57 @@ function InfoTab({
     map_url: info?.map_url ?? '',
     map_embed_url: info?.map_embed_url ?? '',
     max_tables: info?.max_tables ?? 999,
+    wifi_password: info?.wifi_password ?? '',
+    service_charge_pct: info?.service_charge_pct ?? 0,
+    promo_banner_active: info?.promo_banner_active ?? false,
+    promo_banner_text: info?.promo_banner_text ?? '',
+    promo_banner_url: info?.promo_banner_url ?? '',
+    payment_methods: Array.isArray(info?.payment_methods)
+      ? (info!.payment_methods as any[])
+      : [],
     hours: initialHours.length
       ? initialHours
       : [{ day: 'Mon–Fri', hours: '10:00 – 22:00' }],
   })
   const [saving, setSaving] = useState(false)
+  const [uploadingImageIdx, setUploadingImageIdx] = useState<number | null>(
+    null,
+  )
   const [msg, setMsg] = useState('')
   const update = useServerFn(updateRestaurantInfo)
+  const upload = useServerFn(uploadItemImage)
 
+  const onPaymentImageUpload = async (index: number, file: File) => {
+    if (file.size > 2 * 1024 * 1024)
+      return toast.error('Image must be under 2MB')
+    setUploadingImageIdx(index)
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () =>
+          resolve(
+            (reader.result as string).includes(',')
+              ? (reader.result as string).split(',')[1]
+              : (reader.result as string),
+          )
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+      const res = await upload({
+        data: { filename: file.name, contentType: file.type, base64 },
+      })
+
+      setForm((prev) => {
+        const m = [...prev.payment_methods]
+        m[index] = { ...m[index], icon_url: res.url }
+        return { ...prev, payment_methods: m }
+      })
+    } catch (e: any) {
+      toast.error('Upload failed')
+    } finally {
+      setUploadingImageIdx(null)
+    }
+  }
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -1609,6 +1657,167 @@ function InfoTab({
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 font-display text-sm uppercase tracking-wider text-primary">
+            Promotional Banner
+          </h3>
+          <div className="space-y-4">
+            <Toggle
+              label="Enable Promotional Banner on Public Menu"
+              value={form.promo_banner_active}
+              onChange={(v) => setForm({ ...form, promo_banner_active: v })}
+            />
+            <Field label="Banner Announcement (e.g. '10% off Friday!')">
+              <input
+                className={inputCls}
+                value={form.promo_banner_text}
+                onChange={(e) =>
+                  setForm({ ...form, promo_banner_text: e.target.value })
+                }
+                placeholder="Text goes here..."
+              />
+            </Field>
+            <Field label="Banner Redirect URL (Optional)">
+              <input
+                className={inputCls}
+                value={form.promo_banner_url}
+                onChange={(e) =>
+                  setForm({ ...form, promo_banner_url: e.target.value })
+                }
+                placeholder="https://..."
+              />
+            </Field>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 font-display text-sm uppercase tracking-wider text-primary">
+            Store Utilities
+          </h3>
+          <div className="space-y-4">
+            <Field label="Wi-Fi Password for Guests">
+              <input
+                className={inputCls}
+                value={form.wifi_password}
+                onChange={(e) =>
+                  setForm({ ...form, wifi_password: e.target.value })
+                }
+                placeholder="FreeWifi_123"
+              />
+            </Field>
+            <Field label="Service Charge (%)">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                className={inputCls}
+                value={form.service_charge_pct}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    service_charge_pct: parseFloat(e.target.value) || 0,
+                  })
+                }
+              />
+            </Field>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-display text-sm uppercase tracking-wider">
+            Payment Methods
+          </h3>
+          <button
+            type="button"
+            onClick={() =>
+              setForm({
+                ...form,
+                payment_methods: [
+                  ...form.payment_methods,
+                  { provider: '', account: '', icon_url: '' },
+                ],
+              })
+            }
+            className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
+          >
+            <Plus className="h-3 w-3" /> Add Method
+          </button>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {form.payment_methods.map((method, i) => (
+            <div
+              key={i}
+              className="flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-4"
+            >
+              <div className="flex items-start justify-between">
+                {method.icon_url ? (
+                  <img
+                    src={method.icon_url}
+                    className="h-10 w-16 rounded object-contain shadow-sm bg-white"
+                    alt="Payment icon"
+                  />
+                ) : uploadingImageIdx === i ? (
+                  <div className="flex h-10 w-16 items-center justify-center rounded border border-dashed border-border bg-muted">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <label className="flex h-10 w-16 cursor-pointer items-center justify-center rounded border border-dashed border-border bg-muted transition hover:bg-muted/80">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files?.[0]) {
+                          onPaymentImageUpload(i, e.target.files[0])
+                        }
+                      }}
+                    />
+                    <Plus className="h-4 w-4 text-muted-foreground" />
+                  </label>
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setForm({
+                      ...form,
+                      payment_methods: form.payment_methods.filter(
+                        (_, j) => j !== i,
+                      ),
+                    })
+                  }
+                  className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              <input
+                className={inputCls}
+                value={method.provider}
+                placeholder="Provider (e.g. Telebirr)"
+                onChange={(e) => {
+                  const m = [...form.payment_methods]
+                  m[i] = { ...m[i], provider: e.target.value }
+                  setForm({ ...form, payment_methods: m })
+                }}
+              />
+              <input
+                className={inputCls}
+                value={method.account}
+                placeholder="Account / Phone / Detail"
+                onChange={(e) => {
+                  const m = [...form.payment_methods]
+                  m[i] = { ...m[i], account: e.target.value }
+                  setForm({ ...form, payment_methods: m })
+                }}
+              />
             </div>
           ))}
         </div>

@@ -17,6 +17,9 @@ import {
   Minus,
   Trash2,
   ChevronUp,
+  Wifi,
+  ChevronRight,
+  Copy,
 } from 'lucide-react'
 import {
   getMenuData,
@@ -203,6 +206,20 @@ function MenuPageInner({ categories, items, info }: MenuData) {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Global Promo Banner */}
+      {info?.promo_banner_active && info?.promo_banner_text && (
+        <a
+          href={info.promo_banner_url || '#'}
+          target={info.promo_banner_url ? '_blank' : undefined}
+          className="flex w-full cursor-pointer items-center justify-center bg-primary px-4 py-2 text-center text-xs font-bold uppercase tracking-widest text-primary-foreground hover:opacity-90"
+        >
+          <span>{info.promo_banner_text}</span>
+          {info.promo_banner_url && (
+            <ChevronRight className="ml-1 h-3 w-3 shrink-0" />
+          )}
+        </a>
+      )}
+
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-lg">
         <div className="mx-auto flex h-20 max-w-3xl items-center justify-between px-4">
@@ -485,6 +502,85 @@ function MenuPageInner({ categories, items, info }: MenuData) {
                   </li>
                 ))}
               </ul>
+
+              {/* Extras (Wifi + Payments) */}
+              {(info?.wifi_password ||
+                (Array.isArray(info?.payment_methods) &&
+                  info!.payment_methods.length > 0)) && (
+                <div className="mt-6 border-t border-border pt-4">
+                  {info.wifi_password && (
+                    <div className="mb-4">
+                      <h4 className="font-display text-sm uppercase tracking-wider text-primary">
+                        {lang === 'am' ? 'ዋይፋይ' : 'Wi-Fi'}
+                      </h4>
+                      <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                        <Wifi className="h-4 w-4 text-primary" />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(
+                              info.wifi_password || '',
+                            )
+                            toast.success(
+                              lang === 'am' ? 'ኮፒ ተደርጓል' : 'Copied!',
+                            )
+                          }}
+                          className="flex items-center gap-1.5 hover:opacity-80 transition active:scale-95 cursor-copy"
+                          title="Copy to clipboard"
+                        >
+                          <span className="select-all rounded bg-muted px-2 py-0.5 font-mono">
+                            {info.wifi_password}
+                          </span>
+                          <Copy className="h-3 w-3 text-muted-foreground" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {Array.isArray(info?.payment_methods) &&
+                    info!.payment_methods.length > 0 && (
+                      <div>
+                        <h4 className="font-display text-sm uppercase tracking-wider text-primary">
+                          {lang === 'am' ? 'የመክፈያ ዘዴዎች' : 'Payment Methods'}
+                        </h4>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {info.payment_methods.map((pm: any, idx: number) => (
+                            <div
+                              key={idx}
+                              className="flex min-w-[80px] flex-col items-center gap-1 rounded-lg border border-border bg-muted/30 p-2"
+                            >
+                              {pm.icon_url && (
+                                <img
+                                  src={pm.icon_url}
+                                  alt={pm.provider}
+                                  className="h-6 w-6 rounded bg-white object-contain"
+                                />
+                              )}
+                              <span className="text-[10px] font-bold text-foreground">
+                                {pm.provider}
+                              </span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(
+                                    pm.account || '',
+                                  )
+                                  toast.success(
+                                    lang === 'am' ? 'ኮፒ ተደርጓል' : 'Copied!',
+                                  )
+                                }}
+                                className="flex w-full cursor-copy items-center justify-center gap-1 hover:opacity-80 transition active:scale-95"
+                                title="Copy account number"
+                              >
+                                <span className="select-all text-[9px] text-muted-foreground">
+                                  {pm.account}
+                                </span>
+                                <Copy className="h-2 w-2 text-muted-foreground" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                </div>
+              )}
             </div>
           </div>
 
@@ -576,6 +672,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
       <BillDrawer
         open={billOpen}
         lang={lang}
+        info={info}
         onClose={() => setBillOpen(false)}
       />
 
@@ -832,12 +929,18 @@ function BillDrawer({
   lang,
   onClose,
   open,
+  info,
 }: {
   lang: Lang
   onClose: () => void
   open: boolean
+  info?: any
 }) {
   const { items, increment, decrement, remove, clear, total } = useCart()
+
+  const scPct = info?.service_charge_pct ?? 0
+  const scAmt = (total * scPct) / 100
+  const grandTotal = total + scAmt
 
   return (
     <Drawer.Root open={open} onOpenChange={(v) => !v && onClose()}>
@@ -925,15 +1028,37 @@ function BillDrawer({
             {/* Footer */}
             {items.length > 0 && (
               <div className="mt-4 border-t border-border pt-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground uppercase tracking-wider">
+                <div className="flex flex-col gap-1.5 pb-2">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>{lang === 'am' ? 'ንዑስ ድምር' : 'Subtotal'}</span>
+                    <span>
+                      {formatBirr(total)}{' '}
+                      <span className="text-[10px]">ETB</span>
+                    </span>
+                  </div>
+                  {scPct > 0 && (
+                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>
+                        {lang === 'am' ? 'የአገልግሎት ክፍያ' : 'Service Charge'} (
+                        {scPct}%)
+                      </span>
+                      <span>
+                        {formatBirr(scAmt)}{' '}
+                        <span className="text-[10px]">ETB</span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between border-t border-border/50 pt-2">
+                  <span className="text-sm font-bold text-primary uppercase tracking-wider">
                     {lang === 'am' ? 'ጠቅላላ' : 'Total'}
                   </span>
                   <span className="font-display text-2xl text-primary">
-                    {formatBirr(total)} <span className="text-sm">ETB</span>
+                    {formatBirr(grandTotal)}{' '}
+                    <span className="text-sm">ETB</span>
                   </span>
                 </div>
-                <p className="mt-1 text-center text-[10px] text-muted-foreground">
+                <p className="mt-2 text-center text-[10px] text-muted-foreground">
                   {lang === 'am'
                     ? 'ክፍያ ወደ አስተናጋጅ ያሳዩ'
                     : 'Show this bill to your waiter to pay'}

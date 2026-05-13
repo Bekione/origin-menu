@@ -137,10 +137,16 @@ export type Database = {
           map_url: string | null
           max_tables: number | null
           name: string
+          payment_methods: Json | null
           phone: string | null
+          promo_banner_active: boolean | null
+          promo_banner_text: string | null
+          promo_banner_url: string | null
+          service_charge_pct: number | null
           tagline: string | null
           tiktok_url: string | null
           updated_at: string
+          wifi_password: string | null
         }
         Insert: {
           address?: string | null
@@ -151,10 +157,16 @@ export type Database = {
           map_url?: string | null
           max_tables?: number | null
           name?: string
+          payment_methods?: Json | null
           phone?: string | null
+          promo_banner_active?: boolean | null
+          promo_banner_text?: string | null
+          promo_banner_url?: string | null
+          service_charge_pct?: number | null
           tagline?: string | null
           tiktok_url?: string | null
           updated_at?: string
+          wifi_password?: string | null
         }
         Update: {
           address?: string | null
@@ -165,10 +177,16 @@ export type Database = {
           map_url?: string | null
           max_tables?: number | null
           name?: string
+          payment_methods?: Json | null
           phone?: string | null
+          promo_banner_active?: boolean | null
+          promo_banner_text?: string | null
+          promo_banner_url?: string | null
+          service_charge_pct?: number | null
           tagline?: string | null
           tiktok_url?: string | null
           updated_at?: string
+          wifi_password?: string | null
         }
         Relationships: []
       }

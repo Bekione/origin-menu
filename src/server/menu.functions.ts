@@ -216,6 +216,12 @@ const InfoSchema = z.object({
   hours: z
     .array(z.object({ day: z.string().max(40), hours: z.string().max(80) }))
     .max(14),
+  wifi_password: z.string().max(100).nullable().optional(),
+  service_charge_pct: z.number().min(0).max(100).nullable().optional(),
+  promo_banner_active: z.boolean().nullable().optional(),
+  promo_banner_text: z.string().max(300).nullable().optional(),
+  promo_banner_url: z.string().max(500).nullable().optional(),
+  payment_methods: z.any().nullable().optional(),
 })
 
 export const updateRestaurantInfo = createServerFn({ method: 'POST' })
