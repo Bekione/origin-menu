@@ -46,7 +46,21 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 
+type TabValue = 'items' | 'categories' | 'info'
+
+type AdminSearch = {
+  tab?: TabValue
+}
+
 export const Route = createFileRoute('/admin')({
+  validateSearch: (search: Record<string, unknown>): AdminSearch => {
+    const t = search.tab as string
+    return {
+      tab: ['items', 'categories', 'info'].includes(t)
+        ? (t as TabValue)
+        : undefined,
+    }
+  },
   beforeLoad: async () => {
     const session = await getAuthSession()
     if (!session?.user) {
@@ -119,11 +133,14 @@ function playNotification() {
 function AdminPage() {
   const initial = Route.useLoaderData() as MenuData
   const [data, setData] = useState<MenuData>(initial)
-  const [tab, setTab] = useState<'items' | 'categories' | 'info'>('items')
+  const searchParams = Route.useSearch()
+  const tab = searchParams.tab || 'items'
+  const navigate = Route.useNavigate()
+  const setTab = (t: TabValue) =>
+    navigate({ search: { tab: t }, replace: true })
   const [calls, setCalls] = useState<WaiterCall[]>([])
   const [callsOpen, setCallsOpen] = useState(false)
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null)
-  const navigate = Route.useNavigate()
   const channelRef = useRef<ReturnType<typeof supabaseBrowser.channel> | null>(
     null,
   )
@@ -207,7 +224,7 @@ function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/50">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+        <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-y-4 px-4 py-4">
           <div className="flex items-center gap-3">
             <img
               src={logo}
@@ -215,13 +232,15 @@ function AdminPage() {
               className="h-9 w-9 rounded-full bg-white p-1"
             />
             <div>
-              <h1 className="font-display text-2xl text-primary">CONSOLE</h1>
+              <h1 className="font-display text-xl sm:text-2xl text-primary leading-none">
+                CONSOLE
+              </h1>
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
                 Origin Admin
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {/* Waiter Call Bell */}
             <button
               onClick={() => setCallsOpen((v) => !v)}
@@ -238,24 +257,26 @@ function AdminPage() {
             <Link
               to="/"
               search={{ table: undefined }}
-              className="text-xs uppercase tracking-wider text-muted-foreground hover:text-primary"
+              className="text-xs uppercase tracking-wider text-muted-foreground hover:text-primary whitespace-nowrap hidden sm:inline-block"
             >
               View menu
             </Link>
             <ThemeToggle />
             <button
               onClick={logout}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-destructive hover:text-destructive"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-destructive hover:text-destructive whitespace-nowrap"
             >
-              <LogOut className="h-3.5 w-3.5" /> Logout
+              <LogOut className="h-3.5 w-3.5" />{' '}
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
-        <div className="mx-auto flex max-w-5xl gap-1 px-4">
+        <div className="mx-auto flex max-w-5xl gap-1 px-4 overflow-x-auto scrollbar-none snap-x snap-mandatory">
           <TabButton
             active={tab === 'items'}
             onClick={() => setTab('items')}
             icon={<UtensilsCrossed className="h-4 w-4" />}
+            className="whitespace-nowrap"
           >
             Menu Items
           </TabButton>
@@ -263,6 +284,7 @@ function AdminPage() {
             active={tab === 'categories'}
             onClick={() => setTab('categories')}
             icon={<Layers className="h-4 w-4" />}
+            className="whitespace-nowrap"
           >
             Categories
           </TabButton>
@@ -270,6 +292,7 @@ function AdminPage() {
             active={tab === 'info'}
             onClick={() => setTab('info')}
             icon={<Store className="h-4 w-4" />}
+            className="whitespace-nowrap"
           >
             Restaurant Info
           </TabButton>
@@ -399,17 +422,19 @@ function TabButton({
   active,
   onClick,
   icon,
+  className,
   children,
 }: {
   active: boolean
   onClick: () => void
   icon: React.ReactNode
+  className?: string
   children: React.ReactNode
 }) {
   return (
     <button
       onClick={onClick}
-      className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition ${active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+      className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition ${className} ${active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
     >
       {icon} {children}
     </button>
@@ -1255,12 +1280,6 @@ function CategoriesTab({
                   }
                 }}
                 onDelete={async () => {
-                  if (
-                    !confirm(
-                      `Delete "${c.name}"? Items inside will also be deleted.`,
-                    )
-                  )
-                    return
                   try {
                     await del({ data: { id: c.id } })
                     onChange()
@@ -1473,6 +1492,15 @@ function InfoTab({
   const [uploadingImageIdx, setUploadingImageIdx] = useState<number | null>(
     null,
   )
+  const [dragItemIndex, setDragItemIndex] = useState<number | null>(null)
+  const [dragOverItemIndex, setDragOverItemIndex] = useState<number | null>(
+    null,
+  )
+  const [showConfirm, setShowConfirm] = useState<{
+    type: 'hours' | 'payment'
+    index: number
+    title: string
+  } | null>(null)
   const [msg, setMsg] = useState('')
   const update = useServerFn(updateRestaurantInfo)
   const upload = useServerFn(uploadItemImage)
@@ -1508,6 +1536,43 @@ function InfoTab({
       setUploadingImageIdx(null)
     }
   }
+
+  const handleSortPayments = () => {
+    if (
+      dragItemIndex === null ||
+      dragOverItemIndex === null ||
+      dragItemIndex === dragOverItemIndex
+    ) {
+      setDragItemIndex(null)
+      setDragOverItemIndex(null)
+      return
+    }
+    const currentList = [...form.payment_methods]
+    const draggedItemContent = currentList.splice(dragItemIndex, 1)[0]
+    currentList.splice(dragOverItemIndex, 0, draggedItemContent)
+
+    setForm({ ...form, payment_methods: currentList })
+    setDragItemIndex(null)
+    setDragOverItemIndex(null)
+  }
+
+  const handleConfirmDelete = () => {
+    if (!showConfirm) return
+    const { type, index } = showConfirm
+    if (type === 'hours') {
+      setForm((prev) => ({
+        ...prev,
+        hours: prev.hours.filter((_, j) => j !== index),
+      }))
+    } else {
+      setForm((prev) => ({
+        ...prev,
+        payment_methods: prev.payment_methods.filter((_, j) => j !== index),
+      }))
+    }
+    setShowConfirm(null)
+  }
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSaving(true)
@@ -1655,9 +1720,10 @@ function InfoTab({
               <button
                 type="button"
                 onClick={() =>
-                  setForm({
-                    ...form,
-                    hours: form.hours.filter((_, j) => j !== i),
+                  setShowConfirm({
+                    type: 'hours',
+                    index: i,
+                    title: 'Remove these hours?',
                   })
                 }
                 className="rounded border border-border p-2 text-muted-foreground hover:border-destructive hover:text-destructive"
@@ -1762,9 +1828,21 @@ function InfoTab({
           {form.payment_methods.map((method, i) => (
             <div
               key={i}
-              className="flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-4"
+              draggable
+              onDragStart={() => setDragItemIndex(i)}
+              onDragEnter={() => setDragOverItemIndex(i)}
+              onDragEnd={handleSortPayments}
+              onDragOver={(e) => e.preventDefault()}
+              className={`flex flex-col gap-3 rounded-lg border border-border bg-muted/20 p-4 transition-all ${
+                dragOverItemIndex === i
+                  ? 'ring-2 ring-primary bg-primary/5 opacity-80'
+                  : ''
+              } ${dragItemIndex === i ? 'opacity-50' : ''}`}
             >
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-2">
+                <GripVertical
+                  className={`h-4 w-4 shrink-0 text-muted-foreground/40 cursor-grab active:cursor-grabbing hover:text-primary`}
+                />
                 {method.icon_url ? (
                   <img
                     src={method.icon_url}
@@ -1793,11 +1871,10 @@ function InfoTab({
                 <button
                   type="button"
                   onClick={() =>
-                    setForm({
-                      ...form,
-                      payment_methods: form.payment_methods.filter(
-                        (_, j) => j !== i,
-                      ),
+                    setShowConfirm({
+                      type: 'payment',
+                      index: i,
+                      title: 'Delete this payment method?',
                     })
                   }
                   className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -1844,6 +1921,40 @@ function InfoTab({
           Save Info
         </button>
       </div>
+
+      {showConfirm && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center bg-background/80 px-4 backdrop-blur-xs"
+          onPointerDown={() => setShowConfirm(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl border border-border bg-card p-6 text-center shadow-2xl"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <Trash2 className="mx-auto mb-4 h-10 w-10 text-destructive/80" />
+            <h3 className="font-display text-xl text-foreground">
+              {showConfirm.type === 'hours' ? 'Remove Hours' : 'Delete Payment'}
+            </h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {showConfirm.title} This action is local until you save.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowConfirm(null)}
+                className="flex-1 rounded-md border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 flex items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-wider text-destructive-foreground hover:opacity-90"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
   )
 }
