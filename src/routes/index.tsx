@@ -42,6 +42,7 @@ import {
 } from '@/lib/device-fingerprint'
 import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { Drawer } from 'vaul'
+import { optimizeImage } from '@/lib/image'
 
 type SearchOptions = {
   table?: number
@@ -586,7 +587,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
                             >
                               {pm.icon_url && (
                                 <img
-                                  src={pm.icon_url}
+                                  src={optimizeImage(pm.icon_url, 100)}
                                   alt={pm.provider}
                                   className="h-6 w-6 rounded bg-white object-contain"
                                 />
@@ -765,7 +766,7 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
             <Skeleton className="absolute inset-0 h-20 w-20 rounded-lg" />
           )}
           <img
-            src={item.image_url}
+            src={optimizeImage(item.image_url, 200)}
             alt={name}
             loading="lazy"
             onLoad={() => setImgLoaded(true)}
@@ -894,7 +895,7 @@ function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
               <Skeleton className="absolute inset-0 h-28 w-full rounded-none" />
             )}
             <img
-              src={item.image_url}
+              src={optimizeImage(item.image_url, 300)}
               alt={name}
               onLoad={() => setImgLoaded(true)}
               className={`h-28 w-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}

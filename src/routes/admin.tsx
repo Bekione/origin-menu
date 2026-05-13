@@ -45,6 +45,8 @@ import logo from '@/assets/origin-logo.jpg'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { supabaseBrowser } from '@/integrations/supabase/client.browser'
+import ScrollFade from '#/components/ScrollFade'
+import { optimizeImage, compressImageFile } from '@/lib/image'
 
 type TabValue = 'items' | 'categories' | 'info'
 
@@ -141,6 +143,7 @@ function AdminPage() {
   const [calls, setCalls] = useState<WaiterCall[]>([])
   const [callsOpen, setCallsOpen] = useState(false)
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null)
+  const [loggingOut, setLoggingOut] = useState(false)
   const channelRef = useRef<ReturnType<typeof supabaseBrowser.channel> | null>(
     null,
   )
@@ -217,8 +220,13 @@ function AdminPage() {
   }
 
   const logout = async () => {
-    await authClient.signOut()
-    navigate({ to: '/login' })
+    setLoggingOut(true)
+    try {
+      await authClient.signOut()
+      navigate({ to: '/login' })
+    } catch {
+      setLoggingOut(false)
+    }
   }
 
   return (
@@ -263,40 +271,47 @@ function AdminPage() {
             </Link>
             <ThemeToggle />
             <button
+              disabled={loggingOut}
               onClick={logout}
-              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-destructive hover:text-destructive whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-destructive hover:text-destructive whitespace-nowrap disabled:opacity-50"
             >
-              <LogOut className="h-3.5 w-3.5" />{' '}
+              {loggingOut ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <LogOut className="h-3.5 w-3.5" />
+              )}
               <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </div>
-        <div className="mx-auto flex max-w-5xl gap-1 px-4 overflow-x-auto scrollbar-none snap-x snap-mandatory">
-          <TabButton
-            active={tab === 'items'}
-            onClick={() => setTab('items')}
-            icon={<UtensilsCrossed className="h-4 w-4" />}
-            className="whitespace-nowrap"
-          >
-            Menu Items
-          </TabButton>
-          <TabButton
-            active={tab === 'categories'}
-            onClick={() => setTab('categories')}
-            icon={<Layers className="h-4 w-4" />}
-            className="whitespace-nowrap"
-          >
-            Categories
-          </TabButton>
-          <TabButton
-            active={tab === 'info'}
-            onClick={() => setTab('info')}
-            icon={<Store className="h-4 w-4" />}
-            className="whitespace-nowrap"
-          >
-            Restaurant Info
-          </TabButton>
-        </div>
+        <ScrollFade direction="horizontal">
+          <div className="mx-auto flex max-w-5xl gap-1 px-4 overflow-x-auto scrollbar-none snap-x snap-mandatory">
+            <TabButton
+              active={tab === 'items'}
+              onClick={() => setTab('items')}
+              icon={<UtensilsCrossed className="h-4 w-4" />}
+              className="whitespace-nowrap"
+            >
+              Menu Items
+            </TabButton>
+            <TabButton
+              active={tab === 'categories'}
+              onClick={() => setTab('categories')}
+              icon={<Layers className="h-4 w-4" />}
+              className="whitespace-nowrap"
+            >
+              Categories
+            </TabButton>
+            <TabButton
+              active={tab === 'info'}
+              onClick={() => setTab('info')}
+              icon={<Store className="h-4 w-4" />}
+              className="whitespace-nowrap"
+            >
+              Restaurant Info
+            </TabButton>
+          </div>
+        </ScrollFade>
       </header>
 
       {/* Waiter Calls Panel */}
@@ -431,8 +446,21 @@ function TabButton({
   className?: string
   children: React.ReactNode
 }) {
+  const ref = useRef<HTMLButtonElement>(null)
+
+  useEffect(() => {
+    if (active && ref.current) {
+      ref.current.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      })
+    }
+  }, [active])
+
   return (
     <button
+      ref={ref}
       onClick={onClick}
       className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition ${className} ${active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
     >
@@ -639,6 +667,7 @@ function ItemRow({
   const del = useServerFn(deleteMenuItem)
   const [busy, setBusy] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
+  const [imgLoaded, setImgLoaded] = useState(false)
 
   const handleToggle = async () => {
     setBusy(true)
@@ -689,11 +718,17 @@ function ItemRow({
           className={`h-4 w-4 shrink-0 text-muted-foreground/40 ${onDragStart ? 'cursor-grab active:cursor-grabbing hover:text-primary' : ''}`}
         />
         {item.image_url ? (
-          <img
-            src={item.image_url}
-            alt=""
-            className="h-10 w-10 shrink-0 rounded object-cover"
-          />
+          <div className="relative h-10 w-10 shrink-0">
+            {!imgLoaded && (
+              <Skeleton className="absolute inset-0 h-10 w-10 rounded" />
+            )}
+            <img
+              src={optimizeImage(item.image_url, 150)}
+              alt=""
+              onLoad={() => setImgLoaded(true)}
+              className={`h-10 w-10 shrink-0 rounded object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            />
+          </div>
         ) : (
           <div className="h-10 w-10 shrink-0 rounded bg-muted" />
         )}
@@ -822,20 +857,12 @@ function ItemForm({
     setUploading(true)
     setError('')
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => {
-          const res = reader.result as string
-          resolve(res.includes(',') ? res.split(',')[1] : res)
-        }
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
+      const base64 = await compressImageFile(file, 800, 0.8)
 
       const res = await upload({
         data: {
-          filename: file.name,
-          contentType: file.type,
+          filename: file.name.replace(/\.[^/.]+$/, '') + '.webp',
+          contentType: 'image/webp',
           base64,
         },
       })
@@ -986,7 +1013,7 @@ function ItemForm({
             <div className="flex items-center gap-3">
               {form.image_url ? (
                 <img
-                  src={form.image_url}
+                  src={optimizeImage(form.image_url, 150)}
                   alt=""
                   className="h-16 w-16 rounded-lg object-cover"
                 />
@@ -1510,19 +1537,13 @@ function InfoTab({
       return toast.error('Image must be under 2MB')
     setUploadingImageIdx(index)
     try {
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () =>
-          resolve(
-            (reader.result as string).includes(',')
-              ? (reader.result as string).split(',')[1]
-              : (reader.result as string),
-          )
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
+      const base64 = await compressImageFile(file, 400, 0.8)
       const res = await upload({
-        data: { filename: file.name, contentType: file.type, base64 },
+        data: {
+          filename: file.name.replace(/\.[^/.]+$/, '') + '.webp',
+          contentType: 'image/webp',
+          base64,
+        },
       })
 
       setForm((prev) => {
@@ -1845,7 +1866,7 @@ function InfoTab({
                 />
                 {method.icon_url ? (
                   <img
-                    src={method.icon_url}
+                    src={optimizeImage(method.icon_url, 150)}
                     className="h-10 w-16 rounded object-contain shadow-sm bg-white"
                     alt="Payment icon"
                   />

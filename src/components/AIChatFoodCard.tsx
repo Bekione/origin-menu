@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
 import { useCart } from '@/components/CartProvider'
 import type { MenuItem } from '@/server/menu.functions'
+import { optimizeImage } from '@/lib/image'
 
 interface AIChatFoodCardProps {
   item: MenuItem
@@ -16,7 +17,7 @@ export function AIChatFoodCard({ item, lang }: AIChatFoodCardProps) {
       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
         {item.image_url ? (
           <img
-            src={item.image_url}
+            src={optimizeImage(item.image_url, 150)}
             alt={item.name}
             className="h-full w-full object-cover"
           />
