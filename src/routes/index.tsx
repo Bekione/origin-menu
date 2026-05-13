@@ -651,13 +651,13 @@ function MenuPageInner({ categories, items, info }: MenuData) {
               © {new Date().getFullYear()} {info?.name ?? 'Origin'} · All Rights
               Reserved
             </p>
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
               Crafted by{' '}
               <a
                 href="https://kidusportfoloio.netlify.app/"
                 target="_blank"
                 rel="noreferrer"
-                className="hover:text-primary"
+                className="font-medium text-foreground hover:text-primary"
               >
                 {' '}
                 Kidus{' '}
@@ -831,10 +831,12 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
               {qty > 0 && (
                 <>
                   <button
+                    aria-label="Decrease quantity"
+                    title="Decrease quantity"
                     onClick={() => decrement(item.id)}
-                    className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
                   >
-                    <Minus className="h-3 w-3" />
+                    <Minus className="h-4 w-4" />
                   </button>
                   <span className="w-4 text-center text-xs font-bold">
                     {qty}
@@ -842,12 +844,14 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
                 </>
               )}
               <button
+                aria-label="Add to cart"
+                title="Add to cart"
                 onClick={() =>
                   add({ id: item.id, name, price: Number(item.price) })
                 }
-                className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:opacity-90 active:scale-95"
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:opacity-90 active:scale-95"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-4 w-4" />
               </button>
             </div>
           )}
@@ -921,19 +925,23 @@ function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
         {qty > 0 && (
           <>
             <button
+              aria-label="Decrease quantity"
+              title="Decrease quantity"
               onClick={() => decrement(item.id)}
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
+              className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
             >
-              <Minus className="h-2.5 w-2.5" />
+              <Minus className="h-4 w-4" />
             </button>
             <span className="w-4 text-center text-xs font-bold">{qty}</span>
           </>
         )}
         <button
+          aria-label="Add to cart"
+          title="Add to cart"
           onClick={() => add({ id: item.id, name, price: Number(item.price) })}
-          className="flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90 active:scale-95"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90 active:scale-95"
         >
-          <Plus className="h-2.5 w-2.5" />
+          <Plus className="h-4 w-4" />
         </button>
       </div>
     </div>
