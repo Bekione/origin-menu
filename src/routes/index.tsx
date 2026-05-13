@@ -28,6 +28,7 @@ import {
   type MenuItem,
 } from '@/server/menu.functions'
 import logo from '@/assets/origin-logo.jpg'
+import logoGray from '@/assets/origin-logo-gray.png'
 import ScrollFade from '@/components/ScrollFade'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -208,7 +209,19 @@ function MenuPageInner({ categories, items, info }: MenuData) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-x-hidden">
+      {/* Decorative Background Watermark */}
+      <div
+        className="pointer-events-none fixed right-0 top-[20%] -z-10 h-[80vw] w-[80vw] max-h-[1000px] max-w-[1000px] translate-x-[20%] opacity-[0.03] mix-blend-overlay dark:opacity-[0.05]"
+        style={{
+          backgroundImage: `url(${logoGray})`,
+          backgroundSize: 'contain',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          transform: 'rotate(-10deg)',
+          filter: 'grayscale(100%)',
+        }}
+      />
       {/* Global Promo Banner */}
       {info?.promo_banner_active && info?.promo_banner_text && (
         <a
@@ -328,11 +341,19 @@ function MenuPageInner({ categories, items, info }: MenuData) {
 
       <main className="mx-auto max-w-3xl px-4 pb-32 pt-6">
         {/* Hero */}
-        <section className="mb-6 overflow-hidden rounded-2xl border border-border bg-card p-6 text-center shadow-card">
-          <h1 className="font-display text-4xl tracking-widest text-primary">
+        <section className="relative mb-6 overflow-hidden rounded-2xl border border-border bg-card p-8 text-center shadow-card">
+          {/* Decorative Hero Background Skew */}
+          <div className="absolute -right-10 -top-10 h-48 w-48 opacity-[0.04] dark:opacity-[0.08] rotate-12 scale-150 pointer-events-none transition-transform duration-1000 ease-out hover:rotate-6">
+            <img
+              src={logoGray}
+              alt=""
+              className="object-contain h-full w-full"
+            />
+          </div>
+          <h1 className="relative z-10 font-display text-5xl tracking-widest text-primary drop-shadow-sm">
             {lang === 'am' ? 'እንኳን ደህና መጡ' : 'Welcome to Origin'}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="relative z-10 mt-3 text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
             {lang === 'am'
               ? 'ደፋር ጣዕም — በትኩስ ምግብና በፍቅር ይዘጋጅ'
               : 'Fearless flavor, served fresh. Browse the menu and order with your server.'}
@@ -465,7 +486,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border bg-card">
+      <footer className="bg-card m-4 md:m-8 rounded-xl">
         <div className="mx-auto max-w-3xl px-4 py-8">
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
@@ -672,7 +693,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
       {/* Ask AI floating button — sits above cart bar if visible */}
       <div
         className={`fixed z-40 transition-all duration-300 ${
-          count > 0 ? 'bottom-20' : 'bottom-5'
+          count > 0 ? 'bottom-20' : 'bottom-3 md:bottom-5'
         } right-4`}
       >
         <button

@@ -125,8 +125,8 @@ export function AIChatDrawer({
         role="dialog"
         aria-modal="true"
         aria-label="AI Meal Suggester"
-        className="fixed bottom-24 left-0 right-0 z-50 flex flex-col rounded-t-2xl border border-border bg-background shadow-2xl sm:bottom-24 sm:right-4 sm:left-auto sm:top-auto sm:h-[550px] sm:w-[380px] sm:rounded-2xl"
-        style={{ maxHeight: 'calc(100dvh - 5rem)' }}
+        className="fixed bottom-16 left-0 right-0 z-50 flex flex-col rounded-t-2xl border border-border bg-background shadow-2xl sm:bottom-24 sm:right-4 sm:left-auto sm:top-auto sm:h-[550px] sm:w-[380px] sm:rounded-2xl"
+        style={{ maxHeight: 'calc(100dvh - 4rem)' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -137,7 +137,7 @@ export function AIChatDrawer({
             <div>
               <p className="text-sm font-bold text-foreground">Origin AI</p>
               <p className="text-xs text-muted-foreground">
-                GPT-4o-mini · {lang === 'am' ? 'የምግብ አማካሪ' : 'Food Concierge'}
+                {lang === 'am' ? 'የምግብ አማካሪ' : 'Food Concierge'}
               </p>
             </div>
           </div>
