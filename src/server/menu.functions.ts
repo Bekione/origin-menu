@@ -72,6 +72,7 @@ const ItemSchema = z.object({
   is_spicy: z.boolean(),
   is_fasting: z.boolean(),
   is_featured: z.boolean(),
+  is_special: z.boolean().optional().default(false),
   sort_order: z.number().int().min(0).max(10000),
 })
 

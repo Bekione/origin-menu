@@ -20,6 +20,7 @@ import {
   Wifi,
   ChevronRight,
   Copy,
+  Star,
 } from 'lucide-react'
 import {
   getMenuData,
@@ -58,7 +59,7 @@ export const Route = createFileRoute('/')({
 })
 
 type Lang = 'en' | 'am'
-type FilterTag = 'veg' | 'fasting' | 'spicy'
+type FilterTag = 'special' | 'veg' | 'fasting' | 'spicy'
 
 function formatBirr(n: number) {
   return new Intl.NumberFormat('en-US').format(n)
@@ -170,6 +171,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
       items: items.filter((i) => {
         if (i.category_id !== c.id) return false
         if (activeFilters.size > 0) {
+          if (activeFilters.has('special') && !i.is_special) return false
           if (activeFilters.has('veg') && !i.is_vegetarian) return false
           if (activeFilters.has('fasting') && !i.is_fasting) return false
           if (activeFilters.has('spicy') && !i.is_spicy) return false
@@ -188,6 +190,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
     .filter((i) => {
       if (!i.is_featured || !i.is_available) return false
       if (activeFilters.size > 0) {
+        if (activeFilters.has('special') && !i.is_special) return false
         if (activeFilters.has('veg') && !i.is_vegetarian) return false
         if (activeFilters.has('fasting') && !i.is_fasting) return false
         if (activeFilters.has('spicy') && !i.is_spicy) return false
@@ -349,6 +352,19 @@ function MenuPageInner({ categories, items, info }: MenuData) {
 
         {/* Tag Filters */}
         <div className="scrollbar-none sticky top-32 z-30 -mx-4 mb-8 flex gap-2 overflow-x-auto px-4 py-1 backdrop-blur-md shadow-sm [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)]">
+          <button
+            onClick={() => toggleFilter('special')}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition ${
+              activeFilters.has('special')
+                ? 'border-yellow-400 bg-yellow-400/15 text-yellow-600 dark:border-yellow-500/50 dark:text-yellow-400'
+                : 'border-border bg-card text-muted-foreground hover:border-yellow-400 hover:text-yellow-600 dark:hover:border-yellow-500/50 dark:hover:text-yellow-400'
+            }`}
+          >
+            <Star
+              className={`h-3.5 w-3.5 ${activeFilters.has('special') ? 'fill-current' : ''}`}
+            />{' '}
+            {lang === 'am' ? 'የዛሬ ልዩ' : "Today's Special"}
+          </button>
           <button
             onClick={() => toggleFilter('veg')}
             className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition ${
@@ -763,6 +779,12 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
         </div>
         <div className="mt-1.5 flex items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-1.5">
+            {item.is_special && (
+              <span className="flex items-center gap-1 rounded bg-yellow-400/15 border border-yellow-400/50 px-1.5 py-0.5 text-[10px] font-bold text-yellow-600 dark:text-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.2)]">
+                <Star className="h-2.5 w-2.5 fill-current" />
+                {lang === 'am' ? 'ልዩ' : 'Special'}
+              </span>
+            )}
             {unavailable && (
               <Tag tone="muted">{lang === 'am' ? 'አልቆ' : 'Sold out'}</Tag>
             )}

@@ -780,6 +780,7 @@ function ItemForm({
     is_spicy: item?.is_spicy ?? false,
     is_fasting: item?.is_fasting ?? false,
     is_featured: item?.is_featured ?? false,
+    is_special: item?.is_special ?? false,
     sort_order: item?.sort_order ?? 0,
   })
   const [saving, setSaving] = useState(false)
@@ -846,6 +847,7 @@ function ItemForm({
           is_spicy: form.is_spicy,
           is_fasting: form.is_fasting,
           is_featured: form.is_featured,
+          is_special: form.is_special,
           sort_order: form.sort_order,
         },
       })
@@ -1006,6 +1008,11 @@ function ItemForm({
               label="Featured"
               value={form.is_featured}
               onChange={(v) => setForm({ ...form, is_featured: v })}
+            />
+            <Toggle
+              label="Today's Special"
+              value={form.is_special}
+              onChange={(v) => setForm({ ...form, is_special: v })}
             />
             <Toggle
               label="Vegetarian"

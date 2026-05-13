@@ -73,6 +73,7 @@ export type Database = {
           is_available: boolean
           is_fasting: boolean
           is_featured: boolean
+          is_special: boolean
           is_spicy: boolean
           is_vegetarian: boolean
           name: string
@@ -91,6 +92,7 @@ export type Database = {
           is_available?: boolean
           is_fasting?: boolean
           is_featured?: boolean
+          is_special?: boolean
           is_spicy?: boolean
           is_vegetarian?: boolean
           name: string
@@ -109,6 +111,7 @@ export type Database = {
           is_available?: boolean
           is_fasting?: boolean
           is_featured?: boolean
+          is_special?: boolean
           is_spicy?: boolean
           is_vegetarian?: boolean
           name?: string
