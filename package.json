@@ -65,5 +65,8 @@
       "esbuild",
       "lightningcss"
     ]
+  },
+  "overrides": {
+    "zod": "^4.4.3"
   }
 }
