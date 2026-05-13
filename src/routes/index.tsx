@@ -35,6 +35,8 @@ import {
   isRateLimitedLocally,
   recordWaiterCall,
 } from '@/lib/device-fingerprint'
+import { AIChatDrawer } from '@/components/AIChatDrawer'
+import { Drawer } from 'vaul'
 
 type SearchOptions = {
   table?: number
@@ -82,6 +84,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
   const [activeCat, setActiveCat] = useState<string | null>(null)
   const [navOpen, setNavOpen] = useState(false)
   const [billOpen, setBillOpen] = useState(false)
+  const [aiOpen, setAiOpen] = useState(false)
   const [isCalling, setIsCalling] = useState(false)
   const { count, total } = useCart()
 
@@ -554,10 +557,35 @@ function MenuPageInner({ categories, items, info }: MenuData) {
         </div>
       )}
 
+      {/* Ask AI floating button — sits above cart bar if visible */}
+      <div
+        className={`fixed z-40 transition-all duration-300 ${
+          count > 0 ? 'bottom-20' : 'bottom-5'
+        } right-4`}
+      >
+        <button
+          onClick={() => setAiOpen(true)}
+          className="group flex items-center gap-2 rounded-full border border-primary/30 bg-card/90 px-4 py-2.5 text-sm font-semibold text-primary shadow-lg backdrop-blur-sm transition hover:bg-primary hover:text-primary-foreground"
+        >
+          <Sparkles className="h-4 w-4 transition group-hover:rotate-12" />
+          <span>{lang === 'am' ? 'AI ጠይቅ' : 'Ask AI'}</span>
+        </button>
+      </div>
+
       {/* Bill Drawer */}
-      {billOpen && (
-        <BillDrawer lang={lang} onClose={() => setBillOpen(false)} />
-      )}
+      <BillDrawer
+        open={billOpen}
+        lang={lang}
+        onClose={() => setBillOpen(false)}
+      />
+
+      {/* AI Drawer */}
+      <AIChatDrawer
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        items={items}
+        lang={lang}
+      />
     </div>
   )
 }
@@ -800,111 +828,122 @@ function TikTokIcon() {
   )
 }
 
-function BillDrawer({ lang, onClose }: { lang: Lang; onClose: () => void }) {
+function BillDrawer({
+  lang,
+  onClose,
+  open,
+}: {
+  lang: Lang
+  onClose: () => void
+  open: boolean
+}) {
   const { items, increment, decrement, remove, clear, total } = useCart()
+
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
-      {/* Backdrop */}
-      <div className="flex-1 bg-black/60 backdrop-blur-sm" />
-      {/* Drawer */}
-      <div
-        className="w-full rounded-t-2xl border-t border-border bg-card shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="h-1 w-10 rounded-full bg-border" />
-        </div>
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <h2 className="font-display text-lg uppercase tracking-widest text-primary">
-            {lang === 'am' ? 'ሒሳብ' : 'Your Bill'}
-          </h2>
-          <div className="flex items-center gap-2">
-            {items.length > 0 && (
-              <button
-                onClick={clear}
-                className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:text-destructive"
-              >
-                <Trash2 className="h-3 w-3" />
-                {lang === 'am' ? 'አጽዳ' : 'Clear'}
-              </button>
-            )}
-            <button
-              onClick={onClose}
-              className="rounded-md p-1 text-muted-foreground transition hover:text-foreground"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-        {/* Item list */}
-        <div className="max-h-[50vh] overflow-y-auto px-4 py-2">
-          {items.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              {lang === 'am' ? 'ምናሌ ባዶ ነው' : 'Your cart is empty'}
-            </p>
-          ) : (
-            <ul className="divide-y divide-border">
-              {items.map((item) => (
-                <li key={item.id} className="flex items-center gap-3 py-3">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{item.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {formatBirr(item.price)} ETB × {item.qty}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
-                    <button
-                      onClick={() => decrement(item.id)}
-                      className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="w-5 text-center text-sm font-bold">
-                      {item.qty}
-                    </span>
-                    <button
-                      onClick={() => increment(item.id)}
-                      className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
-                    <button
-                      onClick={() => remove(item.id)}
-                      className="ml-1 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:text-destructive"
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </div>
-                  <div className="w-20 shrink-0 text-right font-display text-sm text-primary">
-                    {formatBirr(item.price * item.qty)}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        {/* Footer */}
-        {items.length > 0 && (
-          <div className="border-t border-border px-4 py-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground uppercase tracking-wider">
-                {lang === 'am' ? 'ጠቅላላ' : 'Total'}
-              </span>
-              <span className="font-display text-2xl text-primary">
-                {formatBirr(total)} <span className="text-sm">ETB</span>
-              </span>
+    <Drawer.Root open={open} onOpenChange={(v) => !v && onClose()}>
+      <Drawer.Portal>
+        <Drawer.Overlay className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm" />
+        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-60 mt-24 flex max-h-[90vh] flex-col rounded-t-[20px] bg-card shadow-2xl outline-none">
+          {/* Handle */}
+          <div className="mx-auto mt-4 mb-2 h-1.5 w-12 shrink-0 rounded-full bg-border" />
+
+          <div className="flex flex-col flex-1 overflow-y-auto px-4 pb-12 pt-2">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <Drawer.Title className="font-display text-lg uppercase tracking-widest text-primary">
+                {lang === 'am' ? 'ሒሳብ' : 'Your Bill'}
+              </Drawer.Title>
+              <div className="flex items-center gap-2">
+                {items.length > 0 && (
+                  <button
+                    onClick={clear}
+                    className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:text-destructive"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                    {lang === 'am' ? 'አጽዳ' : 'Clear'}
+                  </button>
+                )}
+                <button
+                  onClick={onClose}
+                  className="rounded-md p-1 text-muted-foreground transition hover:text-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
-            <p className="mt-1 text-center text-[10px] text-muted-foreground">
-              {lang === 'am'
-                ? 'ክፍያ ወደ አስተናጋጅ ያሳዩ'
-                : 'Show this bill to your waiter to pay'}
-            </p>
+
+            {/* Item list */}
+            <div className="max-h-[50vh] overflow-y-auto py-2">
+              {items.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {lang === 'am' ? 'ምናሌ ባዶ ነው' : 'Your cart is empty'}
+                </p>
+              ) : (
+                <ul className="divide-y divide-border">
+                  {items.map((item) => (
+                    <li key={item.id} className="flex items-center gap-3 py-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {item.name}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatBirr(item.price)} ETB × {item.qty}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <button
+                          onClick={() => decrement(item.id)}
+                          className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="w-5 text-center text-sm font-bold">
+                          {item.qty}
+                        </span>
+                        <button
+                          onClick={() => increment(item.id)}
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                        <button
+                          onClick={() => remove(item.id)}
+                          className="ml-1 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </div>
+                      <div className="w-20 shrink-0 text-right font-display text-sm text-primary">
+                        {formatBirr(item.price * item.qty)}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {/* Footer */}
+            {items.length > 0 && (
+              <div className="mt-4 border-t border-border pt-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground uppercase tracking-wider">
+                    {lang === 'am' ? 'ጠቅላላ' : 'Total'}
+                  </span>
+                  <span className="font-display text-2xl text-primary">
+                    {formatBirr(total)} <span className="text-sm">ETB</span>
+                  </span>
+                </div>
+                <p className="mt-1 text-center text-[10px] text-muted-foreground">
+                  {lang === 'am'
+                    ? 'ክፍያ ወደ አስተናጋጅ ያሳዩ'
+                    : 'Show this bill to your waiter to pay'}
+                </p>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-    </div>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   )
 }
 

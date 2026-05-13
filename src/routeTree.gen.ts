@@ -13,6 +13,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiSeedAdminRouteImport } from './routes/api/seed-admin'
+import { Route as ApiAiChatRouteImport } from './routes/api/ai-chat'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const LoginRoute = LoginRouteImport.update({
@@ -35,6 +36,11 @@ const ApiSeedAdminRoute = ApiSeedAdminRouteImport.update({
   path: '/api/seed-admin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAiChatRoute = ApiAiChatRouteImport.update({
+  id: '/api/ai-chat',
+  path: '/api/ai-chat',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/api/ai-chat': typeof ApiAiChatRoute
   '/api/seed-admin': typeof ApiSeedAdminRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/api/ai-chat': typeof ApiAiChatRoute
   '/api/seed-admin': typeof ApiSeedAdminRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
@@ -60,21 +68,42 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/api/ai-chat': typeof ApiAiChatRoute
   '/api/seed-admin': typeof ApiSeedAdminRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/login' | '/api/seed-admin' | '/api/auth/$'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/api/ai-chat'
+    | '/api/seed-admin'
+    | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/login' | '/api/seed-admin' | '/api/auth/$'
-  id: '__root__' | '/' | '/admin' | '/login' | '/api/seed-admin' | '/api/auth/$'
+  to:
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/api/ai-chat'
+    | '/api/seed-admin'
+    | '/api/auth/$'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/login'
+    | '/api/ai-chat'
+    | '/api/seed-admin'
+    | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   LoginRoute: typeof LoginRoute
+  ApiAiChatRoute: typeof ApiAiChatRoute
   ApiSeedAdminRoute: typeof ApiSeedAdminRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
@@ -109,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiSeedAdminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/ai-chat': {
+      id: '/api/ai-chat'
+      path: '/api/ai-chat'
+      fullPath: '/api/ai-chat'
+      preLoaderRoute: typeof ApiAiChatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -123,6 +159,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   LoginRoute: LoginRoute,
+  ApiAiChatRoute: ApiAiChatRoute,
   ApiSeedAdminRoute: ApiSeedAdminRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
