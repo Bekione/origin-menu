@@ -60,6 +60,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 import ScrollFade from '#/components/ScrollFade'
 import { optimizeImage, compressImageFile } from '@/lib/image'
+import qrLogo from '@/assets/origin-logo-qr-svg.svg'
 
 type TabValue = 'items' | 'categories' | 'info' | 'tables' | 'orders'
 
@@ -77,7 +78,12 @@ export const Route = createFileRoute('/admin')({
     }
   },
   beforeLoad: async () => {
-    const session = await getAuthSession()
+    let session = null
+    try {
+      session = await getAuthSession()
+    } catch {
+      // Ignore network/rpc errors and fallback gracefully
+    }
     if (!session?.user) {
       throw redirect({ to: '/login' })
     }
@@ -157,40 +163,45 @@ function AdminPage() {
   const [callsOpen, setCallsOpen] = useState(false)
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [pendingOrderCount, setPendingOrderCount] = useState(0)
   const channelRef = useRef<ReturnType<typeof supabaseBrowser.channel> | null>(
     null,
   )
+  const ordersChannelRef = useRef<ReturnType<
+    typeof supabaseBrowser.channel
+  > | null>(null)
 
   // Load initial pending calls
   useEffect(() => {
     getWaiterCalls().then((data) => setCalls(data as WaiterCall[]))
+    getTableOrders().then((data) => {
+      const orders = (data as any[]) || []
+      setPendingOrderCount(orders.filter((o) => o.status === 'pending').length)
+    })
   }, [])
 
-  // Supabase Realtime — subscribe to waiter call changes
+  // Supabase Realtime — Combined Channel for all Admin notifications
   useEffect(() => {
     const channel = supabaseBrowser
-      .channel('waiter-calls-admin', { config: { broadcast: { self: false } } })
+      .channel('admin-realtime')
+      // 1. Waiter Calls INSERT
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'waiter_calls' },
         (payload) => {
           const newCall = payload.new as WaiterCall
           setCalls((prev) => [newCall, ...prev])
-
-          playNotification() // Play the notification chime
-
+          playNotification()
           toast(
             '🔔 Table ' + newCall.table_number + ' is calling for a waiter!',
             {
               duration: 8000,
-              action: {
-                label: 'View',
-                onClick: () => setCallsOpen(true),
-              },
+              action: { label: 'View', onClick: () => setCallsOpen(true) },
             },
           )
         },
       )
+      // 2. Waiter Calls UPDATE
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'waiter_calls' },
@@ -201,16 +212,78 @@ function AdminPage() {
           )
         },
       )
+      // 3. Table Orders INSERT
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'table_orders' },
+        (payload) => {
+          const order = payload.new as any
+          setPendingOrderCount((n) => n + 1)
+          playNotification()
+          window.dispatchEvent(new CustomEvent('reload-orders'))
+          toast(`🍽️ New order from ${order.table_label}!`, {
+            duration: 10000,
+            action: {
+              label: 'View Orders',
+              onClick: () =>
+                navigate({ search: { tab: 'orders' }, replace: true }),
+            },
+          })
+        },
+      )
+      // 4. Table Orders UPDATE
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'table_orders' },
+        (payload) => {
+          const order = payload.new as any
+          if (order.status !== 'pending') {
+            setPendingOrderCount((n) => Math.max(0, n - 1))
+          }
+          window.dispatchEvent(new CustomEvent('reload-orders'))
+        },
+      )
       .subscribe((status, err) => {
-        if (err) console.error('[Realtime] subscription error:', err)
-        else console.log('[Realtime] waiter-calls status:', status)
+        if (err) console.error('[Realtime] Subscription Error:', err)
+        else console.log('[Realtime] Combined Status:', status)
       })
 
     channelRef.current = channel
     return () => {
       supabaseBrowser.removeChannel(channel)
     }
-  }, [])
+  }, [navigate])
+
+  // Broadcast channel — receives direct server-sent events from placeOrder()
+  // This bypasses postgres_changes entirely, no RLS/grants/pub needed
+  useEffect(() => {
+    const bc = supabaseBrowser
+      .channel('admin-orders')
+      .on('broadcast', { event: 'new_order' }, (payload) => {
+        const order = payload.payload as any
+        console.log('[Broadcast] new_order received:', order)
+        setPendingOrderCount((n) => n + 1)
+        playNotification()
+        window.dispatchEvent(new CustomEvent('reload-orders'))
+        toast(`🍽️ New order from ${order.table_label}!`, {
+          duration: 10000,
+          action: {
+            label: 'View Orders',
+            onClick: () =>
+              navigate({ search: { tab: 'orders' }, replace: true }),
+          },
+        })
+      })
+      .subscribe((status, err) => {
+        if (err) console.error('[Broadcast] Error:', err)
+        else console.log('[Broadcast] admin-orders status:', status)
+      })
+
+    ordersChannelRef.current = bc
+    return () => {
+      supabaseBrowser.removeChannel(bc)
+    }
+  }, [navigate])
 
   const handleAcknowledge = async (id: string) => {
     setAcknowledgingId(id)
@@ -331,14 +404,26 @@ function AdminPage() {
             >
               Tables
             </TabButton>
-            <TabButton
-              active={tab === 'orders'}
-              onClick={() => setTab('orders')}
-              icon={<ClipboardList className="h-4 w-4" />}
-              className="whitespace-nowrap"
-            >
-              Orders
-            </TabButton>
+            <div className="relative">
+              <TabButton
+                active={tab === 'orders'}
+                onClick={() => {
+                  setTab('orders')
+                  setPendingOrderCount(0)
+                }}
+                icon={<ClipboardList className="h-4 w-4" />}
+                className="whitespace-nowrap"
+              >
+                <div className="flex items-center gap-1.5">
+                  Orders
+                  {pendingOrderCount > 0 && (
+                    <span className="flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white shadow-sm">
+                      {pendingOrderCount > 9 ? '9+' : pendingOrderCount}
+                    </span>
+                  )}
+                </div>
+              </TabButton>
+            </div>
           </div>
         </ScrollFade>
       </header>
@@ -457,8 +542,13 @@ function AdminPage() {
           <CategoriesTab data={data} onChange={refresh} />
         )}
         {tab === 'info' && <InfoTab info={data.info} onChange={refresh} />}
-        {tab === 'tables' && <TablesTab />}
-        {tab === 'orders' && <OrdersTab />}
+        {/* Tables + Orders: always mounted, hidden when not active to preserve data across tab switches */}
+        <div className={tab === 'tables' ? undefined : 'hidden'}>
+          <TablesTab />
+        </div>
+        <div className={tab === 'orders' ? undefined : 'hidden'}>
+          <OrdersTab />
+        </div>
       </main>
     </div>
   )
@@ -1700,19 +1790,6 @@ function InfoTab({
             placeholder="https://tiktok.com/@…"
           />
         </Field>
-        <Field label="Max Tables Conf">
-          <input
-            type="number"
-            min={1}
-            max={9999}
-            className={inputCls}
-            value={form.max_tables}
-            onChange={(e) =>
-              setForm({ ...form, max_tables: parseInt(e.target.value) || 999 })
-            }
-            placeholder="Max tables in restaurant"
-          />
-        </Field>
         <div className="sm:col-span-2">
           <Field label="Google Maps URL">
             <div className="flex gap-2">
@@ -2111,6 +2188,12 @@ function TablesTab() {
   } | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editLabel, setEditLabel] = useState('')
+  const [isDownloading, setIsDownloading] = useState(false)
+  const [isPrinting, setIsPrinting] = useState(false)
+  const [previewQR, setPreviewQR] = useState<{
+    url: string
+    label: string
+  } | null>(null)
 
   const fetchTables = async () => {
     setLoading(true)
@@ -2200,6 +2283,145 @@ function TablesTab() {
     toast.success(`QR code downloaded for ${table.label}`)
   }
 
+  const buildQRWithLogo = async (token: string): Promise<string> => {
+    const QRCode = (await import('qrcode')).default
+    const canvas = document.createElement('canvas')
+    await QRCode.toCanvas(canvas, `${window.location.origin}/?t=${token}`, {
+      width: 500,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' },
+      errorCorrectionLevel: 'H',
+    })
+
+    return new Promise((resolve) => {
+      const ctx = canvas.getContext('2d')
+      if (!ctx) return resolve(canvas.toDataURL('image/png'))
+      const img = new Image()
+      img.src = qrLogo
+      img.onload = () => {
+        const centerSize = canvas.width * 0.22
+        const centerXY = (canvas.width - centerSize) / 2
+        ctx.fillStyle = '#ffffff'
+        ctx.beginPath()
+        ctx.roundRect(
+          centerXY - 4,
+          centerXY - 4,
+          centerSize + 8,
+          centerSize + 8,
+          8,
+        )
+        ctx.fill()
+        ctx.drawImage(img, centerXY, centerXY, centerSize, centerSize)
+        resolve(canvas.toDataURL('image/png'))
+      }
+      img.onerror = () => resolve(canvas.toDataURL('image/png'))
+    })
+  }
+
+  const buildQRDataUrl = async (token: string) => buildQRWithLogo(token)
+
+  const handlePrintAll = async () => {
+    setIsPrinting(true)
+    try {
+      const items = await Promise.all(
+        tables.map(async (t) => ({
+          label: t.label,
+          dataUrl: await buildQRWithLogo(t.token),
+        })),
+      )
+
+      const iframe = document.createElement('iframe')
+      iframe.style.display = 'none'
+      document.body.appendChild(iframe)
+      const doc = iframe.contentWindow?.document
+      if (!doc) return
+      doc.write(`
+        <html><head><title>Print QR</title>
+        <style>
+          body { font-family: sans-serif; margin: 0; background: #fff; }
+          .grid { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; justify-content: flex-start; }
+          .card { text-align: center; border: 1px solid #ddd; border-radius: 12px; padding: 16px; width: 160px; break-inside: avoid; }
+          .card img { width: 140px; height: 140px; }
+          .card p { margin: 8px 0 0; font-weight: 700; font-size: 16px; color: #000; }
+          @media print { 
+              @page { margin: 10mm } 
+              .card { border: 1px solid #ccc; }
+          }
+        </style></head><body>
+        <div class="grid">${items
+          .map(
+            (i) => `
+          <div class="card"><img src="${i.dataUrl}" /><p>${i.label}</p></div>`,
+          )
+          .join('')}
+        </div></body></html>
+      `)
+      doc.close()
+
+      setTimeout(() => {
+        iframe.contentWindow?.focus()
+        iframe.contentWindow?.print()
+        setTimeout(() => document.body.removeChild(iframe), 3000)
+      }, 500)
+    } finally {
+      setTimeout(() => setIsPrinting(false), 800)
+    }
+  }
+
+  const handleDownloadAll = async () => {
+    setIsDownloading(true)
+    try {
+      const { jsPDF } = await import('jspdf')
+      const doc = new jsPDF()
+
+      const margin = 20
+      const qrSize = 50
+      const cols = 3
+      const gapX = (210 - margin * 2 - qrSize * cols) / (cols - 1)
+      const gapY = 25
+
+      let x = margin
+      let y = margin
+      let row = 0
+      let col = 0
+
+      for (let i = 0; i < tables.length; i++) {
+        const t = tables[i]
+        const dataUrl = await buildQRWithLogo(t.token)
+
+        if (y + qrSize + 10 > 297 - margin) {
+          doc.addPage()
+          x = margin
+          y = margin
+          row = 0
+          col = 0
+        }
+
+        doc.addImage(dataUrl, 'PNG', x, y, qrSize, qrSize)
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+        doc.text(t.label, x + qrSize / 2, y + qrSize + 6, { align: 'center' })
+
+        col++
+        if (col >= cols) {
+          col = 0
+          row++
+          x = margin
+          y = margin + row * (qrSize + gapY)
+        } else {
+          x += qrSize + gapX
+        }
+      }
+
+      doc.save('origin-table-qr-codes.pdf')
+      toast.success('Downloaded all QR codes as PDF!')
+    } catch (err) {
+      toast.error('Failed to generate PDF')
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   const inputCls =
     'w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none'
 
@@ -2215,7 +2437,7 @@ function TablesTab() {
         busy={busyId === showConfirm?.id}
       />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-display text-lg uppercase tracking-wider text-primary">
             Tables
@@ -2224,12 +2446,41 @@ function TablesTab() {
             Each table gets a unique QR code. Print and place on the table.
           </p>
         </div>
-        <button
-          onClick={() => setAdding(true)}
-          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
-        >
-          <Plus className="h-3.5 w-3.5" /> Add Table
-        </button>
+        <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
+          {tables.length > 0 && (
+            <>
+              <button
+                onClick={handlePrintAll}
+                disabled={isPrinting}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-50"
+              >
+                {isPrinting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  'Print All'
+                )}
+              </button>
+              <button
+                onClick={handleDownloadAll}
+                disabled={isDownloading}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary disabled:opacity-50"
+              >
+                {isDownloading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                {isDownloading ? 'Building...' : 'Download All'}
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add Table
+          </button>
+        </div>
       </div>
 
       {adding && (
@@ -2286,95 +2537,181 @@ function TablesTab() {
       ) : (
         <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
           {tables.map((table) => (
-            <div
+            <TableRow
               key={table.id}
-              className="flex flex-wrap items-center gap-3 px-4 py-3"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <QrCode className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                {editingId === table.id ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      autoFocus
-                      className="rounded border border-border bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
-                      value={editLabel}
-                      onChange={(e) => setEditLabel(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleRename(table.id)
-                        if (e.key === 'Escape') setEditingId(null)
-                      }}
-                    />
-                    <button
-                      onClick={() => handleRename(table.id)}
-                      disabled={busyId === table.id}
-                      className="rounded bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground disabled:opacity-60"
-                    >
-                      {busyId === table.id ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        'Save'
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setEditingId(null)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-sm font-semibold">{table.label}</p>
-                )}
-                <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
-                  ?t={table.token.slice(0, 16)}…
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1.5">
-                <button
-                  title="Download QR Code"
-                  onClick={() => downloadQR(table)}
-                  className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary"
-                >
-                  <Download className="h-3.5 w-3.5" /> QR
-                </button>
-                <button
-                  title="Rename"
-                  onClick={() => {
-                    setEditingId(table.id)
-                    setEditLabel(table.label)
-                  }}
-                  className="rounded-md border border-border p-1.5 text-muted-foreground hover:border-primary hover:text-primary"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </button>
-                <button
-                  title="Regenerate token — invalidates old QR"
-                  disabled={busyId === table.id}
-                  onClick={() => handleRegenerate(table.id, table.label)}
-                  className="rounded-md border border-border p-1.5 text-muted-foreground hover:border-amber-500 hover:text-amber-500 disabled:opacity-50"
-                >
-                  {busyId === table.id ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  )}
-                </button>
-                <button
-                  title="Delete table"
-                  onClick={() =>
-                    setShowConfirm({ id: table.id, label: table.label })
-                  }
-                  className="rounded-md border border-border p-1.5 text-muted-foreground hover:border-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            </div>
+              table={table}
+              busyId={busyId}
+              editingId={editingId}
+              editLabel={editLabel}
+              setEditLabel={setEditLabel}
+              setEditingId={setEditingId}
+              handleRename={handleRename}
+              handleRegenerate={handleRegenerate}
+              downloadQR={downloadQR}
+              setShowConfirm={setShowConfirm}
+              buildQRDataUrl={buildQRDataUrl}
+              setPreviewQR={setPreviewQR}
+            />
           ))}
         </div>
       )}
+
+      {previewQR && (
+        <div
+          className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setPreviewQR(null)}
+        >
+          <div
+            className="animate-in zoom-in-95 duration-200 flex w-full max-w-sm flex-col items-center rounded-2xl bg-card p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={previewQR.url}
+              alt={`QR Code for ${previewQR.label}`}
+              className="h-auto w-full rounded-xl border border-border"
+            />
+            <p className="mt-4 font-display text-xl text-foreground font-semibold">
+              {previewQR.label}
+            </p>
+            <button
+              onClick={() => setPreviewQR(null)}
+              className="mt-5 w-full rounded-lg bg-primary py-2.5 text-sm font-bold text-primary-foreground"
+            >
+              Close Preview
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TableRow({
+  table,
+  busyId,
+  editingId,
+  editLabel,
+  setEditLabel,
+  setEditingId,
+  handleRename,
+  handleRegenerate,
+  downloadQR,
+  setShowConfirm,
+  buildQRDataUrl,
+  setPreviewQR,
+}: {
+  table: RestaurantTable
+  busyId: string | null
+  editingId: string | null
+  editLabel: string
+  setEditLabel: (v: string) => void
+  setEditingId: (v: string | null) => void
+  handleRename: (id: string) => void
+  handleRegenerate: (id: string, label: string) => void
+  downloadQR: (t: RestaurantTable) => void
+  setShowConfirm: (v: { id: string; label: string } | null) => void
+  buildQRDataUrl: (token: string) => Promise<string>
+  setPreviewQR: (v: { url: string; label: string } | null) => void
+}) {
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    buildQRDataUrl(table.token).then(setQrDataUrl)
+  }, [table.token])
+
+  return (
+    <div className="flex flex-wrap items-start gap-3 px-4 py-3">
+      {/* Inline QR preview */}
+      <div className="shrink-0">
+        {qrDataUrl ? (
+          <img
+            src={qrDataUrl}
+            alt={`QR for ${table.label}`}
+            className="h-16 w-16 cursor-pointer rounded-lg border border-border object-contain transition hover:opacity-80"
+            onClick={() => setPreviewQR({ url: qrDataUrl, label: table.label })}
+          />
+        ) : (
+          <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-muted">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0 pt-1">
+        {editingId === table.id ? (
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              className="rounded border border-border bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
+              value={editLabel}
+              onChange={(e) => setEditLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleRename(table.id)
+                if (e.key === 'Escape') setEditingId(null)
+              }}
+            />
+            <button
+              onClick={() => handleRename(table.id)}
+              disabled={busyId === table.id}
+              className="rounded bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+            >
+              {busyId === table.id ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                'Save'
+              )}
+            </button>
+            <button
+              onClick={() => setEditingId(null)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <p className="text-sm font-semibold">{table.label}</p>
+        )}
+        <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+          ?t={table.token.slice(0, 16)}…
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5 pt-1">
+        <button
+          title="Download QR Code"
+          onClick={() => downloadQR(table)}
+          className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary"
+        >
+          <Download className="h-3.5 w-3.5" /> QR
+        </button>
+        <button
+          title="Rename"
+          onClick={() => {
+            setEditingId(table.id)
+            setEditLabel(table.label)
+          }}
+          className="rounded-md border border-border p-1.5 text-muted-foreground hover:border-primary hover:text-primary"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button
+          title="Regenerate token — invalidates old QR"
+          disabled={busyId === table.id}
+          onClick={() => handleRegenerate(table.id, table.label)}
+          className="rounded-md border border-border p-1.5 text-muted-foreground hover:border-amber-500 hover:text-amber-500 disabled:opacity-50"
+        >
+          {busyId === table.id ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3.5 w-3.5" />
+          )}
+        </button>
+        <button
+          title="Delete table"
+          onClick={() => setShowConfirm({ id: table.id, label: table.label })}
+          className="rounded-md border border-border p-1.5 text-muted-foreground hover:border-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
     </div>
   )
 }
@@ -2398,7 +2735,12 @@ function OrdersTab() {
   useEffect(() => {
     fetchOrders()
     const interval = setInterval(fetchOrders, 8000)
-    return () => clearInterval(interval)
+    const handleReload = () => fetchOrders()
+    window.addEventListener('reload-orders', handleReload)
+    return () => {
+      clearInterval(interval)
+      window.removeEventListener('reload-orders', handleReload)
+    }
   }, [])
 
   const handleStatus = async (

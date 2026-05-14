@@ -1,5 +1,5 @@
+import React, { useEffect, useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
 import {
   Search,
   MapPin,
@@ -22,6 +22,8 @@ import {
   Copy,
   Star,
   Loader2,
+  ScanLine,
+  Bell,
 } from 'lucide-react'
 import {
   getMenuData,
@@ -92,16 +94,19 @@ function MenuPageInner({ categories, items, info }: MenuData) {
   type TableSession = { token: string; tableId: string; tableLabel: string }
   const SESSION_KEY = 'origin_table_session'
 
-  // Table session state (from QR scan)
-  const [tableSession, setTableSession] = useState<TableSession | null>(() => {
-    if (typeof window === 'undefined') return null
+  // Table session state (from QR scan) — intentionally starts null to avoid SSR/client hydration mismatch
+  const [tableSession, setTableSession] = useState<TableSession | null>(null)
+  const [sessionHydrated, setSessionHydrated] = useState(false)
+
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(SESSION_KEY)
-      return raw ? JSON.parse(raw) : null
+      setTableSession(raw ? JSON.parse(raw) : null)
     } catch {
-      return null
+      setTableSession(null)
     }
-  })
+    setSessionHydrated(true)
+  }, [])
 
   const [lang, setLang] = useState<Lang>('en')
   const [query, setQuery] = useState('')
@@ -117,11 +122,16 @@ function MenuPageInner({ categories, items, info }: MenuData) {
   const { count, total } = useCart()
 
   const handleCallWaiter = async () => {
-    if (!table) return
-    const tableNum = Number(table)
-    const maxTables = info?.max_tables ?? 999
+    // Determine table number: prefer URL param, fall back to session label (parse digit)
+    const tableNum = table
+      ? Number(table)
+      : tableSession
+        ? parseInt(tableSession.tableLabel.replace(/\D/g, ''), 10) || 1
+        : null
 
-    // Bounds check
+    if (tableNum === null) return
+
+    const maxTables = info?.max_tables ?? 999
     if (isNaN(tableNum) || tableNum < 1 || tableNum > maxTables) {
       toast(
         lang === 'am'
@@ -146,14 +156,11 @@ function MenuPageInner({ categories, items, info }: MenuData) {
       setIsCalling(true)
       const did = await getDeviceId()
       await callWaiter({ data: { table_number: tableNum, device_id: did } })
-
-      // Success — record block for 10 minutes locally
       recordWaiterCall(tableNum)
-
       toast(
         lang === 'am'
-          ? '🔔 አስተናጋጅ ወደ ጠረጴዛዎ እየመጣ ነው'
-          : '🔔 A waiter is on their way to your table!',
+          ? 'አስተናጋጅ ወደ ጠረጴዛዎ እየመጣ ነው'
+          : 'A waiter is on their way to your table!',
         { duration: 5000 },
       )
     } catch (e: any) {
@@ -184,13 +191,15 @@ function MenuPageInner({ categories, items, info }: MenuData) {
         }
         localStorage.setItem(SESSION_KEY, JSON.stringify(session))
         setTableSession(session)
-        toast.success(`📍 Dining at ${result.label} — welcome!`, {
+        toast.success(`Dining at ${result.label} — welcome!`, {
           duration: 4000,
         })
-        // Remove the token from URL to keep it clean
         navigate({ search: (p) => ({ ...p, t: undefined }), replace: true })
       })
       .catch(() => {
+        // Token invalid — clear any stale session
+        localStorage.removeItem(SESSION_KEY)
+        setTableSession(null)
         toast.error(
           'Invalid QR code — please scan the QR code on your table again.',
         )
@@ -346,42 +355,56 @@ function MenuPageInner({ categories, items, info }: MenuData) {
           </div>
         </div>
 
-        {/* Mobile Waiter Bar (visible only below md: breakout if table exists) */}
-        {table && (
-          <div className="flex items-center justify-between border-t border-border bg-card/60 px-4 py-2 md:hidden">
-            <span className="font-display text-sm text-primary">
-              {lang === 'am' ? 'ጠረጴዛ' : 'Table'} {table}
-            </span>
-            <button
-              onClick={handleCallWaiter}
-              disabled={isCalling}
-              className="rounded-full bg-secondary/80 px-4 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
-            >
-              {isCalling
-                ? 'Calling...'
-                : lang === 'am'
-                  ? 'አስተናጋጅ ጥራ'
-                  : 'Call Waiter'}
-            </button>
-          </div>
-        )}
-        {/* QR Dine-in Session Banner (Mobile) */}
-        {tableSession && (
+        {/* QR Dine-in Session Banner — replaces old ?table=N bar for QR sessions */}
+        {tableSession ? (
           <div className="flex items-center justify-between border-t border-primary/20 bg-primary/5 px-4 py-2">
             <span className="font-display text-sm text-primary">
-              📍 {tableSession.tableLabel}
+              {tableSession.tableLabel}
             </span>
-            <button
-              onClick={() => {
-                localStorage.removeItem(SESSION_KEY)
-                setTableSession(null)
-                toast('Table session cleared')
-              }}
-              className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
-            >
-              Clear
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCallWaiter}
+                disabled={isCalling}
+                className="flex items-center gap-1.5 rounded-full bg-secondary/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
+              >
+                <Bell className="h-3 w-3" />
+                {isCalling
+                  ? 'Calling...'
+                  : lang === 'am'
+                    ? 'አስተናጋጅ ጥራ'
+                    : 'Call Waiter'}
+              </button>
+              <button
+                onClick={() => {
+                  localStorage.removeItem(SESSION_KEY)
+                  setTableSession(null)
+                  toast('Table session cleared')
+                }}
+                className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+              >
+                Leave
+              </button>
+            </div>
           </div>
+        ) : (
+          table && (
+            <div className="flex items-center justify-between border-t border-border bg-card/60 px-4 py-2 md:hidden">
+              <span className="font-display text-sm text-primary">
+                {lang === 'am' ? 'ጠረጴዛ' : 'Table'} {table}
+              </span>
+              <button
+                onClick={handleCallWaiter}
+                disabled={isCalling}
+                className="rounded-full bg-secondary/80 px-4 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
+              >
+                {isCalling
+                  ? 'Calling...'
+                  : lang === 'am'
+                    ? 'አስተናጋጅ ጥራ'
+                    : 'Call Waiter'}
+              </button>
+            </div>
+          )
         )}
 
         <div className="border-t border-border">
@@ -779,6 +802,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
         lang={lang}
         info={info}
         tableSession={tableSession}
+        setTableSession={setTableSession}
         onClose={() => setBillOpen(false)}
       />
 
@@ -1051,15 +1075,18 @@ function BillDrawer({
   open,
   info,
   tableSession,
+  setTableSession,
 }: {
   lang: Lang
   onClose: () => void
   open: boolean
   info?: any
   tableSession?: { token: string; tableId: string; tableLabel: string } | null
+  setTableSession: (session: any) => void
 }) {
   const { items, increment, decrement, remove, clear, total } = useCart()
   const [isOrdering, setIsOrdering] = useState(false)
+  const [scanOpen, setScanOpen] = useState(false)
 
   const scPct = info?.service_charge_pct ?? 0
   const scAmt = (total * scPct) / 100
@@ -1087,7 +1114,7 @@ function BillDrawer({
       })
       clear()
       onClose()
-      toast.success('🎉 Order sent! Your waiter will confirm shortly.')
+      toast.success('Order sent! Your waiter will confirm shortly.')
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -1096,147 +1123,178 @@ function BillDrawer({
   }
 
   return (
-    <Drawer.Root open={open} onOpenChange={(v) => !v && onClose()}>
-      <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm" />
-        <Drawer.Content className="fixed bottom-0 left-0 right-0 z-60 mt-24 flex max-h-[90vh] flex-col rounded-t-[20px] bg-card shadow-2xl outline-none">
-          {/* Handle */}
-          <div className="mx-auto mt-4 mb-2 h-1.5 w-12 shrink-0 rounded-full bg-border" />
+    <>
+      {scanOpen && (
+        <QRScannerModal
+          onClose={() => setScanOpen(false)}
+          onSession={(session) => {
+            if (tableSession?.token === session.token) {
+              toast('Already connected to this table')
+            } else {
+              localStorage.setItem(
+                'origin_table_session',
+                JSON.stringify(session),
+              )
+              toast.success(`Dining at ${session.tableLabel} — welcome!`)
+            }
+            setScanOpen(false)
+          }}
+        />
+      )}
+      <Drawer.Root open={open} onOpenChange={(v) => !v && onClose()}>
+        <Drawer.Portal>
+          <Drawer.Overlay className="fixed inset-0 z-60 bg-black/60 backdrop-blur-sm" />
+          <Drawer.Content className="fixed bottom-0 left-0 right-0 z-60 mt-24 flex max-h-[90vh] flex-col rounded-t-[20px] bg-card shadow-2xl outline-none">
+            {/* Handle */}
+            <div className="mx-auto mt-4 mb-2 h-1.5 w-12 shrink-0 rounded-full bg-border" />
 
-          <div className="flex flex-col flex-1 overflow-y-auto px-4 pb-12 pt-2">
-            {/* Header */}
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <Drawer.Title className="font-display text-lg uppercase tracking-widest text-primary">
-                {lang === 'am' ? 'ሒሳብ' : 'Your Bill'}
-              </Drawer.Title>
-              <div className="flex items-center gap-2">
-                {items.length > 0 && (
+            <div className="flex flex-col flex-1 overflow-y-auto px-4 pb-12 pt-2">
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-border pb-3">
+                <Drawer.Title className="font-display text-lg uppercase tracking-widest text-primary">
+                  {lang === 'am' ? 'ሒሳብ' : 'Your Bill'}
+                </Drawer.Title>
+                <div className="flex items-center gap-2">
+                  {items.length > 0 && (
+                    <button
+                      onClick={clear}
+                      className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      {lang === 'am' ? 'አጽዳ' : 'Clear'}
+                    </button>
+                  )}
                   <button
-                    onClick={clear}
-                    className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:text-destructive"
+                    onClick={onClose}
+                    className="rounded-md p-1 text-muted-foreground transition hover:text-foreground"
                   >
-                    <Trash2 className="h-3 w-3" />
-                    {lang === 'am' ? 'አጽዳ' : 'Clear'}
+                    <X className="h-5 w-5" />
                   </button>
-                )}
-                <button
-                  onClick={onClose}
-                  className="rounded-md p-1 text-muted-foreground transition hover:text-foreground"
-                >
-                  <X className="h-5 w-5" />
-                </button>
+                </div>
               </div>
-            </div>
 
-            {/* Item list */}
-            <div className="max-h-[50vh] overflow-y-auto py-2">
-              {items.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
-                  {lang === 'am' ? 'ምናሌ ባዶ ነው' : 'Your cart is empty'}
-                </p>
-              ) : (
-                <ul className="divide-y divide-border">
-                  {items.map((item) => (
-                    <li key={item.id} className="flex items-center gap-3 py-3">
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">
-                          {item.name}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatBirr(item.price)} ETB × {item.qty}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1.5">
-                        <button
-                          onClick={() => decrement(item.id)}
-                          className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
-                        >
-                          <Minus className="h-3 w-3" />
-                        </button>
-                        <span className="w-5 text-center text-sm font-bold">
-                          {item.qty}
-                        </span>
-                        <button
-                          onClick={() => increment(item.id)}
-                          className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
-                        >
-                          <Plus className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={() => remove(item.id)}
-                          className="ml-1 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:text-destructive"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                        </button>
-                      </div>
-                      <div className="w-20 shrink-0 text-right font-display text-sm text-primary">
-                        {formatBirr(item.price * item.qty)}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+              {/* Item list */}
+              <div className="max-h-[50vh] overflow-y-auto py-2">
+                {items.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-muted-foreground">
+                    {lang === 'am' ? 'ምናሌ ባዶ ነው' : 'Your cart is empty'}
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {items.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex items-center gap-3 py-3"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium">
+                            {item.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatBirr(item.price)} ETB × {item.qty}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <button
+                            onClick={() => decrement(item.id)}
+                            className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
+                          >
+                            <Minus className="h-3 w-3" />
+                          </button>
+                          <span className="w-5 text-center text-sm font-bold">
+                            {item.qty}
+                          </span>
+                          <button
+                            onClick={() => increment(item.id)}
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
+                          >
+                            <Plus className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={() => remove(item.id)}
+                            className="ml-1 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:text-destructive"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </button>
+                        </div>
+                        <div className="w-20 shrink-0 text-right font-display text-sm text-primary">
+                          {formatBirr(item.price * item.qty)}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
 
-            {/* Footer */}
-            {items.length > 0 && (
-              <div className="mt-4 border-t border-border pt-4">
-                <div className="flex flex-col gap-1.5 pb-2">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{lang === 'am' ? 'ንዑስ ድምር' : 'Subtotal'}</span>
-                    <span>
-                      {formatBirr(total)}{' '}
-                      <span className="text-[10px]">ETB</span>
-                    </span>
-                  </div>
-                  {scPct > 0 && (
+              {/* Footer */}
+              {items.length > 0 && (
+                <div className="mt-4 border-t border-border pt-4">
+                  <div className="flex flex-col gap-1.5 pb-2">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
+                      <span>{lang === 'am' ? 'ንዑስ ድምር' : 'Subtotal'}</span>
                       <span>
-                        {lang === 'am' ? 'የአገልግሎት ክፍያ' : 'Service Charge'} (
-                        {scPct}%)
-                      </span>
-                      <span>
-                        {formatBirr(scAmt)}{' '}
+                        {formatBirr(total)}{' '}
                         <span className="text-[10px]">ETB</span>
                       </span>
                     </div>
+                    {scPct > 0 && (
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>
+                          {lang === 'am' ? 'የአገልግሎት ክፍያ' : 'Service Charge'} (
+                          {scPct}%)
+                        </span>
+                        <span>
+                          {formatBirr(scAmt)}{' '}
+                          <span className="text-[10px]">ETB</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border/50 pt-2">
+                    <span className="text-sm font-bold text-primary uppercase tracking-wider">
+                      {lang === 'am' ? 'ጠቅላላ' : 'Total'}
+                    </span>
+                    <span className="font-display text-2xl text-primary">
+                      {formatBirr(grandTotal)}{' '}
+                      <span className="text-sm">ETB</span>
+                    </span>
+                  </div>
+                  {tableSession ? (
+                    <button
+                      onClick={handlePlaceOrder}
+                      disabled={isOrdering}
+                      className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold uppercase tracking-wider text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                    >
+                      {isOrdering ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <UtensilsCrossed className="h-4 w-4" />
+                      )}
+                      {lang === 'am' ? 'ትዕዛዝ ላክ' : 'Place Order'}
+                    </button>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-center text-[11px] text-muted-foreground">
+                        {lang === 'am'
+                          ? 'ትዕዛዝ ለመላክ የጠረጴዛ QR ኮዱን ይቃኙ'
+                          : 'Scan the QR code at your table to place an order'}
+                      </p>
+                      <button
+                        onClick={() => setScanOpen(true)}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/50 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5"
+                      >
+                        <ScanLine className="h-4 w-4" />
+                        {lang === 'am' ? 'QR ኮድ ቃኝ' : 'Scan QR Code'}
+                      </button>
+                    </div>
                   )}
                 </div>
-                <div className="flex items-center justify-between border-t border-border/50 pt-2">
-                  <span className="text-sm font-bold text-primary uppercase tracking-wider">
-                    {lang === 'am' ? 'ጠቅላላ' : 'Total'}
-                  </span>
-                  <span className="font-display text-2xl text-primary">
-                    {formatBirr(grandTotal)}{' '}
-                    <span className="text-sm">ETB</span>
-                  </span>
-                </div>
-                {tableSession ? (
-                  <button
-                    onClick={handlePlaceOrder}
-                    disabled={isOrdering}
-                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold uppercase tracking-wider text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
-                  >
-                    {isOrdering ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <UtensilsCrossed className="h-4 w-4" />
-                    )}
-                    {lang === 'am' ? 'ትዕዛዝ ላክ' : 'Place Order'}
-                  </button>
-                ) : (
-                  <div className="mt-3 rounded-xl border border-dashed border-border py-3 text-center text-[11px] text-muted-foreground">
-                    {lang === 'am'
-                      ? 'ትዕዛዝ ለመላክ የጠረጴዛ QR ኮዱን ይቃኙ'
-                      : 'Scan the QR code at your table to place an order'}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.Root>
+              )}
+            </div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
+    </>
   )
 }
 
@@ -1284,6 +1342,138 @@ function MenuSkeleton() {
           ))}
         </div>
       </main>
+    </div>
+  )
+}
+
+// ─── QR Scanner Modal ─────────────────────────────────────────────────────────
+
+type ScanSession = { token: string; tableId: string; tableLabel: string }
+
+function QRScannerModal({
+  onClose,
+  onSession,
+}: {
+  onClose: () => void
+  onSession: (s: ScanSession) => void
+}) {
+  const videoRef = React.useRef<HTMLVideoElement>(null)
+  const scannerRef = React.useRef<any>(null)
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [verifying, setVerifying] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function startScanner() {
+      try {
+        const QrScanner = (await import('qr-scanner')).default
+        if (!videoRef.current || cancelled) return
+        if (scannerRef.current) scannerRef.current.destroy()
+
+        const scanner = new QrScanner(
+          videoRef.current,
+          async (result: any) => {
+            const text: string =
+              typeof result === 'string' ? result : result.data
+            try {
+              const url = new URL(text)
+              const token = url.searchParams.get('t')
+              if (!token) {
+                setScanError('Not a valid table QR code')
+                return
+              }
+              scanner.stop()
+              setVerifying(true)
+              const session = await verifyTableToken({ data: { token } })
+              if (!cancelled)
+                onSession({
+                  token,
+                  tableId: session.id,
+                  tableLabel: session.label,
+                })
+            } catch {
+              setScanError('Could not verify this QR code. Try again.')
+              setVerifying(false)
+              scanner.start()
+            }
+          },
+          { highlightScanRegion: true, highlightCodeOutline: true },
+        )
+        await scanner.start()
+        scannerRef.current = scanner
+      } catch {
+        if (!cancelled)
+          setScanError(
+            'Camera access denied. Please allow camera permissions and reload.',
+          )
+      }
+    }
+
+    startScanner()
+    return () => {
+      cancelled = true
+      scannerRef.current?.destroy()
+      scannerRef.current = null
+    }
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-[200] flex flex-col bg-background">
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <div>
+          <h2 className="font-display text-base uppercase tracking-wider text-primary">
+            Scan Table QR
+          </h2>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Point your camera at the QR code on your table
+          </p>
+        </div>
+        <button
+          onClick={onClose}
+          className="rounded-md p-2 text-muted-foreground hover:text-foreground"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      <div className="relative flex-1 overflow-hidden bg-black">
+        <video
+          ref={videoRef}
+          className="h-full w-full object-cover"
+          muted
+          playsInline
+        />
+
+        {/* Crosshair frame */}
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="relative h-60 w-60">
+            <div className="absolute left-0 top-0 h-8 w-8 rounded-tl-lg border-l-4 border-t-4 border-primary" />
+            <div className="absolute right-0 top-0 h-8 w-8 rounded-tr-lg border-r-4 border-t-4 border-primary" />
+            <div className="absolute bottom-0 left-0 h-8 w-8 rounded-bl-lg border-b-4 border-l-4 border-primary" />
+            <div className="absolute bottom-0 right-0 h-8 w-8 rounded-br-lg border-b-4 border-r-4 border-primary" />
+          </div>
+        </div>
+
+        {verifying && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 text-white">
+            <Loader2 className="h-10 w-10 animate-spin" />
+            <p className="text-sm font-semibold">Verifying table...</p>
+          </div>
+        )}
+
+        {scanError && (
+          <div className="absolute bottom-4 left-4 right-4 rounded-xl bg-destructive/90 px-4 py-3 text-sm text-white">
+            {scanError}
+            <button
+              onClick={() => setScanError(null)}
+              className="ml-2 underline opacity-80"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -233,6 +233,23 @@ export const placeOrder = createServerFn({ method: 'POST' })
     })
 
     if (error) throw new Error(error.message)
+
+    // Broadcast the new order to admins in realtime via Supabase Broadcast
+    // This does NOT require RLS, table grants, or publication config
+    await supabaseAdmin.channel('admin-orders').send({
+      type: 'broadcast',
+      event: 'new_order',
+      payload: {
+        table_id: data.table_id,
+        table_label: data.table_label,
+        items: data.items,
+        note: data.note ?? null,
+        device_id: data.device_id,
+        status: 'pending',
+        created_at: new Date().toISOString(),
+      },
+    })
+
     return { ok: true }
   })
 
