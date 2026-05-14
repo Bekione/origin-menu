@@ -21,6 +21,7 @@ import {
   ChevronRight,
   Copy,
   Star,
+  Loader2,
 } from 'lucide-react'
 import {
   getMenuData,
@@ -33,7 +34,11 @@ import ScrollFade from '@/components/ScrollFade'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { toast } from 'sonner'
-import { callWaiter } from '@/server/table.functions'
+import {
+  callWaiter,
+  verifyTableToken,
+  placeOrder,
+} from '@/server/table.functions'
 import { CartProvider, useCart } from '@/components/CartProvider'
 import {
   getDeviceId,
@@ -46,6 +51,7 @@ import { optimizeImage } from '@/lib/image'
 
 type SearchOptions = {
   table?: number
+  t?: string // QR table token
   tags?: string
 }
 
@@ -53,6 +59,7 @@ export const Route = createFileRoute('/')({
   loader: () => getMenuData(),
   validateSearch: (search: Record<string, unknown>): SearchOptions => ({
     table: search.table ? Number(search.table) : undefined,
+    t: typeof search.t === 'string' ? search.t : undefined,
     tags: typeof search.tags === 'string' ? search.tags : undefined,
   }),
   component: MenuPage,
@@ -81,6 +88,21 @@ function MenuPageInner({ categories, items, info }: MenuData) {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const table = search.table
+  const qrToken = search.t
+  type TableSession = { token: string; tableId: string; tableLabel: string }
+  const SESSION_KEY = 'origin_table_session'
+
+  // Table session state (from QR scan)
+  const [tableSession, setTableSession] = useState<TableSession | null>(() => {
+    if (typeof window === 'undefined') return null
+    try {
+      const raw = localStorage.getItem(SESSION_KEY)
+      return raw ? JSON.parse(raw) : null
+    } catch {
+      return null
+    }
+  })
+
   const [lang, setLang] = useState<Lang>('en')
   const [query, setQuery] = useState('')
   const activeFilters = useMemo(
@@ -147,6 +169,33 @@ function MenuPageInner({ categories, items, info }: MenuData) {
       setIsCalling(false)
     }
   }
+
+  // Verify QR token from URL on mount
+  useEffect(() => {
+    if (!qrToken) return
+    // Skip if session already matches this token
+    if (tableSession?.token === qrToken) return
+    verifyTableToken({ data: { token: qrToken } })
+      .then((result) => {
+        const session: TableSession = {
+          token: qrToken,
+          tableId: result.id,
+          tableLabel: result.label,
+        }
+        localStorage.setItem(SESSION_KEY, JSON.stringify(session))
+        setTableSession(session)
+        toast.success(`📍 Dining at ${result.label} — welcome!`, {
+          duration: 4000,
+        })
+        // Remove the token from URL to keep it clean
+        navigate({ search: (p) => ({ ...p, t: undefined }), replace: true })
+      })
+      .catch(() => {
+        toast.error(
+          'Invalid QR code — please scan the QR code on your table again.',
+        )
+      })
+  }, [qrToken])
 
   useEffect(() => {
     if (!activeCat && categories[0]) setActiveCat(categories[0].id)
@@ -313,6 +362,24 @@ function MenuPageInner({ categories, items, info }: MenuData) {
                 : lang === 'am'
                   ? 'አስተናጋጅ ጥራ'
                   : 'Call Waiter'}
+            </button>
+          </div>
+        )}
+        {/* QR Dine-in Session Banner (Mobile) */}
+        {tableSession && (
+          <div className="flex items-center justify-between border-t border-primary/20 bg-primary/5 px-4 py-2">
+            <span className="font-display text-sm text-primary">
+              📍 {tableSession.tableLabel}
+            </span>
+            <button
+              onClick={() => {
+                localStorage.removeItem(SESSION_KEY)
+                setTableSession(null)
+                toast('Table session cleared')
+              }}
+              className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+            >
+              Clear
             </button>
           </div>
         )}
@@ -711,6 +778,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
         open={billOpen}
         lang={lang}
         info={info}
+        tableSession={tableSession}
         onClose={() => setBillOpen(false)}
       />
 
@@ -982,17 +1050,50 @@ function BillDrawer({
   onClose,
   open,
   info,
+  tableSession,
 }: {
   lang: Lang
   onClose: () => void
   open: boolean
   info?: any
+  tableSession?: { token: string; tableId: string; tableLabel: string } | null
 }) {
   const { items, increment, decrement, remove, clear, total } = useCart()
+  const [isOrdering, setIsOrdering] = useState(false)
 
   const scPct = info?.service_charge_pct ?? 0
   const scAmt = (total * scPct) / 100
   const grandTotal = total + scAmt
+
+  const handlePlaceOrder = async () => {
+    if (!tableSession || items.length === 0) return
+    setIsOrdering(true)
+    try {
+      const deviceId = await import('@/lib/device-fingerprint').then((m) =>
+        m.getDeviceId(),
+      )
+      await placeOrder({
+        data: {
+          table_id: tableSession.tableId,
+          table_label: tableSession.tableLabel,
+          items: items.map((i) => ({
+            id: i.id,
+            name: i.name,
+            qty: i.qty,
+            price: i.price,
+          })),
+          device_id: deviceId,
+        },
+      })
+      clear()
+      onClose()
+      toast.success('🎉 Order sent! Your waiter will confirm shortly.')
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setIsOrdering(false)
+    }
+  }
 
   return (
     <Drawer.Root open={open} onOpenChange={(v) => !v && onClose()}>
@@ -1110,11 +1211,26 @@ function BillDrawer({
                     <span className="text-sm">ETB</span>
                   </span>
                 </div>
-                <p className="mt-2 text-center text-[10px] text-muted-foreground">
-                  {lang === 'am'
-                    ? 'ክፍያ ወደ አስተናጋጅ ያሳዩ'
-                    : 'Show this bill to your waiter to pay'}
-                </p>
+                {tableSession ? (
+                  <button
+                    onClick={handlePlaceOrder}
+                    disabled={isOrdering}
+                    className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-bold uppercase tracking-wider text-primary-foreground transition hover:opacity-90 disabled:opacity-60"
+                  >
+                    {isOrdering ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <UtensilsCrossed className="h-4 w-4" />
+                    )}
+                    {lang === 'am' ? 'ትዕዛዝ ላክ' : 'Place Order'}
+                  </button>
+                ) : (
+                  <div className="mt-3 rounded-xl border border-dashed border-border py-3 text-center text-[11px] text-muted-foreground">
+                    {lang === 'am'
+                      ? 'ትዕዛዝ ለመላክ የጠረጴዛ QR ኮዱን ይቃኙ'
+                      : 'Scan the QR code at your table to place an order'}
+                  </div>
+                )}
               </div>
             )}
           </div>

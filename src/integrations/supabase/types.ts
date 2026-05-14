@@ -193,6 +193,71 @@ export type Database = {
         }
         Relationships: []
       }
+      restaurant_tables: {
+        Row: {
+          id: string
+          label: string
+          token: string
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          label: string
+          token?: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          label?: string
+          token?: string
+          is_active?: boolean
+          created_at?: string
+        }
+        Relationships: []
+      }
+      table_orders: {
+        Row: {
+          id: string
+          table_id: string
+          table_label: string
+          items: Json
+          note: string | null
+          status: string
+          device_id: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          table_id: string
+          table_label: string
+          items: Json
+          note?: string | null
+          status?: string
+          device_id: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          table_id?: string
+          table_label?: string
+          items?: Json
+          note?: string | null
+          status?: string
+          device_id?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'table_orders_table_id_fkey'
+            columns: ['table_id']
+            isOneToOne: false
+            referencedRelation: 'restaurant_tables'
+            referencedColumns: ['id']
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

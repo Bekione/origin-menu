@@ -23,7 +23,15 @@ import {
 import {
   getWaiterCalls,
   acknowledgeCall,
+  getTables,
+  upsertTable,
+  regenerateTableToken,
+  deleteTable,
+  getTableOrders,
+  updateOrderStatus,
   type WaiterCall,
+  type RestaurantTable,
+  type TableOrder,
 } from '@/server/table.functions'
 import {
   LogOut,
@@ -40,6 +48,11 @@ import {
   Store,
   GripVertical,
   Bell,
+  QrCode,
+  RefreshCw,
+  ClipboardList,
+  ChefHat,
+  Download,
 } from 'lucide-react'
 import logo from '@/assets/origin-logo.jpg'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -48,7 +61,7 @@ import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 import ScrollFade from '#/components/ScrollFade'
 import { optimizeImage, compressImageFile } from '@/lib/image'
 
-type TabValue = 'items' | 'categories' | 'info'
+type TabValue = 'items' | 'categories' | 'info' | 'tables' | 'orders'
 
 type AdminSearch = {
   tab?: TabValue
@@ -58,7 +71,7 @@ export const Route = createFileRoute('/admin')({
   validateSearch: (search: Record<string, unknown>): AdminSearch => {
     const t = search.tab as string
     return {
-      tab: ['items', 'categories', 'info'].includes(t)
+      tab: ['items', 'categories', 'info', 'tables', 'orders'].includes(t)
         ? (t as TabValue)
         : undefined,
     }
@@ -310,6 +323,22 @@ function AdminPage() {
             >
               Restaurant Info
             </TabButton>
+            <TabButton
+              active={tab === 'tables'}
+              onClick={() => setTab('tables')}
+              icon={<QrCode className="h-4 w-4" />}
+              className="whitespace-nowrap"
+            >
+              Tables
+            </TabButton>
+            <TabButton
+              active={tab === 'orders'}
+              onClick={() => setTab('orders')}
+              icon={<ClipboardList className="h-4 w-4" />}
+              className="whitespace-nowrap"
+            >
+              Orders
+            </TabButton>
           </div>
         </ScrollFade>
       </header>
@@ -428,6 +457,8 @@ function AdminPage() {
           <CategoriesTab data={data} onChange={refresh} />
         )}
         {tab === 'info' && <InfoTab info={data.info} onChange={refresh} />}
+        {tab === 'tables' && <TablesTab />}
+        {tab === 'orders' && <OrdersTab />}
       </main>
     </div>
   )
@@ -2015,6 +2046,559 @@ function AdminSkeleton() {
           ))}
         </div>
       </main>
+    </div>
+  )
+}
+
+function ConfirmationModal({
+  open,
+  title,
+  description,
+  confirmLabel = 'Confirm',
+  onConfirm,
+  onCancel,
+  busy,
+}: {
+  open: boolean
+  title: string
+  description: string
+  confirmLabel?: string
+  onConfirm: () => void
+  onCancel: () => void
+  busy?: boolean
+}) {
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
+        <h3 className="mb-2 font-display text-lg text-foreground">{title}</h3>
+        <p className="mb-6 text-sm text-muted-foreground">{description}</p>
+        <div className="flex justify-end gap-3">
+          <button
+            autoFocus
+            onClick={onCancel}
+            disabled={busy}
+            className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold hover:bg-muted disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={busy}
+            className="flex items-center justify-center gap-2 rounded-xl bg-destructive px-5 py-2.5 text-sm font-semibold text-destructive-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Tables Tab ───────────────────────────────────────────────────────────────
+
+function TablesTab() {
+  const [tables, setTables] = useState<RestaurantTable[]>([])
+  const [loading, setLoading] = useState(true)
+  const [adding, setAdding] = useState(false)
+  const [newLabel, setNewLabel] = useState('')
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [showConfirm, setShowConfirm] = useState<{
+    id: string
+    label: string
+  } | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editLabel, setEditLabel] = useState('')
+
+  const fetchTables = async () => {
+    setLoading(true)
+    try {
+      const data = await getTables()
+      setTables((data as RestaurantTable[]) || [])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchTables()
+  }, [])
+
+  const handleAdd = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newLabel.trim()) return
+    setBusyId('new')
+    try {
+      await upsertTable({ data: { label: newLabel.trim() } })
+      setNewLabel('')
+      setAdding(false)
+      await fetchTables()
+      toast.success('Table created!')
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleRename = async (id: string) => {
+    if (!editLabel.trim()) return
+    setBusyId(id)
+    try {
+      await upsertTable({ data: { id, label: editLabel.trim() } })
+      setEditingId(null)
+      await fetchTables()
+      toast.success('Table renamed!')
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleRegenerate = async (id: string, label: string) => {
+    setBusyId(id)
+    try {
+      await regenerateTableToken({ data: { id } })
+      await fetchTables()
+      toast.success(`QR code regenerated for ${label}`)
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    setBusyId(id)
+    try {
+      await deleteTable({ data: { id } })
+      setShowConfirm(null)
+      await fetchTables()
+      toast.success('Table deleted')
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const downloadQR = async (table: RestaurantTable) => {
+    const url = `${window.location.origin}/?t=${table.token}`
+    const QRCode = (await import('qrcode')).default
+    const dataUrl = await QRCode.toDataURL(url, {
+      width: 600,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' },
+    })
+    const a = document.createElement('a')
+    a.href = dataUrl
+    a.download = `qr-${table.label.replace(/\s+/g, '-').toLowerCase()}.png`
+    a.click()
+    toast.success(`QR code downloaded for ${table.label}`)
+  }
+
+  const inputCls =
+    'w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none'
+
+  return (
+    <div className="space-y-4">
+      <ConfirmationModal
+        open={!!showConfirm}
+        title="Delete Table"
+        description={`Are you sure you want to delete "${showConfirm?.label}"? This will break any existing QR codes.`}
+        confirmLabel="Delete"
+        onConfirm={() => showConfirm && handleDelete(showConfirm.id)}
+        onCancel={() => setShowConfirm(null)}
+        busy={busyId === showConfirm?.id}
+      />
+
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-lg uppercase tracking-wider text-primary">
+            Tables
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Each table gets a unique QR code. Print and place on the table.
+          </p>
+        </div>
+        <button
+          onClick={() => setAdding(true)}
+          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Table
+        </button>
+      </div>
+
+      {adding && (
+        <form
+          onSubmit={handleAdd}
+          className="flex items-center gap-2 rounded-xl border border-primary/40 bg-card p-4"
+        >
+          <input
+            autoFocus
+            required
+            className={inputCls}
+            placeholder='e.g. "Table 1" or "VIP 2"'
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+          />
+          <button
+            type="submit"
+            disabled={busyId === 'new'}
+            className="flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+          >
+            {busyId === 'new' ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Check className="h-3 w-3" />
+            )}
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAdding(false)
+              setNewLabel('')
+            }}
+            className="rounded-md p-2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </form>
+      )}
+
+      {loading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+          ))}
+        </div>
+      ) : tables.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-16 text-center">
+          <QrCode className="h-8 w-8 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            No tables yet. Add your first table above.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
+          {tables.map((table) => (
+            <div
+              key={table.id}
+              className="flex flex-wrap items-center gap-3 px-4 py-3"
+            >
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <QrCode className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                {editingId === table.id ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      autoFocus
+                      className="rounded border border-border bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                      value={editLabel}
+                      onChange={(e) => setEditLabel(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleRename(table.id)
+                        if (e.key === 'Escape') setEditingId(null)
+                      }}
+                    />
+                    <button
+                      onClick={() => handleRename(table.id)}
+                      disabled={busyId === table.id}
+                      className="rounded bg-primary px-2 py-1 text-xs font-semibold text-primary-foreground disabled:opacity-60"
+                    >
+                      {busyId === table.id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        'Save'
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setEditingId(null)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm font-semibold">{table.label}</p>
+                )}
+                <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+                  ?t={table.token.slice(0, 16)}…
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                <button
+                  title="Download QR Code"
+                  onClick={() => downloadQR(table)}
+                  className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary"
+                >
+                  <Download className="h-3.5 w-3.5" /> QR
+                </button>
+                <button
+                  title="Rename"
+                  onClick={() => {
+                    setEditingId(table.id)
+                    setEditLabel(table.label)
+                  }}
+                  className="rounded-md border border-border p-1.5 text-muted-foreground hover:border-primary hover:text-primary"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  title="Regenerate token — invalidates old QR"
+                  disabled={busyId === table.id}
+                  onClick={() => handleRegenerate(table.id, table.label)}
+                  className="rounded-md border border-border p-1.5 text-muted-foreground hover:border-amber-500 hover:text-amber-500 disabled:opacity-50"
+                >
+                  {busyId === table.id ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                </button>
+                <button
+                  title="Delete table"
+                  onClick={() =>
+                    setShowConfirm({ id: table.id, label: table.label })
+                  }
+                  className="rounded-md border border-border p-1.5 text-muted-foreground hover:border-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Orders Tab ───────────────────────────────────────────────────────────────
+
+function OrdersTab() {
+  const [orders, setOrders] = useState<TableOrder[]>([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState<string | null>(null)
+
+  const fetchOrders = async () => {
+    try {
+      const data = await getTableOrders()
+      setOrders((data as TableOrder[]) || [])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchOrders()
+    const interval = setInterval(fetchOrders, 8000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const handleStatus = async (
+    id: string,
+    status: 'accepted' | 'rejected' | 'completed',
+  ) => {
+    setBusyId(id)
+    try {
+      await updateOrderStatus({ data: { id, status } })
+      setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
+      if (status === 'accepted')
+        toast.success('Order accepted — send to kitchen!')
+      if (status === 'rejected') toast('Order rejected')
+      if (status === 'completed') toast.success('Order marked complete')
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const pending = orders.filter((o) => o.status === 'pending')
+  const accepted = orders.filter((o) => o.status === 'accepted')
+  const done = orders.filter((o) =>
+    ['rejected', 'completed'].includes(o.status),
+  )
+
+  const timeAgo = (ts: string) => {
+    const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
+    if (diff < 60) return `${diff}s ago`
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
+    return `${Math.floor(diff / 3600)}h ago`
+  }
+
+  function OrderCard({ order }: { order: TableOrder }) {
+    const isPending = order.status === 'pending'
+    const isAccepted = order.status === 'accepted'
+    const busy = busyId === order.id
+
+    return (
+      <div
+        className={`rounded-xl border bg-card p-4 transition-all ${
+          isPending
+            ? 'border-primary/60 shadow-[0_0_0_1px_hsl(var(--primary)/0.2)]'
+            : isAccepted
+              ? 'border-green-500/40 bg-green-500/5'
+              : 'border-border opacity-60'
+        }`}
+      >
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {isPending ? (
+              <ChefHat className="h-4 w-4 text-primary" />
+            ) : isAccepted ? (
+              <Check className="h-4 w-4 text-green-500" />
+            ) : (
+              <X className="h-4 w-4 text-muted-foreground" />
+            )}
+            <span className="font-display text-sm font-semibold uppercase tracking-wider">
+              {order.table_label}
+            </span>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+                isPending
+                  ? 'bg-primary/10 text-primary'
+                  : isAccepted
+                    ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                    : 'bg-muted text-muted-foreground'
+              }`}
+            >
+              {order.status}
+            </span>
+          </div>
+          <span className="shrink-0 text-[11px] text-muted-foreground">
+            {timeAgo(order.created_at)}
+          </span>
+        </div>
+
+        <ul className="mb-3 space-y-1">
+          {order.items.map((item, i) => (
+            <li key={i} className="flex items-center justify-between text-sm">
+              <span>
+                <span className="mr-2 font-bold text-primary">×{item.qty}</span>
+                {item.name}
+              </span>
+              <span className="text-muted-foreground">
+                {(item.qty * item.price).toLocaleString()} ETB
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        {order.note && (
+          <p className="mb-3 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs italic text-muted-foreground">
+            "{order.note}"
+          </p>
+        )}
+
+        {isPending && (
+          <div className="flex gap-2">
+            <button
+              disabled={busy}
+              onClick={() => handleStatus(order.id, 'accepted')}
+              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
+            >
+              {busy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Check className="h-3.5 w-3.5" />
+              )}
+              Accept
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => handleStatus(order.id, 'rejected')}
+              className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-60"
+            >
+              <X className="h-3.5 w-3.5" /> Reject
+            </button>
+          </div>
+        )}
+
+        {isAccepted && (
+          <button
+            disabled={busy}
+            onClick={() => handleStatus(order.id, 'completed')}
+            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-green-500/40 px-3 py-2 text-xs font-semibold text-green-600 hover:bg-green-500/10 dark:text-green-400 disabled:opacity-60"
+          >
+            {busy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )}
+            Mark Completed
+          </button>
+        )}
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-40 w-full rounded-xl" />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-primary">
+          <ChefHat className="h-4 w-4" />
+          Pending Orders
+          {pending.length > 0 && (
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+              {pending.length}
+            </span>
+          )}
+        </h2>
+        {pending.length === 0 ? (
+          <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
+            No pending orders
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {pending.map((o) => (
+              <OrderCard key={o.id} order={o} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {accepted.length > 0 && (
+        <section>
+          <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-green-600 dark:text-green-400">
+            <Check className="h-4 w-4" /> In Kitchen
+          </h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {accepted.map((o) => (
+              <OrderCard key={o.id} order={o} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {done.length > 0 && (
+        <section>
+          <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-muted-foreground">
+            <ClipboardList className="h-4 w-4" /> Completed / Rejected
+          </h2>
+          <div className="grid gap-3 opacity-70 sm:grid-cols-2">
+            {done.slice(0, 10).map((o) => (
+              <OrderCard key={o.id} order={o} />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   )
 }
