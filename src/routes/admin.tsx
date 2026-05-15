@@ -53,6 +53,8 @@ import {
   ClipboardList,
   ChefHat,
   Download,
+  Printer,
+  ExternalLink,
 } from 'lucide-react'
 import logo from '@/assets/origin-logo.jpg'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -338,7 +340,7 @@ function AdminPage() {
             {/* Waiter Call Bell */}
             <button
               onClick={() => setCallsOpen((v) => !v)}
-              className="relative rounded-md border border-border p-2 text-muted-foreground transition hover:border-primary hover:text-primary"
+              className="relative rounded-md border border-border p-1.5 text-muted-foreground transition hover:border-primary hover:text-primary"
               aria-label="Waiter calls"
             >
               <Bell className="h-4 w-4" />
@@ -351,9 +353,10 @@ function AdminPage() {
             <Link
               to="/"
               search={{ table: undefined }}
-              className="text-xs uppercase tracking-wider text-muted-foreground hover:text-primary whitespace-nowrap hidden sm:inline-block"
+              title="View App Menu"
+              className="flex items-center justify-center rounded-md border border-border p-1.5 text-muted-foreground transition hover:border-primary hover:text-primary"
             >
-              View menu
+              <ExternalLink className="h-4 w-4" />
             </Link>
             <ThemeToggle />
             <button
@@ -2457,8 +2460,9 @@ function TablesTab() {
                 {isPrinting ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  'Print All'
+                  <Printer className="h-3.5 w-3.5" />
                 )}
+                Print All
               </button>
               <button
                 onClick={handleDownloadAll}
@@ -2470,7 +2474,7 @@ function TablesTab() {
                 ) : (
                   <Download className="h-3.5 w-3.5" />
                 )}
-                {isDownloading ? 'Building...' : 'Download All'}
+                Download All
               </button>
             </>
           )}
@@ -2782,7 +2786,7 @@ function OrdersTab() {
 
     return (
       <div
-        className={`rounded-xl border bg-card p-4 transition-all ${
+        className={`rounded-xl border bg-card p-4 transition-all w-full inline-block break-inside-avoid mb-3 ${
           isPending
             ? 'border-primary/60 shadow-[0_0_0_1px_hsl(var(--primary)/0.2)]'
             : isAccepted
@@ -2908,7 +2912,7 @@ function OrdersTab() {
             No pending orders
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="columns-1 sm:columns-2 gap-3">
             {pending.map((o) => (
               <OrderCard key={o.id} order={o} />
             ))}
@@ -2921,7 +2925,7 @@ function OrdersTab() {
           <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-green-600 dark:text-green-400">
             <Check className="h-4 w-4" /> In Kitchen
           </h2>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="columns-1 sm:columns-2 gap-3">
             {accepted.map((o) => (
               <OrderCard key={o.id} order={o} />
             ))}
@@ -2934,8 +2938,8 @@ function OrdersTab() {
           <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-muted-foreground">
             <ClipboardList className="h-4 w-4" /> Completed / Rejected
           </h2>
-          <div className="grid gap-3 opacity-70 sm:grid-cols-2">
-            {done.slice(0, 10).map((o) => (
+          <div className="columns-1 sm:columns-2 gap-3 opacity-70">
+            {done.map((o) => (
               <OrderCard key={o.id} order={o} />
             ))}
           </div>

@@ -120,6 +120,10 @@ function MenuPageInner({ categories, items, info }: MenuData) {
   const [aiOpen, setAiOpen] = useState(false)
   const [isCalling, setIsCalling] = useState(false)
   const { count, total } = useCart()
+  const [previewImage, setPreviewImage] = useState<{
+    url: string
+    name: string
+  } | null>(null)
 
   const handleCallWaiter = async () => {
     // Determine table number: prefer URL param, fall back to session label (parse digit)
@@ -355,54 +359,58 @@ function MenuPageInner({ categories, items, info }: MenuData) {
           </div>
         </div>
 
-        {/* QR Dine-in Session Banner — replaces old ?table=N bar for QR sessions */}
+        {/* QR Dine-in Session Banner — constrained to page width like the rest */}
         {tableSession ? (
-          <div className="flex items-center justify-between border-t border-primary/20 bg-primary/5 px-4 py-2">
-            <span className="font-display text-sm text-primary">
-              {tableSession.tableLabel}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleCallWaiter}
-                disabled={isCalling}
-                className="flex items-center gap-1.5 rounded-full bg-secondary/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
-              >
-                <Bell className="h-3 w-3" />
-                {isCalling
-                  ? 'Calling...'
-                  : lang === 'am'
-                    ? 'አስተናጋጅ ጥራ'
-                    : 'Call Waiter'}
-              </button>
-              <button
-                onClick={() => {
-                  localStorage.removeItem(SESSION_KEY)
-                  setTableSession(null)
-                  toast('Table session cleared')
-                }}
-                className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
-              >
-                Leave
-              </button>
+          <div className="border-t border-primary/20 bg-primary/5 px-4 py-2">
+            <div className="mx-auto flex max-w-3xl items-center justify-between md:px-4">
+              <span className="font-display text-sm text-primary">
+                {tableSession.tableLabel}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCallWaiter}
+                  disabled={isCalling}
+                  className="flex items-center gap-1.5 rounded-full bg-secondary/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
+                >
+                  <Bell className="h-3 w-3" />
+                  {isCalling
+                    ? 'Calling...'
+                    : lang === 'am'
+                      ? 'አስተናጋጅ ጥራ'
+                      : 'Call Waiter'}
+                </button>
+                <button
+                  onClick={() => {
+                    localStorage.removeItem(SESSION_KEY)
+                    setTableSession(null)
+                    toast('Table session cleared')
+                  }}
+                  className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
+                >
+                  Leave
+                </button>
+              </div>
             </div>
           </div>
         ) : (
           table && (
-            <div className="flex items-center justify-between border-t border-border bg-card/60 px-4 py-2 md:hidden">
-              <span className="font-display text-sm text-primary">
-                {lang === 'am' ? 'ጠረጴዛ' : 'Table'} {table}
-              </span>
-              <button
-                onClick={handleCallWaiter}
-                disabled={isCalling}
-                className="rounded-full bg-secondary/80 px-4 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
-              >
-                {isCalling
-                  ? 'Calling...'
-                  : lang === 'am'
-                    ? 'አስተናጋጅ ጥራ'
-                    : 'Call Waiter'}
-              </button>
+            <div className="border-t border-border bg-card/60 px-4 py-2">
+              <div className="mx-auto flex max-w-3xl items-center justify-between md:hidden">
+                <span className="font-display text-sm text-primary">
+                  {lang === 'am' ? 'ጠረጴዛ' : 'Table'} {table}
+                </span>
+                <button
+                  onClick={handleCallWaiter}
+                  disabled={isCalling}
+                  className="rounded-full bg-secondary/80 px-4 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
+                >
+                  {isCalling
+                    ? 'Calling...'
+                    : lang === 'am'
+                      ? 'አስተናጋጅ ጥራ'
+                      : 'Call Waiter'}
+                </button>
+              </div>
             </div>
           )
         )}
@@ -521,7 +529,12 @@ function MenuPageInner({ categories, items, info }: MenuData) {
             <ScrollFade direction="horizontal" className="-mx-4 mt-3">
               <div className="scrollbar-none flex gap-3 overflow-x-auto px-4">
                 {featured.map((i) => (
-                  <FeaturedCard key={i.id} item={i} lang={lang} />
+                  <FeaturedCard
+                    key={i.id}
+                    item={i}
+                    lang={lang}
+                    onPreview={setPreviewImage}
+                  />
                 ))}
               </div>
             </ScrollFade>
@@ -561,7 +574,14 @@ function MenuPageInner({ categories, items, info }: MenuData) {
                     {lang === 'am' ? 'ምንም የሚታይ ምግብ የለም።' : 'No items yet.'}
                   </p>
                 ) : (
-                  list.map((i) => <ItemCard key={i.id} item={i} lang={lang} />)
+                  list.map((i) => (
+                    <ItemCard
+                      key={i.id}
+                      item={i}
+                      lang={lang}
+                      onPreview={setPreviewImage}
+                    />
+                  ))
                 )}
               </div>
             </section>
@@ -813,6 +833,36 @@ function MenuPageInner({ categories, items, info }: MenuData) {
         items={items}
         lang={lang}
       />
+
+      {/* Image Previewer Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-200 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="animate-in zoom-in-95 duration-200 flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-card shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <img
+              src={previewImage.url}
+              alt={previewImage.name}
+              className="h-auto w-full object-cover"
+            />
+            <div className="flex items-center justify-between px-5 py-4">
+              <p className="font-display text-base text-foreground">
+                {previewImage.name}
+              </p>
+              <button
+                onClick={() => setPreviewImage(null)}
+                className="rounded-full border border-border p-2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -835,7 +885,15 @@ function SectionTitle({
   )
 }
 
-function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
+function ItemCard({
+  item,
+  lang,
+  onPreview,
+}: {
+  item: MenuItem
+  lang: Lang
+  onPreview: (p: { url: string; name: string }) => void
+}) {
   const name = lang === 'am' ? (item.name_am ?? item.name) : item.name
   const desc =
     lang === 'am' ? (item.description_am ?? item.description) : item.description
@@ -862,7 +920,8 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
             alt={name}
             loading="lazy"
             onLoad={() => setImgLoaded(true)}
-            className={`h-20 w-20 rounded-lg object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            onClick={() => onPreview({ url: item.image_url!, name })}
+            className={`h-20 w-20 cursor-pointer rounded-lg object-cover transition-opacity duration-300 hover:opacity-80 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
           />
         </div>
       ) : (
@@ -953,7 +1012,15 @@ function ItemCard({ item, lang }: { item: MenuItem; lang: Lang }) {
   )
 }
 
-function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
+function FeaturedCard({
+  item,
+  lang,
+  onPreview,
+}: {
+  item: MenuItem
+  lang: Lang
+  onPreview: (p: { url: string; name: string }) => void
+}) {
   const name = lang === 'am' ? (item.name_am ?? item.name) : item.name
   const [imgLoaded, setImgLoaded] = useState(false)
   const { add, decrement, items: cartItems } = useCart()
@@ -983,7 +1050,7 @@ function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
 
   return (
     <div className="relative w-44 shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-card transition hover:border-primary">
-      {/* Image area — click scrolls to item */}
+      {/* Image area — long press/click opens preview, tap scrolls */}
       <button onClick={scrollToItem} className="w-full text-left">
         {item.image_url ? (
           <div className="relative h-28 w-full">
@@ -994,7 +1061,7 @@ function FeaturedCard({ item, lang }: { item: MenuItem; lang: Lang }) {
               src={optimizeImage(item.image_url, 300)}
               alt={name}
               onLoad={() => setImgLoaded(true)}
-              className={`h-28 w-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+              className={`h-28 w-full object-cover transition-opacity duration-300 hover:opacity-80 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
             />
           </div>
         ) : (
