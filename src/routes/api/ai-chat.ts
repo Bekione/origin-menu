@@ -22,7 +22,6 @@ export const Route = createFileRoute('/api/ai-chat')({
           .select(
             'id, name, name_am, price, description, is_vegetarian, is_fasting, is_spicy, is_available',
           )
-          .eq('is_available', true)
           .order('sort_order')
 
         const { data: infoList } = await supabaseAdmin
@@ -50,6 +49,7 @@ STORE INFO:
               (i.is_vegetarian ? ' [VEG]' : '') +
               (i.is_fasting ? ' [FASTING]' : '') +
               (i.is_spicy ? ' [SPICY]' : '') +
+              (!i.is_available ? ' [SOLD OUT CURRENTLY]' : '') +
               (i.description ? `\n  ${i.description}` : ''),
           )
           .join('\n')
@@ -70,6 +70,7 @@ YOUR ROLE & BOUNDARIES:
 - STRICT RULE: Never answer off-topic questions (e.g., general knowledge, math homework). If asked, politely decline and steer them back to the menu.
 - Ask smart follow-up questions when requests are vague (e.g., "I'm hungry" → ask light/heavy, spicy/mild, budget).
 - Never invent dishes, prices, or ingredients not in the menu.
+- IMPORTANT: If a menu item is marked "[SOLD OUT CURRENTLY]", acknowledge that it is usually on the menu but politely inform the guest it is currently sold out and cannot be ordered today. Do not recommend it. 
 - Be conversational, friendly, and concise.
 
 WHEN TO ASK CLARIFYING QUESTIONS:

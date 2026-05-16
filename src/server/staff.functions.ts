@@ -98,9 +98,45 @@ export const verifyStaffPin = createServerFn({ method: 'POST' })
       throw new Error('Failed to create staff session')
     }
 
-    return {
-      ok: true,
-      token: (response as any).token,
-      // Pass back Set-Cookie header info if needed
-    }
+    return { ok: true }
+  })
+
+export const getActiveStaffSessions = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await checkAdminAuth()
+    const staffEmail = process.env.STAFF_ACCOUNT_EMAIL
+    if (!staffEmail) return []
+
+    // 1. Get staff user ID
+    const { data: users } = await supabaseAdmin
+      .from('user' as any)
+      .select('id')
+      .eq('email', staffEmail)
+      .limit(1)
+
+    if (!users?.length) return []
+    const staffId = users[0].id
+
+    // 2. Get active sessions
+    const { data: sessions } = await supabaseAdmin
+      .from('session' as any)
+      .select('id, expiresAt, ipAddress, userAgent, createdAt')
+      .eq('userId', staffId)
+      .gt('expiresAt', new Date().toISOString())
+      .order('createdAt', { ascending: false })
+
+    return (sessions as any[]) ?? []
+  },
+)
+
+export const revokeStaffSession = createServerFn({ method: 'POST' })
+  .inputValidator((d) => z.object({ id: z.string().min(1) }).parse(d))
+  .handler(async ({ data }) => {
+    await checkAdminAuth()
+    const { error } = await supabaseAdmin
+      .from('session' as any)
+      .delete()
+      .eq('id', data.id)
+    if (error) throw new Error(error.message)
+    return { ok: true }
   })

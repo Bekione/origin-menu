@@ -51,6 +51,7 @@ export const callWaiter = createServerFn({ method: 'POST' })
 
     // 3. Insert the new call
     const { error } = await supabaseAdmin.from('waiter_calls').insert({
+      table_number: 1, // DUMMY VALUE to bypass legacy SQL NOT NULL constraint until DB is scrubbed
       table_label: data.table_label,
       device_id: data.device_id,
       status: 'pending',

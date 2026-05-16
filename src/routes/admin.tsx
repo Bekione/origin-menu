@@ -33,7 +33,11 @@ import {
   type RestaurantTable,
   type TableOrder,
 } from '@/server/table.functions'
-import { setStaffPin } from '@/server/staff.functions'
+import {
+  setStaffPin,
+  getActiveStaffSessions,
+  revokeStaffSession,
+} from '@/server/staff.functions'
 import {
   LogOut,
   Plus,
@@ -1603,6 +1607,21 @@ function InfoTab({
   const [pinValue, setPinValue] = useState('')
   const [pinSaving, setPinSaving] = useState(false)
   const [pinMsg, setPinMsg] = useState('')
+
+  const [sessions, setSessions] = useState<any[]>([])
+  const [loadingSessions, setLoadingSessions] = useState(false)
+
+  const fetchSessions = () => {
+    setLoadingSessions(true)
+    getActiveStaffSessions().then((s) => {
+      setSessions(s)
+      setLoadingSessions(false)
+    })
+  }
+
+  useEffect(() => {
+    fetchSessions()
+  }, [])
   const [uploadingImageIdx, setUploadingImageIdx] = useState<number | null>(
     null,
   )
@@ -1611,8 +1630,9 @@ function InfoTab({
     null,
   )
   const [showConfirm, setShowConfirm] = useState<{
-    type: 'hours' | 'payment'
+    type: 'hours' | 'payment' | 'revoke-session'
     index: number
+    sessionId?: string
     title: string
   } | null>(null)
   const [msg, setMsg] = useState('')
@@ -1664,7 +1684,7 @@ function InfoTab({
     setDragOverItemIndex(null)
   }
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = async () => {
     if (!showConfirm) return
     const { type, index } = showConfirm
     if (type === 'hours') {
@@ -1672,6 +1692,17 @@ function InfoTab({
         ...prev,
         hours: prev.hours.filter((_, j) => j !== index),
       }))
+    } else if (type === 'revoke-session') {
+      const sid = showConfirm.sessionId
+      if (sid) {
+        try {
+          await revokeStaffSession({ data: { id: sid } })
+          fetchSessions()
+          toast.success('Device logged out')
+        } catch (err: any) {
+          toast.error(err.message || 'Failed to revoke session')
+        }
+      }
     } else {
       setForm((prev) => ({
         ...prev,
@@ -2062,6 +2093,71 @@ function InfoTab({
         </div>
       </div>
 
+      {/* ── Active Staff Sessions ── */}
+      <div className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-display text-sm uppercase tracking-wider">
+              Active KDS Devices
+            </h3>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Manage currently logged-in kitchen display screens.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={fetchSessions}
+            className="rounded-md border border-border p-2 hover:bg-muted"
+            title="Refresh sessions"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${loadingSessions ? 'animate-spin' : ''}`}
+            />
+          </button>
+        </div>
+
+        <div className="space-y-2 mt-4">
+          {sessions.length === 0 && !loadingSessions ? (
+            <p className="text-xs text-muted-foreground italic">
+              No active KDS sessions.
+            </p>
+          ) : (
+            sessions.map((s) => (
+              <div
+                key={s.id}
+                className="flex items-center justify-between rounded-lg border border-border bg-background p-3"
+              >
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs font-bold font-mono bg-muted px-2 py-0.5 rounded w-fit">
+                    IP: {s.ipAddress || 'Unknown'}
+                  </span>
+                  <span
+                    className="text-[10px] text-muted-foreground line-clamp-1 max-w-[200px]"
+                    title={s.userAgent}
+                  >
+                    {s.userAgent || 'Unknown Device'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowConfirm({
+                      type: 'revoke-session',
+                      index: -1,
+                      sessionId: s.id,
+                      title: 'Force-logout this KDS device?',
+                    })
+                  }
+                  className="rounded bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive hover:bg-destructive hover:text-white transition-colors"
+                >
+                  Revoke
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       <div className="flex items-center justify-end gap-3">
         {msg && <span className="text-xs text-muted-foreground">{msg}</span>}
         <button
@@ -2088,10 +2184,16 @@ function InfoTab({
           >
             <Trash2 className="mx-auto mb-4 h-10 w-10 text-destructive/80" />
             <h3 className="font-display text-xl text-foreground">
-              {showConfirm.type === 'hours' ? 'Remove Hours' : 'Delete Payment'}
+              {showConfirm.type === 'hours'
+                ? 'Remove Hours'
+                : showConfirm.type === 'revoke-session'
+                  ? 'Logout Device'
+                  : 'Delete Payment'}
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              {showConfirm.title} This action is local until you save.
+              {showConfirm.title}
+              {showConfirm.type !== 'revoke-session' &&
+                ' This action is local until you save.'}
             </p>
             <div className="mt-6 flex gap-3">
               <button
@@ -2104,7 +2206,9 @@ function InfoTab({
                 onClick={handleConfirmDelete}
                 className="flex-1 flex items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-wider text-destructive-foreground hover:opacity-90"
               >
-                Delete
+                {showConfirm.type === 'revoke-session'
+                  ? 'Force Logout'
+                  : 'Delete'}
               </button>
             </div>
           </div>
