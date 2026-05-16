@@ -77,11 +77,11 @@ function StaffLoginPage() {
       navigate({ to: '/staff' })
     } catch (err: any) {
       setError(err.message || 'Incorrect PIN')
+      setLoading(false)
       setShake(true)
       setTimeout(() => {
         setShake(false)
         setPin([])
-        setLoading(false)
       }, 600)
     }
   }

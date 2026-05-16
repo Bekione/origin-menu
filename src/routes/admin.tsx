@@ -157,13 +157,10 @@ function AdminPage() {
           const newCall = payload.new as WaiterCall
           setCalls((prev) => [newCall, ...prev])
           playNotification()
-          toast(
-            '🔔 Table ' + newCall.table_number + ' is calling for a waiter!',
-            {
-              duration: 8000,
-              action: { label: 'View', onClick: () => setCallsOpen(true) },
-            },
-          )
+          toast('🔔 ' + newCall.table_label + ' is calling for a waiter!', {
+            duration: 8000,
+            action: { label: 'View', onClick: () => setCallsOpen(true) },
+          })
         },
       )
       // 2. Waiter Calls UPDATE
@@ -2752,6 +2749,8 @@ function OrdersTab() {
   const [orders, setOrders] = useState<TableOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
+  const [doneLimit, setDoneLimit] = useState(20)
+  const [doneLoadingMore, setDoneLoadingMore] = useState(false)
 
   const fetchOrders = async () => {
     try {
@@ -2965,10 +2964,32 @@ function OrdersTab() {
             <ClipboardList className="h-4 w-4" /> Completed / Rejected
           </h2>
           <div className="columns-1 sm:columns-2 gap-3 opacity-70">
-            {done.map((o) => (
+            {done.slice(0, doneLimit).map((o) => (
               <OrderCard key={o.id} order={o} />
             ))}
           </div>
+          {doneLimit < done.length && (
+            <button
+              onClick={() => {
+                setDoneLoadingMore(true)
+                setTimeout(() => {
+                  setDoneLimit((l) => l + 20)
+                  setDoneLoadingMore(false)
+                }, 300)
+              }}
+              disabled={doneLoadingMore}
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2.5 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-60"
+            >
+              {doneLoadingMore ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>Load More ({done.length - doneLimit} remaining)</>
+              )}
+            </button>
+          )}
         </section>
       )}
     </div>

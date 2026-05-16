@@ -194,7 +194,7 @@ function StaffPage() {
           const c = p.new as WaiterCall
           setCalls((prev) => [c, ...prev])
           playKDSAlert()
-          toast(`🔔 Table ${c.table_number} is calling!`, { duration: 10000 })
+          toast(`🔔 ${c.table_label} is calling!`, { duration: 10000 })
         },
       )
       .on(
@@ -506,7 +506,7 @@ function StaffPage() {
             </h2>
           </div>
           <ScrollFade
-            fadeSize={20}
+            fadeSize={40}
             direction="vertical"
             className="flex flex-col flex-1 min-h-0"
           >
@@ -714,7 +714,7 @@ function EightyBoardModal({
 }) {
   const [items, setItems] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [togglingIds, setTogglingIds] = useState<string[]>([])
 
   useEffect(() => {
     getMenuData().then((d) => {
@@ -724,7 +724,7 @@ function EightyBoardModal({
   }, [])
 
   const handleToggle = async (item: MenuItem) => {
-    setTogglingId(item.id)
+    setTogglingIds((prev) => [...prev, item.id])
     try {
       await toggleAvailability({
         data: { id: item.id, is_available: !item.is_available },
@@ -737,7 +737,7 @@ function EightyBoardModal({
     } catch (err: any) {
       toast.error(err.message)
     } finally {
-      setTogglingId(null)
+      setTogglingIds((prev) => prev.filter((id) => id !== item.id))
     }
   }
 
@@ -769,7 +769,7 @@ function EightyBoardModal({
 
         {/* Item List */}
         <ScrollFade
-          fadeSize={20}
+          fadeSize={40}
           direction="vertical"
           className="flex flex-col flex-1 min-h-0"
         >
@@ -798,10 +798,10 @@ function EightyBoardModal({
                     </span>
                     <button
                       onClick={() => handleToggle(item)}
-                      disabled={togglingId === item.id}
+                      disabled={togglingIds.includes(item.id)}
                       className="flex items-center gap-3 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50 w-32 border border-border/50 hover:border-primary/50"
                     >
-                      {togglingId === item.id ? (
+                      {togglingIds.includes(item.id) ? (
                         <div className="flex w-full justify-center">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
