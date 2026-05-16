@@ -193,7 +193,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
       const did = await getDeviceId()
       const lbl = tableSession ? tableSession.tableLabel : `Table ${tableNum}`
       await callWaiter({
-        data: { table_number: tableNum, table_label: lbl, device_id: did },
+        data: { table_label: lbl, device_id: did },
       })
       recordWaiterCall(tableNum)
       toast(

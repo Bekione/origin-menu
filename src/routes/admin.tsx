@@ -454,7 +454,7 @@ function AdminPage() {
                                 : 'text-muted-foreground'
                             }`}
                           >
-                            Table {call.table_number}
+                            {call.table_label}
                           </p>
                           <p className="text-[11px] text-muted-foreground">
                             {timeAgo}

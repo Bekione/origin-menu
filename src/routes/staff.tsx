@@ -536,7 +536,7 @@ function StaffPage() {
                   >
                     <div className="mb-2 flex items-center justify-between">
                       <span className="font-display text-sm font-bold tracking-tight text-foreground">
-                        {c.table_label ?? `Table ${c.table_number}`}
+                        {c.table_label}
                       </span>
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${

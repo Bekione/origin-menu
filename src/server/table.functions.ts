@@ -13,7 +13,6 @@ async function checkAuth() {
 
 export type WaiterCall = {
   id: string
-  table_number: number
   table_label?: string
   status: 'pending' | 'acknowledged' | 'rejected' | 'resolved'
   device_id: string
@@ -25,25 +24,12 @@ export const callWaiter = createServerFn({ method: 'POST' })
   .inputValidator((d) =>
     z
       .object({
-        table_number: z.number().int().min(1),
-        table_label: z.string().optional(),
+        table_label: z.string().min(1),
         device_id: z.string(),
       })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    // 1. Fetch dynamic max_tables from restaurant_info
-    const { data: info } = await supabaseAdmin
-      .from('restaurant_info')
-      .select('max_tables')
-      .limit(1)
-      .maybeSingle()
-
-    const maxTables = info?.max_tables ?? 999
-    if (data.table_number > maxTables) {
-      throw new Error(`Table number cannot exceed ${maxTables}`)
-    }
-
     // 2. Guard: Check if THIS DEVICE has already called recently
     const { data: existing } = await supabaseAdmin
       .from('waiter_calls')
@@ -65,7 +51,6 @@ export const callWaiter = createServerFn({ method: 'POST' })
 
     // 3. Insert the new call
     const { error } = await supabaseAdmin.from('waiter_calls').insert({
-      table_number: data.table_number,
       table_label: data.table_label,
       device_id: data.device_id,
       status: 'pending',

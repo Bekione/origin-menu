@@ -41,21 +41,18 @@ export type Database = {
       waiter_calls: {
         Row: {
           id: string
-          table_number: number
           device_id: string
           status: string
           created_at: string
         }
         Insert: {
           id?: string
-          table_number: number
           device_id: string
           status?: string
           created_at?: string
         }
         Update: {
           id?: string
-          table_number?: number
           device_id?: string
           status?: string
           created_at?: string
