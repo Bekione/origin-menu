@@ -33,6 +33,7 @@ import {
   type RestaurantTable,
   type TableOrder,
 } from '@/server/table.functions'
+import { setStaffPin } from '@/server/staff.functions'
 import {
   LogOut,
   Plus,
@@ -96,61 +97,23 @@ export const Route = createFileRoute('/admin')({
   pendingMs: 0,
 })
 
-// Synthesize a clean bell/chime sound using Web Audio API
-// macOS Style
+// Synthesize a simple beep/alert sound using Web Audio API
 function playNotification() {
-  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-
-  const masterGain = ctx.createGain()
-  masterGain.gain.value = 0.32
-  masterGain.connect(ctx.destination)
-
-  const now = ctx.currentTime
-
-  function createTone(
-    freq: number,
-    delay: number,
-    duration: number,
-    volume: number,
-  ) {
+  try {
+    const ctx = new (
+      window.AudioContext || (window as any).webkitAudioContext
+    )()
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
-    const filter = ctx.createBiquadFilter()
-
-    osc.type = 'sine'
-    osc.frequency.setValueAtTime(freq, now + delay)
-
-    // Gentle low-pass filter for softness
-    filter.type = 'lowpass'
-    filter.frequency.setValueAtTime(3200, now + delay)
-
-    // Fast but smooth attack + natural decay
-    gain.gain.setValueAtTime(0.001, now + delay)
-    gain.gain.exponentialRampToValueAtTime(volume, now + delay + 0.008)
-    gain.gain.exponentialRampToValueAtTime(0.001, now + delay + duration)
-
-    osc.connect(filter)
-    filter.connect(gain)
-    gain.connect(masterGain)
-
-    osc.start(now + delay)
-    osc.stop(now + delay + duration + 0.2)
-  }
-
-  // Main macOS-like tones
-  createTone(880, 0.0, 1.2, 0.45) // A5
-  createTone(1109, 0.0, 1.1, 0.38) // C#6
-  createTone(1320, 0.05, 0.95, 0.3) // E6
-
-  // Higher sparkle (decays faster)
-  createTone(1760, 0.03, 0.65, 0.18) // A6
-  createTone(2200, 0.08, 0.55, 0.12) // C#7
-
-  // Very subtle second hit (classic macOS double feel)
-  setTimeout(() => {
-    createTone(987.8, 0, 0.8, 0.22) // B5
-    createTone(1244.5, 0.02, 0.7, 0.18) // D#6
-  }, 220)
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.frequency.setValueAtTime(880, ctx.currentTime)
+    osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1)
+    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+    osc.start(ctx.currentTime)
+    osc.stop(ctx.currentTime + 0.5)
+  } catch {}
 }
 
 function AdminPage() {
@@ -1640,6 +1603,9 @@ function InfoTab({
       : [{ day: 'Mon–Fri', hours: '10:00 – 22:00' }],
   })
   const [saving, setSaving] = useState(false)
+  const [pinValue, setPinValue] = useState('')
+  const [pinSaving, setPinSaving] = useState(false)
+  const [pinMsg, setPinMsg] = useState('')
   const [uploadingImageIdx, setUploadingImageIdx] = useState<number | null>(
     null,
   )
@@ -2036,6 +2002,66 @@ function InfoTab({
               />
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* ── Staff PIN ── */}
+      <div className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <div>
+          <h3 className="font-display text-sm uppercase tracking-wider">
+            Staff PIN
+          </h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Set the 4-digit PIN that staff use to log in to the Kitchen Display
+            (Staff Console).
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="password"
+            maxLength={4}
+            pattern="\d{4}"
+            placeholder="New 4-digit PIN"
+            value={pinValue}
+            onChange={(e) =>
+              setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))
+            }
+            className={
+              inputCls + ' w-36 tracking-[0.5em] text-center font-bold'
+            }
+          />
+          <button
+            type="button"
+            disabled={pinValue.length !== 4 || pinSaving}
+            onClick={async () => {
+              setPinSaving(true)
+              try {
+                await setStaffPin({ data: { pin: pinValue } })
+                setPinMsg('PIN updated!')
+                setPinValue('')
+                toast.success('Staff PIN updated')
+              } catch (err: any) {
+                setPinMsg(err.message || 'Failed')
+                toast.error('Failed to update PIN')
+              } finally {
+                setPinSaving(false)
+                setTimeout(() => setPinMsg(''), 3000)
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2.5 text-xs font-bold uppercase whitespace-nowrap tracking-wider text-primary-foreground disabled:opacity-50"
+          >
+            {pinSaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )}
+            Set PIN
+          </button>
+          {pinMsg && (
+            <span className="self-center text-xs text-muted-foreground">
+              {pinMsg}
+            </span>
+          )}
         </div>
       </div>
 

@@ -5,11 +5,12 @@ import { getAuthSession } from '@/server/auth-helpers'
 import logo from '@/assets/origin-logo.jpg'
 
 export const Route = createFileRoute('/login')({
-  // If already logged in, go straight to admin
+  // If already logged in, redirect by role
   beforeLoad: async () => {
     const session = await getAuthSession()
     if (session?.user) {
-      throw redirect({ to: '/admin' })
+      const role = (session.user as any).role
+      throw redirect({ to: role === 'staff' ? '/staff' : '/admin' })
     }
   },
   component: LoginPage,
@@ -28,22 +29,21 @@ function LoginPage() {
     setLoading(true)
 
     try {
-      const { error: signInError } = await authClient.signIn.email({
+      const { error: signInError, data } = await authClient.signIn.email({
         email,
         password,
-        callbackURL: '/admin',
       })
 
       if (signInError) {
-        // Better-Auth returns specific error codes we can inspect
         setError('Invalid email or password.')
         setLoading(false)
         return
       }
 
-      navigate({ to: '/admin' })
+      // Route by role
+      const role = (data?.user as any)?.role
+      navigate({ to: role === 'staff' ? '/staff' : '/admin' })
     } catch (err: any) {
-      // TypeError: Failed to fetch = network is down / DNS failure
       const isNetworkError =
         err instanceof TypeError ||
         err?.message?.toLowerCase().includes('fetch') ||

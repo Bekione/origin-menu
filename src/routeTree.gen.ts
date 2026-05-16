@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StaffLoginRouteImport } from './routes/staff-login'
+import { Route as StaffRouteImport } from './routes/staff'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -16,6 +18,16 @@ import { Route as ApiSeedAdminRouteImport } from './routes/api/seed-admin'
 import { Route as ApiAiChatRouteImport } from './routes/api/ai-chat'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
+const StaffLoginRoute = StaffLoginRouteImport.update({
+  id: '/staff-login',
+  path: '/staff-login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaffRoute = StaffRouteImport.update({
+  id: '/staff',
+  path: '/staff',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -51,6 +63,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/staff': typeof StaffRoute
+  '/staff-login': typeof StaffLoginRoute
   '/api/ai-chat': typeof ApiAiChatRoute
   '/api/seed-admin': typeof ApiSeedAdminRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -59,6 +73,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/staff': typeof StaffRoute
+  '/staff-login': typeof StaffLoginRoute
   '/api/ai-chat': typeof ApiAiChatRoute
   '/api/seed-admin': typeof ApiSeedAdminRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -68,6 +84,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
+  '/staff': typeof StaffRoute
+  '/staff-login': typeof StaffLoginRoute
   '/api/ai-chat': typeof ApiAiChatRoute
   '/api/seed-admin': typeof ApiSeedAdminRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
@@ -78,6 +96,8 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/staff'
+    | '/staff-login'
     | '/api/ai-chat'
     | '/api/seed-admin'
     | '/api/auth/$'
@@ -86,6 +106,8 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/staff'
+    | '/staff-login'
     | '/api/ai-chat'
     | '/api/seed-admin'
     | '/api/auth/$'
@@ -94,6 +116,8 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/login'
+    | '/staff'
+    | '/staff-login'
     | '/api/ai-chat'
     | '/api/seed-admin'
     | '/api/auth/$'
@@ -103,6 +127,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   LoginRoute: typeof LoginRoute
+  StaffRoute: typeof StaffRoute
+  StaffLoginRoute: typeof StaffLoginRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
   ApiSeedAdminRoute: typeof ApiSeedAdminRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -110,6 +136,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/staff-login': {
+      id: '/staff-login'
+      path: '/staff-login'
+      fullPath: '/staff-login'
+      preLoaderRoute: typeof StaffLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/staff': {
+      id: '/staff'
+      path: '/staff'
+      fullPath: '/staff'
+      preLoaderRoute: typeof StaffRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -159,6 +199,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   LoginRoute: LoginRoute,
+  StaffRoute: StaffRoute,
+  StaffLoginRoute: StaffLoginRoute,
   ApiAiChatRoute: ApiAiChatRoute,
   ApiSeedAdminRoute: ApiSeedAdminRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
