@@ -11,12 +11,22 @@ async function checkAuth() {
   return session
 }
 
+export type WaiterCall = {
+  id: string
+  table_number: number
+  table_label?: string
+  status: 'pending' | 'acknowledged' | 'rejected' | 'resolved'
+  device_id: string
+  created_at: string
+}
+
 /** Public — anyone can call a waiter (no auth needed) */
 export const callWaiter = createServerFn({ method: 'POST' })
   .inputValidator((d) =>
     z
       .object({
         table_number: z.number().int().min(1),
+        table_label: z.string().optional(),
         device_id: z.string(),
       })
       .parse(d),
@@ -56,9 +66,10 @@ export const callWaiter = createServerFn({ method: 'POST' })
     // 3. Insert the new call
     const { error } = await supabaseAdmin.from('waiter_calls').insert({
       table_number: data.table_number,
+      table_label: data.table_label,
       device_id: data.device_id,
       status: 'pending',
-    })
+    } as any)
 
     if (error) throw new Error(error.message)
     return { ok: true }
@@ -90,13 +101,6 @@ export const acknowledgeCall = createServerFn({ method: 'POST' })
     if (error) throw new Error(error.message)
     return { ok: true }
   })
-
-export type WaiterCall = {
-  id: string
-  table_number: number
-  status: string
-  created_at: string
-}
 
 // ─── Restaurant Tables ────────────────────────────────────────────────────────
 
@@ -223,14 +227,37 @@ export const placeOrder = createServerFn({ method: 'POST' })
       }
     }
 
-    const { error } = await supabaseAdmin.from('table_orders').insert({
-      table_id: data.table_id,
-      table_label: data.table_label,
-      items: data.items,
-      note: data.note ?? null,
-      device_id: data.device_id,
-      status: 'pending',
-    })
+    // Guard: check availability of all ordered items
+    const orderedItemIds = data.items.map((i) => i.id)
+    const { data: menuItems, error: menuErr } = await supabaseAdmin
+      .from('menu_items')
+      .select('id, name, is_available')
+      .in('id', orderedItemIds)
+
+    if (menuErr) throw new Error(menuErr.message)
+
+    const unavailable = (menuItems ?? []).filter((m) => !m.is_available)
+    if (unavailable.length > 0) {
+      const names = unavailable.map((m) => m.name).join(', ')
+      throw new Error(
+        unavailable.length === 1
+          ? `Sorry, "${names}" is currently not available. Please remove it from your cart and try again.`
+          : `Sorry, the following items are currently not available: ${names}. Please remove them and try again.`,
+      )
+    }
+
+    const { data: newOrder, error } = await supabaseAdmin
+      .from('table_orders')
+      .insert({
+        table_id: data.table_id,
+        table_label: data.table_label,
+        items: data.items,
+        note: data.note ?? null,
+        device_id: data.device_id,
+        status: 'pending',
+      })
+      .select('id, created_at')
+      .single()
 
     if (error) throw new Error(error.message)
 
@@ -240,13 +267,14 @@ export const placeOrder = createServerFn({ method: 'POST' })
       type: 'broadcast',
       event: 'new_order',
       payload: {
+        id: newOrder.id,
         table_id: data.table_id,
         table_label: data.table_label,
         items: data.items,
         note: data.note ?? null,
         device_id: data.device_id,
         status: 'pending',
-        created_at: new Date().toISOString(),
+        created_at: newOrder.created_at,
       },
     })
 
@@ -301,7 +329,7 @@ export type TableOrder = {
   table_label: string
   items: Array<{ id: string; name: string; qty: number; price: number }>
   note: string | null
-  status: 'pending' | 'accepted' | 'rejected' | 'completed'
+  status: 'pending' | 'accepted' | 'rejected' | 'completed' | string
   device_id: string
   created_at: string
 }

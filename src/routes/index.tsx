@@ -50,6 +50,7 @@ import {
 import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { Drawer } from 'vaul'
 import { optimizeImage } from '@/lib/image'
+import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 
 type SearchOptions = {
   table?: number
@@ -86,13 +87,44 @@ function MenuPage() {
   )
 }
 
-function MenuPageInner({ categories, items, info }: MenuData) {
+function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const table = search.table
   const qrToken = search.t
   type TableSession = { token: string; tableId: string; tableLabel: string }
   const SESSION_KEY = 'origin_table_session'
+
+  // Live items state — updated in real-time from Supabase
+  const [liveItems, setLiveItems] = useState<MenuItem[]>(initialItems)
+
+  // Real-time subscription to menu_items availability changes
+  useEffect(() => {
+    const channel = supabaseBrowser
+      .channel('menu-availability')
+      .on('broadcast', { event: 'toggle' }, (payload: any) => {
+        const { id, is_available } = payload.payload
+        setLiveItems((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, is_available } : item,
+          ),
+        )
+
+        // If the item became unavailable, remove it from the cart across all UI
+        if (!is_available) {
+          // We use a custom event to tell the CartProvider to remove this item
+          window.dispatchEvent(
+            new CustomEvent('origin:cart:remove', {
+              detail: { id },
+            }),
+          )
+        }
+      })
+      .subscribe()
+    return () => {
+      supabaseBrowser.removeChannel(channel)
+    }
+  }, [])
 
   // Table session state (from QR scan) — intentionally starts null to avoid SSR/client hydration mismatch
   const [tableSession, setTableSession] = useState<TableSession | null>(null)
@@ -159,7 +191,10 @@ function MenuPageInner({ categories, items, info }: MenuData) {
     try {
       setIsCalling(true)
       const did = await getDeviceId()
-      await callWaiter({ data: { table_number: tableNum, device_id: did } })
+      const lbl = tableSession ? tableSession.tableLabel : `Table ${tableNum}`
+      await callWaiter({
+        data: { table_number: tableNum, table_label: lbl, device_id: did },
+      })
       recordWaiterCall(tableNum)
       toast(
         lang === 'am'
@@ -232,7 +267,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
     const q = query.trim().toLowerCase()
     return categories.map((c) => ({
       cat: c,
-      items: items.filter((i) => {
+      items: liveItems.filter((i) => {
         if (i.category_id !== c.id) return false
         if (activeFilters.size > 0) {
           if (activeFilters.has('special') && !i.is_special) return false
@@ -248,9 +283,9 @@ function MenuPageInner({ categories, items, info }: MenuData) {
         )
       }),
     }))
-  }, [categories, items, query, activeFilters])
+  }, [categories, liveItems, query, activeFilters])
 
-  const featured = items
+  const featured = liveItems
     .filter((i) => {
       if (!i.is_featured || !i.is_available) return false
       if (activeFilters.size > 0) {
@@ -542,7 +577,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
         )}
 
         {/* Empty State */}
-        {items.length === 0 && query === '' && (
+        {liveItems.length === 0 && query === '' && (
           <div className="py-12 text-center text-muted-foreground">
             <UtensilsCrossed className="mx-auto h-12 w-12 opacity-20 mb-4" />
             <p className="text-lg font-medium">
@@ -830,7 +865,7 @@ function MenuPageInner({ categories, items, info }: MenuData) {
       <AIChatDrawer
         open={aiOpen}
         onClose={() => setAiOpen(false)}
-        items={items}
+        items={liveItems}
         lang={lang}
       />
 

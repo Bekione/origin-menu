@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useEffect } from 'react'
 
 export interface CartItem {
   id: string
@@ -57,6 +57,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     )
 
   const clear = () => setItems([])
+
+  // Watch for real-time 86'd item removals
+  useEffect(() => {
+    const handleRemove = (e: CustomEvent<{ id: string }>) => {
+      remove(e.detail.id)
+    }
+    window.addEventListener('origin:cart:remove', handleRemove as EventListener)
+    return () => {
+      window.removeEventListener(
+        'origin:cart:remove',
+        handleRemove as EventListener,
+      )
+    }
+  }, [])
 
   const total = items.reduce((sum, i) => sum + i.price * i.qty, 0)
   const count = items.reduce((sum, i) => sum + i.qty, 0)

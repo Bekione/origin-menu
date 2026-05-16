@@ -121,6 +121,14 @@ export const toggleAvailability = createServerFn({ method: 'POST' })
       .update({ is_available: data.is_available })
       .eq('id', data.id)
     if (error) throw new Error(error.message)
+
+    // Broadcast the availability change directly so we don't depend on Postgres replication slots
+    await supabaseAdmin.channel('menu-availability').send({
+      type: 'broadcast',
+      event: 'toggle',
+      payload: { id: data.id, is_available: data.is_available },
+    })
+
     return { ok: true }
   })
 
