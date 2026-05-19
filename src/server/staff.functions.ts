@@ -90,8 +90,11 @@ export const verifyStaffPin = createServerFn({ method: 'POST' })
       throw new Error('Staff account not configured. Contact admin.')
     }
 
+    const request = getRequest()
+
     const response = await auth.api.signInEmail({
       body: { email: staffEmail, password: staffPassword },
+      headers: request.headers,
     })
 
     if (!response || !(response as any).token) {
@@ -115,7 +118,7 @@ export const getActiveStaffSessions = createServerFn({ method: 'GET' }).handler(
       .limit(1)
 
     if (!users?.length) return []
-    const staffId = users[0].id
+    const staffId = (users as any[])[0].id
 
     // 2. Get active sessions
     const { data: sessions } = await supabaseAdmin

@@ -229,6 +229,24 @@ function StaffPage() {
     }
   }, [])
 
+  // ── Session health check ──────────────────────────────────────────────────────
+  // Poll every 30 seconds. If admin revokes this device's session, we redirect immediately.
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data } = await authClient.getSession()
+        if (!data?.session) {
+          navigate({ to: '/staff-login' })
+        }
+      } catch {
+        navigate({ to: '/staff-login' })
+      }
+    }
+
+    const id = setInterval(checkSession, 30_000)
+    return () => clearInterval(id)
+  }, [navigate])
+
   const handleStatus = async (
     id: string,
     status:

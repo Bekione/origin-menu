@@ -1684,6 +1684,51 @@ function InfoTab({
     setDragOverItemIndex(null)
   }
 
+  const formatUA = (ua: string) => {
+    if (!ua) return 'Unknown Device'
+
+    // Detect OS
+    const isIPhone = /iPhone/.test(ua)
+    const isIPad = /iPad/.test(ua)
+    const isAndroid = /Android/.test(ua)
+    const isMac = /Macintosh/.test(ua) && !isIPhone && !isIPad
+    const isWindows = /Windows NT/.test(ua)
+    const isLinux = /Linux/.test(ua) && !isAndroid
+
+    const os = isIPhone
+      ? 'iPhone'
+      : isIPad
+        ? 'iPad'
+        : isAndroid
+          ? 'Android'
+          : isWindows
+            ? 'Windows'
+            : isMac
+              ? 'macOS'
+              : isLinux
+                ? 'Linux'
+                : 'Device'
+
+    // Detect Browser
+    const isEdge = /Edg\//.test(ua)
+    const isChrome = /Chrome\//.test(ua) && !isEdge
+    const isFirefox = /Firefox\//.test(ua)
+    const isSafari = /Safari\//.test(ua) && !isChrome && !isEdge
+    const isCriOS = /CriOS\//.test(ua)
+
+    const browser = isEdge
+      ? 'Edge'
+      : isChrome || isCriOS
+        ? 'Chrome'
+        : isFirefox
+          ? 'Firefox'
+          : isSafari
+            ? 'Safari'
+            : 'Browser'
+
+    return `${browser} on ${os}`
+  }
+
   const handleConfirmDelete = async () => {
     if (!showConfirm) return
     const { type, index } = showConfirm
@@ -2122,38 +2167,53 @@ function InfoTab({
               No active KDS sessions.
             </p>
           ) : (
-            sessions.map((s) => (
-              <div
-                key={s.id}
-                className="flex items-center justify-between rounded-lg border border-border bg-background p-3"
-              >
-                <div className="flex flex-col gap-1">
-                  <span className="text-xs font-bold font-mono bg-muted px-2 py-0.5 rounded w-fit">
-                    IP: {s.ipAddress || 'Unknown'}
-                  </span>
-                  <span
-                    className="text-[10px] text-muted-foreground line-clamp-1 max-w-[200px]"
-                    title={s.userAgent}
-                  >
-                    {s.userAgent || 'Unknown Device'}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowConfirm({
-                      type: 'revoke-session',
-                      index: -1,
-                      sessionId: s.id,
-                      title: 'Force-logout this KDS device?',
-                    })
-                  }
-                  className="rounded bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive hover:bg-destructive hover:text-white transition-colors"
+            sessions.map((s) => {
+              const loginDate = s.createdAt
+                ? new Date(s.createdAt).toLocaleString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })
+                : null
+
+              return (
+                <div
+                  key={s.id}
+                  className="flex items-center justify-between rounded-lg border border-border bg-background p-3 gap-3"
                 >
-                  Revoke
-                </button>
-              </div>
-            ))
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <span className="text-xs font-semibold text-foreground">
+                      {formatUA(s.userAgent || '')}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground shrink-0 border border-border/50">
+                        {s.ipAddress || 'No IP'}
+                      </span>
+                      {loginDate && (
+                        <span className="text-[10px] text-muted-foreground">
+                          · {loginDate}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setShowConfirm({
+                        type: 'revoke-session',
+                        index: -1,
+                        sessionId: s.id,
+                        title: 'Force-logout this KDS device?',
+                      })
+                    }
+                    className="shrink-0 rounded bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive hover:bg-destructive hover:text-white transition-colors"
+                  >
+                    Revoke
+                  </button>
+                </div>
+              )
+            })
           )}
         </div>
       </div>
