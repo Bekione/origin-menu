@@ -70,7 +70,9 @@ export const Route = createFileRoute('/')({
   pendingMs: 0,
 })
 
-type Lang = 'en' | 'am'
+import { useTranslation } from '@/lib/i18n'
+import type { Lang } from '@/lib/translations'
+
 type FilterTag = 'special' | 'veg' | 'fasting' | 'spicy'
 
 function formatBirr(n: number) {
@@ -88,6 +90,7 @@ function MenuPage() {
 }
 
 function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
+  const { lang, setLang, t, dt } = useTranslation()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const table = search.table
@@ -128,7 +131,6 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
 
   // Table session state (from QR scan) — intentionally starts null to avoid SSR/client hydration mismatch
   const [tableSession, setTableSession] = useState<TableSession | null>(null)
-  const [sessionHydrated, setSessionHydrated] = useState(false)
 
   useEffect(() => {
     try {
@@ -137,10 +139,8 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
     } catch {
       setTableSession(null)
     }
-    setSessionHydrated(true)
   }, [])
 
-  const [lang, setLang] = useState<Lang>('en')
   const [query, setQuery] = useState('')
   const activeFilters = useMemo(
     () => new Set((search.tags ? search.tags.split(',') : []) as FilterTag[]),
@@ -307,9 +307,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
   }
 
   return (
-    <div
-      className={`min-h-screen bg-background relative overflow-x-hidden ${lang === 'am' ? 'font-amharic' : ''}`}
-    >
+    <div className="min-h-screen bg-background relative overflow-x-hidden">
       {/* Decorative Background Watermark */}
       <div
         className="pointer-events-none fixed right-0 top-[20%] -z-10 h-[80vw] w-[80vw] max-h-[1000px] max-w-[1000px] translate-x-[20%] opacity-[0.03] mix-blend-overlay dark:opacity-[0.05]"
@@ -347,28 +345,24 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
             />
             <div className="flex flex-col leading-tight">
               <span className="font-display text-xl text-primary">
-                {info?.name ?? 'ORIGIN'}
+                {info?.name ?? t('origin')}
               </span>
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
-                {info?.tagline ?? 'Fearless Flavor.'}
+                {dt(info, 'tagline') || t('fearless_flavor')}
               </span>
             </div>
             {/* Table Badge and Waiter Action */}
             {table && (
               <div className="hidden items-center gap-2 border-l border-border pl-4 md:flex">
                 <span className="rounded-full bg-primary/10 px-3 py-1 font-display text-sm text-primary">
-                  {lang === 'am' ? 'ጠረጴዛ' : 'Table'} {table}
+                  {t('table')} {table}
                 </span>
                 <button
                   onClick={handleCallWaiter}
                   disabled={isCalling}
                   className="rounded-full bg-secondary/80 px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
                 >
-                  {isCalling
-                    ? 'Calling...'
-                    : lang === 'am'
-                      ? 'አስተናጋጅ ጥራ'
-                      : 'Call Waiter'}
+                  {isCalling ? t('calling') : t('call_waiter')}
                 </button>
               </div>
             )}
@@ -410,21 +404,17 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                   className="flex items-center gap-1.5 rounded-full bg-secondary/80 px-3 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
                 >
                   <Bell className="h-3 w-3" />
-                  {isCalling
-                    ? 'Calling...'
-                    : lang === 'am'
-                      ? 'አስተናጋጅ ጥራ'
-                      : 'Call Waiter'}
+                  {isCalling ? t('calling') : t('call_waiter')}
                 </button>
                 <button
                   onClick={() => {
                     localStorage.removeItem(SESSION_KEY)
                     setTableSession(null)
-                    toast('Table session cleared')
+                    toast(t('session_cleared'))
                   }}
                   className="text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground"
                 >
-                  Leave
+                  {t('leave')}
                 </button>
               </div>
             </div>
@@ -434,18 +424,14 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
             <div className="border-t border-border bg-card/60 px-4 py-2">
               <div className="mx-auto flex max-w-3xl items-center justify-between md:hidden">
                 <span className="font-display text-sm text-primary">
-                  {lang === 'am' ? 'ጠረጴዛ' : 'Table'} {table}
+                  {t('table')} {table}
                 </span>
                 <button
                   onClick={handleCallWaiter}
                   disabled={isCalling}
                   className="rounded-full bg-secondary/80 px-4 py-1 text-xs font-bold uppercase tracking-wider text-secondary-foreground transition hover:bg-secondary disabled:opacity-50"
                 >
-                  {isCalling
-                    ? 'Calling...'
-                    : lang === 'am'
-                      ? 'አስተናጋጅ ጥራ'
-                      : 'Call Waiter'}
+                  {isCalling ? t('calling') : t('call_waiter')}
                 </button>
               </div>
             </div>
@@ -466,7 +452,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                         : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
                     }`}
                   >
-                    {lang === 'am' ? (c.name_am ?? c.name) : c.name}
+                    {dt(c, 'name')}
                   </button>
                 ))}
               </div>
@@ -487,12 +473,10 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
             />
           </div>
           <h1 className="relative z-10 font-display text-5xl tracking-widest text-primary drop-shadow-sm">
-            {lang === 'am' ? 'እንኳን ደህና መጡ' : 'Welcome to Origin'}
+            {t('welcome')}
           </h1>
           <p className="relative z-10 mt-3 text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            {lang === 'am'
-              ? 'ደፋር ጣዕም — በትኩስ ምግብና በፍቅር ይዘጋጅ'
-              : 'Fearless flavor, served fresh. Browse the menu and order with your server.'}
+            {dt(info, 'hero_text') || t('tagline')}
           </p>
         </section>
 
@@ -502,7 +486,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={lang === 'am' ? 'ምግብ ይፈልጉ…' : 'Search the menu…'}
+            placeholder={t('search_placeholder')}
             className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm text-foreground outline-none transition focus:border-primary"
           />
         </div>
@@ -582,14 +566,8 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
         {liveItems.length === 0 && query === '' && (
           <div className="py-12 text-center text-muted-foreground">
             <UtensilsCrossed className="mx-auto h-12 w-12 opacity-20 mb-4" />
-            <p className="text-lg font-medium">
-              {lang === 'am' ? 'ምንም ምግቦች አልተገኙም።' : 'No menu items available.'}
-            </p>
-            <p className="text-sm mt-2">
-              {lang === 'am'
-                ? 'እባክዎ ቆየት ብለው ይሞክሩ።'
-                : 'Check back later when items are added.'}
-            </p>
+            <p className="text-lg font-medium">{t('no_items')}</p>
+            <p className="text-sm mt-2">{t('check_back_later')}</p>
           </div>
         )}
 
@@ -602,9 +580,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
               id={`cat-${cat.id}`}
               className="mb-8 scroll-mt-32"
             >
-              <SectionTitle
-                label={lang === 'am' ? (cat.name_am ?? cat.name) : cat.name}
-              />
+              <SectionTitle label={dt(cat, 'name')} />
               <div className="mt-3 space-y-3">
                 {list.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
@@ -828,7 +804,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
               onClick={() => setBillOpen(true)}
               className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-primary-foreground shadow-glow transition hover:opacity-90"
             >
-              <span>View Bill</span>
+              <span>{t('view_bill')}</span>
               <span className="font-display text-base">
                 {formatBirr(total)} ETB
               </span>
@@ -849,18 +825,17 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
           className="group flex items-center gap-2 rounded-full border border-primary/30 bg-card/90 px-4 py-2.5 text-sm font-semibold text-primary shadow-lg backdrop-blur-sm transition hover:bg-primary hover:text-primary-foreground"
         >
           <Sparkles className="h-4 w-4 transition group-hover:rotate-12" />
-          <span>{lang === 'am' ? 'AI ጠይቅ' : 'Ask AI'}</span>
+          <span>{t('ask_ai')}</span>
         </button>
       </div>
 
       {/* Bill Drawer */}
       <BillDrawer
         open={billOpen}
-        lang={lang}
+        onClose={() => setBillOpen(false)}
         info={info}
         tableSession={tableSession}
         setTableSession={setTableSession}
-        onClose={() => setBillOpen(false)}
       />
 
       {/* AI Drawer */}
@@ -1174,20 +1149,19 @@ function TikTokIcon() {
 }
 
 function BillDrawer({
-  lang,
   onClose,
   open,
   info,
   tableSession,
   setTableSession,
 }: {
-  lang: Lang
   onClose: () => void
   open: boolean
   info?: any
   tableSession?: { token: string; tableId: string; tableLabel: string } | null
   setTableSession: (session: any) => void
 }) {
+  const { lang, t, dt } = useTranslation()
   const { items, increment, decrement, remove, clear, total } = useCart()
   const [isOrdering, setIsOrdering] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
@@ -1218,7 +1192,7 @@ function BillDrawer({
       })
       clear()
       onClose()
-      toast.success('Order sent! Your waiter will confirm shortly.')
+      toast.success(t('order_sent_waiter_confirm'))
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -1233,13 +1207,18 @@ function BillDrawer({
           onClose={() => setScanOpen(false)}
           onSession={(session) => {
             if (tableSession?.token === session.token) {
-              toast('Already connected to this table')
+              toast(t('already_connected'))
             } else {
               localStorage.setItem(
                 'origin_table_session',
                 JSON.stringify(session),
               )
-              toast.success(`Dining at ${session.tableLabel} — welcome!`)
+              toast.success(
+                t('welcome_to_table').replace(
+                  '{tableLabel}',
+                  session.tableLabel,
+                ),
+              )
             }
             setScanOpen(false)
           }}
@@ -1256,7 +1235,7 @@ function BillDrawer({
               {/* Header */}
               <div className="flex items-center justify-between border-b border-border pb-3">
                 <Drawer.Title className="font-display text-lg uppercase tracking-widest text-primary">
-                  {lang === 'am' ? 'ሒሳብ' : 'Your Bill'}
+                  {t('your_bill')}
                 </Drawer.Title>
                 <div className="flex items-center gap-2">
                   {items.length > 0 && (
@@ -1265,7 +1244,7 @@ function BillDrawer({
                       className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground transition hover:text-destructive"
                     >
                       <Trash2 className="h-3 w-3" />
-                      {lang === 'am' ? 'አጽዳ' : 'Clear'}
+                      {t('clear')}
                     </button>
                   )}
                   <button
@@ -1335,7 +1314,7 @@ function BillDrawer({
                 <div className="mt-4 border-t border-border pt-4">
                   <div className="flex flex-col gap-1.5 pb-2">
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{lang === 'am' ? 'ንዑስ ድምር' : 'Subtotal'}</span>
+                      <span>{t('subtotal')}</span>
                       <span>
                         {formatBirr(total)}{' '}
                         <span className="text-[10px]">ETB</span>
@@ -1344,8 +1323,7 @@ function BillDrawer({
                     {scPct > 0 && (
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>
-                          {lang === 'am' ? 'የአገልግሎት ክፍያ' : 'Service Charge'} (
-                          {scPct}%)
+                          {t('service_charge')} ({scPct}%)
                         </span>
                         <span>
                           {formatBirr(scAmt)}{' '}
@@ -1356,7 +1334,7 @@ function BillDrawer({
                   </div>
                   <div className="flex items-center justify-between border-t border-border/50 pt-2">
                     <span className="text-sm font-bold text-primary uppercase tracking-wider">
-                      {lang === 'am' ? 'ጠቅላላ' : 'Total'}
+                      {t('total')}
                     </span>
                     <span className="font-display text-2xl text-primary">
                       {formatBirr(grandTotal)}{' '}
@@ -1374,21 +1352,19 @@ function BillDrawer({
                       ) : (
                         <UtensilsCrossed className="h-4 w-4" />
                       )}
-                      {lang === 'am' ? 'ትዕዛዝ ላክ' : 'Place Order'}
+                      {t('place_order')}
                     </button>
                   ) : (
                     <div className="mt-3 space-y-2">
                       <p className="text-center text-[11px] text-muted-foreground">
-                        {lang === 'am'
-                          ? 'ትዕዛዝ ለመላክ የጠረጴዛ QR ኮዱን ይቃኙ'
-                          : 'Scan the QR code at your table to place an order'}
+                        {t('scan_qr_to_order')}
                       </p>
                       <button
                         onClick={() => setScanOpen(true)}
                         className="flex w-full items-center justify-center gap-2 rounded-xl border border-primary/50 py-2.5 text-sm font-semibold text-primary hover:bg-primary/5"
                       >
                         <ScanLine className="h-4 w-4" />
-                        {lang === 'am' ? 'QR ኮድ ቃኝ' : 'Scan QR Code'}
+                        {t('scan_qr_button')}
                       </button>
                     </div>
                   )}
@@ -1461,6 +1437,7 @@ function QRScannerModal({
   onClose: () => void
   onSession: (s: ScanSession) => void
 }) {
+  const { t } = useTranslation()
   const videoRef = React.useRef<HTMLVideoElement>(null)
   const scannerRef = React.useRef<any>(null)
   const [scanError, setScanError] = useState<string | null>(null)
@@ -1484,7 +1461,7 @@ function QRScannerModal({
               const url = new URL(text)
               const token = url.searchParams.get('t')
               if (!token) {
-                setScanError('Not a valid table QR code')
+                setScanError(t('invalid_qr'))
                 return
               }
               scanner.stop()
@@ -1497,7 +1474,7 @@ function QRScannerModal({
                   tableLabel: session.label,
                 })
             } catch {
-              setScanError('Could not verify this QR code. Try again.')
+              setScanError(t('verify_error'))
               setVerifying(false)
               scanner.start()
             }
@@ -1507,10 +1484,7 @@ function QRScannerModal({
         await scanner.start()
         scannerRef.current = scanner
       } catch {
-        if (!cancelled)
-          setScanError(
-            'Camera access denied. Please allow camera permissions and reload.',
-          )
+        if (!cancelled) setScanError(t('camera_denied'))
       }
     }
 
@@ -1523,14 +1497,14 @@ function QRScannerModal({
   }, [])
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-background">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-background">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <h2 className="font-display text-base uppercase tracking-wider text-primary">
-            Scan Table QR
+            {t('scan_qr_title')}
           </h2>
           <p className="mt-0.5 text-[11px] text-muted-foreground">
-            Point your camera at the QR code on your table
+            {t('scan_qr_subtitle')}
           </p>
         </div>
         <button
@@ -1562,7 +1536,7 @@ function QRScannerModal({
         {verifying && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 text-white">
             <Loader2 className="h-10 w-10 animate-spin" />
-            <p className="text-sm font-semibold">Verifying table...</p>
+            <p className="text-sm font-semibold">{t('verifying_table')}</p>
           </div>
         )}
 

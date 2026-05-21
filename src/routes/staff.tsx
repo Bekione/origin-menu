@@ -34,6 +34,7 @@ import {
   X,
   Utensils,
 } from 'lucide-react'
+import { useTranslation } from '@/lib/i18n'
 
 // ── Route guard ────────────────────────────────────────────────────────────────
 export const Route = createFileRoute('/staff')({
@@ -158,6 +159,7 @@ function LiveTimeAgo({ ts, className }: { ts: string; className?: string }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 function StaffPage() {
+  const { lang, t, dt } = useTranslation()
   const navigate = Route.useNavigate()
   const [orders, setOrders] = useState<TableOrder[]>([])
   const [calls, setCalls] = useState<WaiterCall[]>([])
@@ -389,6 +391,12 @@ function StaffPage() {
                   <div className="space-y-6">
                     {/* Pending */}
                     <section>
+                      <div className="flex h-14 items-center gap-3 border-b border-border bg-muted/30 px-4">
+                        <ChefHat className="h-5 w-5 text-primary" />
+                        <h1 className="font-display text-xl tracking-widest text-foreground">
+                          {t('kds_title')}
+                        </h1>
+                      </div>
                       <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-primary">
                         <ChefHat className="h-4 w-4" /> Pending
                         <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
@@ -511,17 +519,12 @@ function StaffPage() {
         {/* Waiter Calls Sidebar */}
         <div className="flex h-64 shrink-0 flex-col border-t border-border bg-card/40 lg:h-auto lg:w-64 lg:border-l lg:border-t-0 min-h-0">
           <div className="flex-none p-4 pb-2">
-            <h2 className="flex items-center gap-2 font-display text-sm uppercase tracking-wider text-foreground">
-              <Bell
-                className={`h-4 w-4 ${pendingCalls.length > 0 ? 'text-destructive animate-pulse' : 'text-muted-foreground'}`}
-              />
-              Waiter Calls
-              {pendingCalls.length > 0 && (
-                <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">
-                  {pendingCalls.length}
-                </span>
-              )}
-            </h2>
+            <div className="flex items-center gap-2 px-1">
+              <Bell className="h-4 w-4 animate-pulse text-primary" />
+              <h2 className="font-display text-lg tracking-widest text-foreground">
+                {t('waiter_calls')}
+              </h2>
+            </div>
           </div>
           <ScrollFade
             fadeSize={40}

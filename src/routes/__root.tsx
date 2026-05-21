@@ -11,6 +11,8 @@ import { useEffect } from 'react'
 import { Toaster, toast } from 'sonner'
 import { ThemeProvider, useTheme } from '@/components/ThemeProvider'
 
+import { LanguageProvider } from '@/lib/i18n'
+
 import appCss from '../styles.css?url'
 
 function NotFoundComponent() {
@@ -76,6 +78,22 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   {
+    loader: async () => {
+      let lang: 'en' | 'am' | undefined = undefined
+      try {
+        const { getRequest } = await import('@tanstack/react-start/server')
+        const req = getRequest()
+        const cookie = req.headers.get('cookie')
+        if (cookie?.includes('origin_app_lang=am')) {
+          lang = 'am'
+        } else if (cookie?.includes('origin_app_lang=en')) {
+          lang = 'en'
+        }
+      } catch (e) {
+        // Runs client-side, ignore
+      }
+      return { lang }
+    },
     head: () => ({
       meta: [
         { charSet: 'utf-8' },
@@ -151,11 +169,24 @@ function RootShell({ children }: { children: React.ReactNode }) {
       }
     })();
   `
+  const i18nScript = `
+    (function() {
+      try {
+        var lang = localStorage.getItem('origin_app_lang') || 'en';
+        document.documentElement.lang = lang;
+        if (lang === 'am') {
+          document.documentElement.classList.add('font-amharic');
+        } else {
+          document.documentElement.classList.remove('font-amharic');
+        }
+      } catch (e) {}
+    })();
+  `
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* Blocking script: runs before rendering to prevent theme flash */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script dangerouslySetInnerHTML={{ __html: i18nScript }} />
         <HeadContent />
       </head>
       <body>
@@ -167,6 +198,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function RootComponent() {
+  const { lang } = Route.useLoaderData()
   const { queryClient } = Route.useRouteContext()
 
   useEffect(() => {
@@ -178,11 +210,13 @@ function RootComponent() {
   }, [])
 
   return (
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <RootInner />
-      </QueryClientProvider>
-    </ThemeProvider>
+    <LanguageProvider initialLang={lang}>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <RootInner />
+        </QueryClientProvider>
+      </ThemeProvider>
+    </LanguageProvider>
   )
 }
 

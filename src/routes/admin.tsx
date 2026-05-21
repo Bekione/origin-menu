@@ -68,8 +68,9 @@ import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 import ScrollFade from '#/components/ScrollFade'
 import { optimizeImage, compressImageFile } from '@/lib/image'
 import qrLogo from '@/assets/origin-logo-qr-svg.svg'
+import { useTranslation } from '@/lib/i18n'
 
-type TabValue = 'items' | 'categories' | 'info' | 'tables' | 'orders'
+type TabValue = 'items' | 'categories' | 'info' | 'tables' | 'orders' | 'staff'
 
 type AdminSearch = {
   tab?: TabValue
@@ -79,7 +80,14 @@ export const Route = createFileRoute('/admin')({
   validateSearch: (search: Record<string, unknown>): AdminSearch => {
     const t = search.tab as string
     return {
-      tab: ['items', 'categories', 'info', 'tables', 'orders'].includes(t)
+      tab: [
+        'items',
+        'categories',
+        'info',
+        'tables',
+        'orders',
+        'staff',
+      ].includes(t)
         ? (t as TabValue)
         : undefined,
     }
@@ -121,6 +129,7 @@ function playNotification() {
 }
 
 function AdminPage() {
+  const { lang, t, dt } = useTranslation()
   const initial = Route.useLoaderData() as MenuData
   const [data, setData] = useState<MenuData>(initial)
   const searchParams = Route.useSearch()
@@ -333,64 +342,64 @@ function AdminPage() {
               ) : (
                 <LogOut className="h-3.5 w-3.5" />
               )}
-              <span className="hidden sm:inline">Logout</span>
+              <span className="hidden sm:inline">
+                {loggingOut ? t('logging_out') : t('logout')}
+              </span>
             </button>
           </div>
         </div>
         <ScrollFade direction="horizontal">
           <div className="mx-auto flex max-w-5xl gap-1 px-4 overflow-x-auto scrollbar-none snap-x snap-mandatory">
             <TabButton
+              active={tab === 'orders'}
+              onClick={() => {
+                setTab('orders')
+                setPendingOrderCount(0)
+              }}
+              icon={<ClipboardList className="h-4" />}
+            >
+              {t('admin_orders')}
+              {pendingOrderCount > 0 && (
+                <span className="ml-1.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white shadow-sm">
+                  {pendingOrderCount > 9 ? '9+' : pendingOrderCount}
+                </span>
+              )}
+            </TabButton>
+            <TabButton
               active={tab === 'items'}
               onClick={() => setTab('items')}
-              icon={<UtensilsCrossed className="h-4 w-4" />}
-              className="whitespace-nowrap"
+              icon={<UtensilsCrossed className="h-4" />}
             >
-              Menu Items
+              {t('admin_menu')}
             </TabButton>
             <TabButton
               active={tab === 'categories'}
               onClick={() => setTab('categories')}
-              icon={<Layers className="h-4 w-4" />}
-              className="whitespace-nowrap"
+              icon={<Layers className="h-4" />}
             >
-              Categories
-            </TabButton>
-            <TabButton
-              active={tab === 'info'}
-              onClick={() => setTab('info')}
-              icon={<Store className="h-4 w-4" />}
-              className="whitespace-nowrap"
-            >
-              Restaurant Info
+              {t('admin_categories')}
             </TabButton>
             <TabButton
               active={tab === 'tables'}
               onClick={() => setTab('tables')}
-              icon={<QrCode className="h-4 w-4" />}
-              className="whitespace-nowrap"
+              icon={<Store className="h-4" />}
             >
-              Tables
+              {t('admin_tables')}
             </TabButton>
-            <div className="relative">
-              <TabButton
-                active={tab === 'orders'}
-                onClick={() => {
-                  setTab('orders')
-                  setPendingOrderCount(0)
-                }}
-                icon={<ClipboardList className="h-4 w-4" />}
-                className="whitespace-nowrap"
-              >
-                <div className="flex items-center gap-1.5">
-                  Orders
-                  {pendingOrderCount > 0 && (
-                    <span className="flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white shadow-sm">
-                      {pendingOrderCount > 9 ? '9+' : pendingOrderCount}
-                    </span>
-                  )}
-                </div>
-              </TabButton>
-            </div>
+            <TabButton
+              active={tab === 'staff'}
+              onClick={() => setTab('staff')}
+              icon={<ChefHat className="h-4" />}
+            >
+              {t('admin_staff')}
+            </TabButton>
+            <TabButton
+              active={tab === 'info'}
+              onClick={() => setTab('info')}
+              icon={<QrCode className="h-4" />}
+            >
+              {t('admin_info')}
+            </TabButton>
           </div>
         </ScrollFade>
       </header>
@@ -565,6 +574,7 @@ function ItemsTab({
   data: MenuData
   onChange: () => void
 }) {
+  const { t } = useTranslation()
   const [editing, setEditing] = useState<MenuItem | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [localItems, setLocalItems] = useState(data.items)
@@ -635,7 +645,7 @@ function ItemsTab({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-xl uppercase tracking-wider text-foreground">
-          Menu Items
+          {t('admin_menu')}
         </h2>
         <button
           onClick={() => {
@@ -644,7 +654,7 @@ function ItemsTab({
           }}
           className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground hover:opacity-90"
         >
-          <Plus className="h-4 w-4" /> Add Item
+          <Plus className="h-4 w-4" /> {t('add_item')}
         </button>
       </div>
 
@@ -1250,6 +1260,7 @@ function CategoriesTab({
   data: MenuData
   onChange: () => void
 }) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [nameAm, setNameAm] = useState('')
   const [busy, setBusy] = useState(false)
@@ -1329,7 +1340,7 @@ function CategoriesTab({
   return (
     <div className="space-y-6">
       <h2 className="font-display text-xl uppercase tracking-wider">
-        Categories
+        {t('admin_categories')}
       </h2>
       <form
         onSubmit={add}
@@ -1578,6 +1589,7 @@ function InfoTab({
   info: RestaurantInfo | null
   onChange: () => void
 }) {
+  const { t } = useTranslation()
   const initialHours = Array.isArray(info?.hours)
     ? (info!.hours as Array<{ day: string; hours: string }>)
     : []
@@ -1780,10 +1792,12 @@ function InfoTab({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-6">
-      <h2 className="font-display text-xl uppercase tracking-wider">
-        Restaurant Info
-      </h2>
+    <form onSubmit={submit} className="mx-auto max-w-2xl space-y-8 pb-32">
+      <div className="space-y-4">
+        <h2 className="font-display text-xl uppercase tracking-wider text-foreground">
+          {t('restaurant_info')}
+        </h2>
+      </div>
       <div className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
         <Field label="Restaurant Name">
           <input
@@ -2094,7 +2108,7 @@ function InfoTab({
             type="password"
             maxLength={4}
             pattern="\d{4}"
-            placeholder="New 4-digit PIN"
+            placeholder={t('pin_placeholder')}
             value={pinValue}
             onChange={(e) =>
               setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))
@@ -2128,7 +2142,7 @@ function InfoTab({
             ) : (
               <Check className="h-3.5 w-3.5" />
             )}
-            Set PIN
+            {t('set_pin')}
           </button>
           {pinMsg && (
             <span className="self-center text-xs text-muted-foreground">
@@ -2143,10 +2157,10 @@ function InfoTab({
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-display text-sm uppercase tracking-wider">
-              Active KDS Devices
+              {t('active_kds')}
             </h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Manage currently logged-in kitchen display screens.
+              {t('active_kds_desc')}
             </p>
           </div>
           <button
@@ -2164,7 +2178,7 @@ function InfoTab({
         <div className="space-y-2 mt-4">
           {sessions.length === 0 && !loadingSessions ? (
             <p className="text-xs text-muted-foreground italic">
-              No active KDS sessions.
+              {t('no_sessions')}
             </p>
           ) : (
             sessions.map((s) => {
@@ -2209,7 +2223,7 @@ function InfoTab({
                     }
                     className="shrink-0 rounded bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive hover:bg-destructive hover:text-white transition-colors"
                   >
-                    Revoke
+                    {t('revoke')}
                   </button>
                 </div>
               )
@@ -2245,10 +2259,10 @@ function InfoTab({
             <Trash2 className="mx-auto mb-4 h-10 w-10 text-destructive/80" />
             <h3 className="font-display text-xl text-foreground">
               {showConfirm.type === 'hours'
-                ? 'Remove Hours'
+                ? t('remove_hours')
                 : showConfirm.type === 'revoke-session'
-                  ? 'Logout Device'
-                  : 'Delete Payment'}
+                  ? t('logout_device')
+                  : t('delete_payment')}
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
               {showConfirm.title}
@@ -2367,6 +2381,7 @@ function ConfirmationModal({
 // ─── Tables Tab ───────────────────────────────────────────────────────────────
 
 function TablesTab() {
+  const { t } = useTranslation()
   const [tables, setTables] = useState<RestaurantTable[]>([])
   const [loading, setLoading] = useState(true)
   const [adding, setAdding] = useState(false)
