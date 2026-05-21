@@ -1161,7 +1161,7 @@ function BillDrawer({
   tableSession?: { token: string; tableId: string; tableLabel: string } | null
   setTableSession: (session: any) => void
 }) {
-  const { lang, t, dt } = useTranslation()
+  const { lang, t } = useTranslation()
   const { items, increment, decrement, remove, clear, total } = useCart()
   const [isOrdering, setIsOrdering] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
@@ -1497,7 +1497,7 @@ function QRScannerModal({
   }, [])
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-background">
+    <div className="fixed inset-0 z-100 flex flex-col bg-background">
       <div className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <h2 className="font-display text-base uppercase tracking-wider text-primary">

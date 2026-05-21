@@ -107,36 +107,38 @@ function playKDSAlert() {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function timeAgo(ts: string) {
+function timeAgo(ts: string, t: any) {
   const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
 
-  if (diff < 5) return 'just now'
-  if (diff < 60) return `${diff}s ago`
+  if (diff < 5) return t('just_now')
+  if (diff < 60) return t('seconds_ago').replace('{count}', diff.toString())
 
   const minutes = Math.floor(diff / 60)
-  if (minutes < 60) return `${minutes}m ago`
+  if (minutes < 60)
+    return t('minutes_ago').replace('{count}', minutes.toString())
 
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h ago`
+  if (hours < 24) return t('hours_ago').replace('{count}', hours.toString())
 
   const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
+  if (days < 7) return t('days_ago').replace('{count}', days.toString())
 
   const weeks = Math.floor(days / 7)
-  if (weeks < 4) return `${weeks}w ago`
+  if (weeks < 4) return t('weeks_ago').replace('{count}', weeks.toString())
 
   const months = Math.floor(days / 30)
-  if (months < 12) return `${months}mo ago`
+  if (months < 12) return t('months_ago').replace('{count}', months.toString())
 
   const years = Math.floor(days / 365)
-  return `${years}y ago`
+  return t('years_ago').replace('{count}', years.toString())
 }
 
 function LiveTimeAgo({ ts, className }: { ts: string; className?: string }) {
-  const [ago, setAgo] = useState(() => timeAgo(ts))
+  const { t } = useTranslation()
+  const [ago, setAgo] = useState(() => timeAgo(ts, t))
 
   useEffect(() => {
-    const update = () => setAgo(timeAgo(ts))
+    const update = () => setAgo(timeAgo(ts, t))
 
     update()
 
@@ -159,7 +161,7 @@ function LiveTimeAgo({ ts, className }: { ts: string; className?: string }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 function StaffPage() {
-  const { lang, t, dt } = useTranslation()
+  const { lang, setLang, t } = useTranslation()
   const navigate = Route.useNavigate()
   const [orders, setOrders] = useState<TableOrder[]>([])
   const [calls, setCalls] = useState<WaiterCall[]>([])
@@ -196,7 +198,12 @@ function StaffPage() {
           const c = p.new as WaiterCall
           setCalls((prev) => [c, ...prev])
           playKDSAlert()
-          toast(`🔔 ${c.table_label} is calling!`, { duration: 10000 })
+          toast(
+            t('waiter_calling_toast').replace('{tableLabel}', c.table_label ?? ''),
+            {
+              duration: 10000,
+            },
+          )
         },
       )
       .on(
@@ -218,9 +225,13 @@ function StaffPage() {
         const order = payload.payload as TableOrder
         setOrders((prev) => [order as any, ...prev])
         playKDSAlert()
-        toast(`🍽️ New order from ${(order as any).table_label}!`, {
-          duration: 10000,
-        })
+        toast(
+          t('new_order_toast').replace(
+            '{tableLabel}',
+            (order as any).table_label,
+          ),
+          { duration: 10000 },
+        )
       })
       .subscribe()
 
@@ -341,6 +352,13 @@ function StaffPage() {
             >
               86 Board
             </button>
+            <button
+              onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
+              className="rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground transition hover:border-primary hover:text-primary"
+              aria-label="Toggle language"
+            >
+              {lang === 'en' ? 'አማ' : 'EN'}
+            </button>
             <ThemeToggle />
             <button
               onClick={handleLock}
@@ -353,7 +371,7 @@ function StaffPage() {
               ) : (
                 <LogOut className="h-4 w-4" />
               )}
-              <span className="hidden sm:inline">Lock</span>
+              <span className="hidden sm:inline">{t('lock')}</span>
             </button>
           </div>
         </div>
@@ -398,7 +416,7 @@ function StaffPage() {
                         </h1>
                       </div>
                       <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-primary">
-                        <ChefHat className="h-4 w-4" /> Pending
+                        <ChefHat className="h-4 w-4" /> {t('status_pending')}
                         <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
                           {pending.length}
                         </span>
@@ -423,7 +441,7 @@ function StaffPage() {
                             </span>
                           </div>
                           <span className="text-sm font-medium">
-                            No pending orders
+                            {t('no_pending_orders')}
                           </span>
                         </div>
                       )}
@@ -433,7 +451,7 @@ function StaffPage() {
                     {accepted.length > 0 && (
                       <section>
                         <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-green-600 dark:text-green-400">
-                          <Check className="h-4 w-4" /> In Kitchen
+                          <Check className="h-4 w-4" /> {t('status_preparing')}
                         </h2>
                         <div className="columns-1 gap-3 sm:columns-2 lg:columns-3">
                           {accepted.map((o) => (
@@ -452,7 +470,7 @@ function StaffPage() {
                     {done.length > 0 && (
                       <section>
                         <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-muted-foreground">
-                          <ClipboardList className="h-4 w-4" /> Done
+                          <ClipboardList className="h-4 w-4" /> {t('done')}
                           <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
                             {done.length}
                           </span>
@@ -482,11 +500,14 @@ function StaffPage() {
                             {doneLoadingMore ? (
                               <>
                                 <Loader2 className="h-4 w-4 animate-spin" />
-                                Loading...
+                                {t('loading_dots')}
                               </>
                             ) : (
                               <>
-                                Load More ({done.length - doneLimit} remaining)
+                                {t('load_more_remaining').replace(
+                                  '{count}',
+                                  (done.length - doneLimit).toString(),
+                                )}
                               </>
                             )}
                           </button>
@@ -502,9 +523,11 @@ function StaffPage() {
                             <Utensils className="h-10 w-10 opacity-40" />
                           </div>
                           <div className="text-center">
-                            <p className="text-sm font-bold">No orders yet</p>
+                            <p className="text-sm font-bold">
+                              {t('no_orders_yet')}
+                            </p>
                             <p className="text-xs opacity-60">
-                              Waiting for the first table to order…
+                              {t('waiting_for_orders')}
                             </p>
                           </div>
                         </div>
@@ -543,7 +566,7 @@ function StaffPage() {
                   <div className="rounded-full bg-muted/20 p-3">
                     <Bell className="h-8 w-8 opacity-40" />
                   </div>
-                  <p className="text-xs font-medium">Clear for now</p>
+                  <p className="text-xs font-medium">{t('clear_for_now')}</p>
                 </div>
               ) : (
                 calls.map((c) => (
@@ -585,7 +608,7 @@ function StaffPage() {
                           ) : (
                             <Check className="h-3 w-3" />
                           )}
-                          Ack
+                          {t('ack')}
                         </button>
                         <button
                           onClick={() => handleRejectCall(c.id)}
@@ -597,7 +620,7 @@ function StaffPage() {
                           ) : (
                             <X className="h-3 w-3" />
                           )}
-                          Dismiss
+                          {t('dismiss')}
                         </button>
                       </div>
                     )}

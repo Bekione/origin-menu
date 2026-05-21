@@ -129,7 +129,7 @@ function playNotification() {
 }
 
 function AdminPage() {
-  const { lang, t, dt } = useTranslation()
+  const { lang, setLang, t, dt } = useTranslation()
   const initial = Route.useLoaderData() as MenuData
   const [data, setData] = useState<MenuData>(initial)
   const searchParams = Route.useSearch()
@@ -170,10 +170,19 @@ function AdminPage() {
           const newCall = payload.new as WaiterCall
           setCalls((prev) => [newCall, ...prev])
           playNotification()
-          toast('🔔 ' + newCall.table_label + ' is calling for a waiter!', {
-            duration: 8000,
-            action: { label: 'View', onClick: () => setCallsOpen(true) },
-          })
+          toast(
+            t('waiter_calling_admin_toast').replace(
+              '{tableLabel}',
+              newCall.table_label ?? '',
+            ),
+            {
+              duration: 8000,
+              action: {
+                label: t('view'),
+                onClick: () => setCallsOpen(true),
+              },
+            },
+          )
         },
       )
       // 2. Waiter Calls UPDATE
@@ -196,14 +205,17 @@ function AdminPage() {
           setPendingOrderCount((n) => n + 1)
           playNotification()
           window.dispatchEvent(new CustomEvent('reload-orders'))
-          toast(`🍽️ New order from ${order.table_label}!`, {
-            duration: 10000,
-            action: {
-              label: 'View Orders',
-              onClick: () =>
-                navigate({ search: { tab: 'orders' }, replace: true }),
+          toast(
+            t('new_order_toast').replace('{tableLabel}', order.table_label),
+            {
+              duration: 10000,
+              action: {
+                label: t('view_orders'),
+                onClick: () =>
+                  navigate({ search: { tab: 'orders' }, replace: true }),
+              },
             },
-          })
+          )
         },
       )
       // 4. Table Orders UPDATE
@@ -240,14 +252,17 @@ function AdminPage() {
         setPendingOrderCount((n) => n + 1)
         playNotification()
         window.dispatchEvent(new CustomEvent('reload-orders'))
-        toast(`🍽️ New order from ${order.table_label}!`, {
-          duration: 10000,
-          action: {
-            label: 'View Orders',
-            onClick: () =>
-              navigate({ search: { tab: 'orders' }, replace: true }),
+        toast(
+          t('new_order_toast').replace('{tableLabel}', order.table_label ?? ''),
+          {
+            duration: 10000,
+            action: {
+              label: t('view_orders'),
+              onClick: () =>
+                navigate({ search: { tab: 'orders' }, replace: true }),
+            },
           },
-        })
+        )
       })
       .subscribe((status, err) => {
         if (err) console.error('[Broadcast] Error:', err)
@@ -331,6 +346,13 @@ function AdminPage() {
             >
               <ExternalLink className="h-4 w-4" />
             </Link>
+            <button
+              onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
+              className="rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground transition hover:border-primary hover:text-primary"
+              aria-label="Toggle language"
+            >
+              {lang === 'en' ? 'አማ' : 'EN'}
+            </button>
             <ThemeToggle />
             <button
               disabled={loggingOut}
@@ -419,11 +441,14 @@ function AdminPage() {
               <div className="flex items-center gap-2">
                 <Bell className="h-4 w-4 text-primary" />
                 <h2 className="font-display text-sm uppercase tracking-widest text-primary">
-                  Waiter Calls
+                  {t('waiter_calls')}
                 </h2>
                 {pendingCount > 0 && (
                   <span className="rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-white">
-                    {pendingCount} pending
+                    {t('pending_badge').replace(
+                      '{count}',
+                      pendingCount.toString(),
+                    )}
                   </span>
                 )}
               </div>
@@ -437,20 +462,32 @@ function AdminPage() {
             <div className="flex-1 overflow-y-auto">
               {calls.length === 0 ? (
                 <div className="flex min-h-40 items-center justify-center text-sm text-muted-foreground">
-                  No waiter calls yet
+                  {t('no_calls')}
                 </div>
               ) : (
                 <ul className="divide-y divide-border">
                   {calls.map((call) => {
                     const isPending = call.status === 'pending'
-                    const timeAgo = (() => {
+                    const timeAgoStr = (() => {
                       const diff = Math.floor(
                         (Date.now() - new Date(call.created_at).getTime()) /
                           1000,
                       )
-                      if (diff < 60) return `${diff}s ago`
-                      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-                      return `${Math.floor(diff / 3600)}h ago`
+                      if (diff < 5) return t('just_now')
+                      if (diff < 60)
+                        return t('seconds_ago').replace(
+                          '{count}',
+                          diff.toString(),
+                        )
+                      if (diff < 3600)
+                        return t('minutes_ago').replace(
+                          '{count}',
+                          Math.floor(diff / 60).toString(),
+                        )
+                      return t('hours_ago').replace(
+                        '{count}',
+                        Math.floor(diff / 3600).toString(),
+                      )
                     })()
                     return (
                       <li
@@ -470,17 +507,17 @@ function AdminPage() {
                             {call.table_label}
                           </p>
                           <p className="text-[11px] text-muted-foreground">
-                            {timeAgo}
+                            {timeAgoStr}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           {isPending ? (
                             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-                              Pending
+                              {t('status_pending')}
                             </span>
                           ) : (
                             <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                              Done
+                              {t('done')}
                             </span>
                           )}
                           {isPending && (
@@ -492,11 +529,11 @@ function AdminPage() {
                               {acknowledgingId === call.id ? (
                                 <>
                                   <Loader2 className="h-3 w-3 animate-spin" />{' '}
-                                  Wait...
+                                  {t('wait_dots')}
                                 </>
                               ) : (
                                 <>
-                                  <Check className="h-3 w-3" /> OK
+                                  <Check className="h-3 w-3" /> {t('ok')}
                                 </>
                               )}
                             </button>
@@ -674,7 +711,7 @@ function ItemsTab({
         <div className="divide-y divide-border">
           {localItems.length === 0 && (
             <p className="p-6 text-center text-sm text-muted-foreground">
-              No items yet — add your first one above.
+              {t('no_items')}
             </p>
           )}
           {data.categories.map((cat) => {
