@@ -307,7 +307,9 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
   }
 
   return (
-    <div className="min-h-screen bg-background relative overflow-x-hidden">
+    <div
+      className={`min-h-screen bg-background relative overflow-x-hidden ${lang === 'am' ? 'font-amharic' : ''}`}
+    >
       {/* Decorative Background Watermark */}
       <div
         className="pointer-events-none fixed right-0 top-[20%] -z-10 h-[80vw] w-[80vw] max-h-[1000px] max-w-[1000px] translate-x-[20%] opacity-[0.03] mix-blend-overlay dark:opacity-[0.05]"

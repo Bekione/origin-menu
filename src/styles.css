@@ -17,6 +17,28 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
+@font-face {
+  font-family: 'Ethiopic Abay';
+  src: url('./assets/Ethiopic_Abay_Light.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+
+.font-amharic h1,
+.font-amharic h2,
+.font-amharic h3,
+.font-amharic .font-display {
+  /* Put Bebas FIRST. Ethiopic will fall back to Abay. */
+  font-family: 'Bebas Neue', 'Ethiopic Abay', system-ui, sans-serif !important;
+}
+
+.font-amharic,
+.font-amharic input,
+.font-amharic button {
+  /* Put Inter FIRST. Ethiopic will fall back to Abay. */
+  font-family: 'Inter', 'Ethiopic Abay', system-ui, sans-serif !important;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
