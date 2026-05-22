@@ -176,6 +176,7 @@ export const deleteTable = createServerFn({ method: 'POST' })
 const OrderItemSchema = z.object({
   id: z.string(),
   name: z.string(),
+  name_am: z.string().nullable().optional(),
   qty: z.number().int().min(1),
   price: z.number(),
 })
@@ -213,11 +214,11 @@ export const placeOrder = createServerFn({ method: 'POST' })
       }
     }
 
-    // Guard: check availability of all ordered items
+    // 2. Guard: check availability of all ordered items
     const orderedItemIds = data.items.map((i) => i.id)
     const { data: menuItems, error: menuErr } = await supabaseAdmin
       .from('menu_items')
-      .select('id, name, is_available')
+      .select('id, name, name_am, price, is_available')
       .in('id', orderedItemIds)
 
     if (menuErr) throw new Error(menuErr.message)
@@ -232,12 +233,25 @@ export const placeOrder = createServerFn({ method: 'POST' })
       )
     }
 
+    // 3. Map the labels from DB to ensure a complete immutable snapshot is saved
+    const menuMap = new Map((menuItems ?? []).map((m) => [m.id, m]))
+    const enrichedItems = data.items.map((cartItem) => {
+      const match = menuMap.get(cartItem.id)
+      return {
+        id: cartItem.id,
+        name: match?.name || cartItem.name,
+        name_am: match?.name_am || null,
+        qty: cartItem.qty,
+        price: match?.price ?? cartItem.price,
+      }
+    })
+
     const { data: newOrder, error } = await supabaseAdmin
       .from('table_orders')
       .insert({
         table_id: data.table_id,
         table_label: data.table_label,
-        items: data.items,
+        items: enrichedItems,
         note: data.note ?? null,
         device_id: data.device_id,
         status: 'pending',
@@ -256,7 +270,7 @@ export const placeOrder = createServerFn({ method: 'POST' })
         id: newOrder.id,
         table_id: data.table_id,
         table_label: data.table_label,
-        items: data.items,
+        items: enrichedItems,
         note: data.note ?? null,
         device_id: data.device_id,
         status: 'pending',
@@ -271,13 +285,42 @@ export const placeOrder = createServerFn({ method: 'POST' })
 export const getTableOrders = createServerFn({ method: 'GET' }).handler(
   async () => {
     await checkAuth()
-    const { data, error } = await supabaseAdmin
+    // 1. Fetch the raw orders
+    const { data: orders, error: ordersErr } = await supabaseAdmin
       .from('table_orders')
       .select('*')
       .order('created_at', { ascending: false })
       .limit(100)
-    if (error) throw new Error(error.message)
-    return data ?? []
+
+    if (ordersErr) throw new Error(ordersErr.message)
+    if (!orders) return []
+
+    // 2. Fetch all menu items for "Graceful Migration" of legacy records
+    const { data: menuItems, error: menuErr } = await supabaseAdmin
+      .from('menu_items')
+      .select('id, name, name_am')
+
+    if (menuErr) {
+      console.error('Failed to fetch menu items for enrichment:', menuErr)
+      return orders as TableOrder[]
+    }
+
+    const menuMap = new Map(menuItems?.map((m) => [m.id, m]))
+
+    // 3. Enrich ONLY if metadata is missing (legacy records)
+    const enrichedOrders = orders.map((order) => {
+      const items = (order.items as any[]).map((item) => {
+        if (item.name_am !== undefined) return item // Already has snapshot data
+        const match = menuMap.get(item.id)
+        return {
+          ...item,
+          name_am: match?.name_am || null,
+        }
+      })
+      return { ...order, items }
+    })
+
+    return enrichedOrders as TableOrder[]
   },
 )
 
@@ -313,7 +356,13 @@ export type TableOrder = {
   id: string
   table_id: string
   table_label: string
-  items: Array<{ id: string; name: string; qty: number; price: number }>
+  items: Array<{
+    id: string
+    name: string
+    name_am?: string | null
+    qty: number
+    price: number
+  }>
   note: string | null
   status: 'pending' | 'accepted' | 'rejected' | 'completed' | string
   device_id: string

@@ -3068,6 +3068,7 @@ function OrdersTab() {
   }
 
   function OrderCard({ order }: { order: TableOrder }) {
+    const { t, dt } = useTranslation()
     const isPending = order.status === 'pending'
     const isAccepted = order.status === 'accepted'
     const busy = busyId === order.id
@@ -3122,7 +3123,7 @@ function OrdersTab() {
             <li key={i} className="flex items-center justify-between text-sm">
               <span>
                 <span className="mr-2 font-bold text-primary">×{item.qty}</span>
-                {item.name}
+                {dt(item, 'name')}
               </span>
               <span className="text-muted-foreground">
                 {(item.qty * item.price).toLocaleString()} {t('currency')}

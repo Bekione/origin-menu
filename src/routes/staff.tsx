@@ -656,7 +656,7 @@ function KDSOrderCard({
   busyStatus: string | null
   onStatus: (id: string, s: 'accepted' | 'rejected' | 'completed') => void
 }) {
-  const { t } = useTranslation()
+  const { t, dt } = useTranslation()
   const isPending = order.status === 'pending'
   const isAccepted = order.status === 'accepted'
   return (
@@ -699,7 +699,7 @@ function KDSOrderCard({
           <li key={i} className="flex items-center justify-between text-sm">
             <span>
               <span className="mr-2 font-bold text-primary">×{item.qty}</span>
-              {item.name}
+              {dt(item, 'name')}
             </span>
             <span className="text-muted-foreground">
               {(item.qty * item.price).toLocaleString()} {t('currency')}
