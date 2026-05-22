@@ -611,7 +611,7 @@ function ItemsTab({
   data: MenuData
   onChange: () => void
 }) {
-  const { t } = useTranslation()
+  const { t, dt } = useTranslation()
   const [editing, setEditing] = useState<MenuItem | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [localItems, setLocalItems] = useState(data.items)
@@ -722,7 +722,7 @@ function ItemsTab({
             return (
               <div key={cat.id}>
                 <div className="bg-muted/30 px-4 py-2 text-[10px] font-bold uppercase tracking-widest text-primary">
-                  {cat.name}
+                  {dt(cat, 'name')}
                 </div>
                 {list.map((item) => (
                   <ItemRow
@@ -798,6 +798,7 @@ function ItemRow({
   onDrop?: () => void
   isDragging?: boolean
 }) {
+  const { t, dt } = useTranslation()
   const toggle = useServerFn(toggleAvailability)
   const del = useServerFn(deleteMenuItem)
   const [busy, setBusy] = useState(false)
@@ -868,14 +869,14 @@ function ItemRow({
           <div className="h-10 w-10 shrink-0 rounded bg-muted" />
         )}
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{item.name}</p>
+          <p className="truncate text-sm font-semibold">{dt(item, 'name')}</p>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="truncate text-xs text-muted-foreground">
-              {Number(item.price)} ETB
+              {Number(item.price)} {t('currency')}
             </p>
             {item.is_featured && (
               <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                Chef's Pick
+                {t('chefs_picks')}
               </span>
             )}
           </div>
@@ -888,9 +889,9 @@ function ItemRow({
           {busy ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : item.is_available ? (
-            'IN'
+            t('in')
           ) : (
-            'OUT'
+            t('out')
           )}
         </button>
         <button
@@ -919,18 +920,18 @@ function ItemRow({
           >
             <Trash2 className="mx-auto mb-4 h-10 w-10 text-destructive/80" />
             <h3 className="font-display text-xl text-foreground">
-              Delete Item
+              {t('delete_item_title' as any) || t('delete') + ' ' + t('item')}
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Are you sure you want to delete "{item.name}"? This action cannot
-              be undone.
+              {t('delete_confirm_desc' as any) ||
+                `Are you sure you want to delete "${dt(item, 'name')}"? This action cannot be undone.`}
             </p>
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => setShowConfirm(false)}
                 className="flex-1 rounded-md border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-muted"
               >
-                Cancel
+                {t('cancel' as any) || 'Cancel'}
               </button>
               <button
                 disabled={busy}
@@ -940,7 +941,7 @@ function ItemRow({
                 {busy ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  'Delete'
+                  t('delete')
                 )}
               </button>
             </div>
@@ -962,6 +963,7 @@ function ItemForm({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { t, dt } = useTranslation()
   const [form, setForm] = useState({
     name: item?.name ?? '',
     name_am: item?.name_am ?? '',
@@ -1067,7 +1069,9 @@ function ItemForm({
         >
           <div className="mb-4 flex items-center justify-between">
             <h3 className="font-display text-lg uppercase tracking-wider text-primary">
-              {item ? 'Edit Item' : 'Add New Item'}
+              {item
+                ? t('edit_item' as any) || 'Edit Item'
+                : t('add_new_item' as any) || 'Add New Item'}
             </h3>
             <button
               type="button"
@@ -1079,7 +1083,7 @@ function ItemForm({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Name (English)">
+            <Field label={t('name_en' as any) || 'Name (English)'}>
               <input
                 required
                 value={form.name}
@@ -1087,24 +1091,28 @@ function ItemForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="Name (አማርኛ)">
+            <Field label={t('name_am' as any) || 'Name (አማርኛ)'}>
               <input
                 value={form.name_am}
                 onChange={(e) => setForm({ ...form, name_am: e.target.value })}
                 className={inputCls}
               />
             </Field>
-            <Field label="Description (English)">
+            <Field
+              label={t('description_en' as any) || 'Description (English)'}
+            >
               <input
                 value={form.description}
                 onChange={(e) =>
                   setForm({ ...form, description: e.target.value })
                 }
                 className={inputCls}
-                placeholder="Ingredients / notes"
+                placeholder={
+                  t('ingredients_placeholder' as any) || 'Ingredients / notes'
+                }
               />
             </Field>
-            <Field label="Description (አማርኛ)">
+            <Field label={t('description_am' as any) || 'Description (አማርኛ)'}>
               <input
                 value={form.description_am}
                 onChange={(e) =>
@@ -1113,7 +1121,7 @@ function ItemForm({
                 className={inputCls}
               />
             </Field>
-            <Field label="Category">
+            <Field label={t('category')}>
               <select
                 value={form.category_id ?? ''}
                 onChange={(e) =>
@@ -1123,12 +1131,12 @@ function ItemForm({
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name}
+                    {dt(c, 'name')}
                   </option>
                 ))}
               </select>
             </Field>
-            <Field label="Price (ETB)">
+            <Field label={t('price_label' as any) || 'Price (ETB)'}>
               <input
                 required
                 type="number"
@@ -1143,7 +1151,7 @@ function ItemForm({
 
           <div className="mt-4">
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Photo
+              {t('photo')}
             </label>
             <div className="flex items-center gap-3">
               {form.image_url ? (
@@ -1159,10 +1167,10 @@ function ItemForm({
               )}
               <label className="cursor-pointer rounded-md border border-border px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary">
                 {uploading
-                  ? 'Uploading…'
+                  ? t('uploading' as any) || 'Uploading…'
                   : form.image_url
-                    ? 'Replace'
-                    : 'Upload'}
+                    ? t('replace' as any) || 'Replace'
+                    : t('upload' as any) || 'Upload'}
                 <input
                   type="file"
                   accept="image/*"
@@ -1179,7 +1187,7 @@ function ItemForm({
                   onClick={() => setForm({ ...form, image_url: '' })}
                   className="text-xs text-muted-foreground hover:text-destructive"
                 >
-                  Remove
+                  {t('remove' as any) || 'Remove'}
                 </button>
               )}
             </div>
@@ -1187,32 +1195,32 @@ function ItemForm({
 
           <div className="mt-4 flex flex-wrap gap-3">
             <Toggle
-              label="Available"
+              label={t('available' as any) || 'Available'}
               value={form.is_available}
               onChange={(v) => setForm({ ...form, is_available: v })}
             />
             <Toggle
-              label="Featured"
+              label={t('featured' as any) || 'Featured'}
               value={form.is_featured}
               onChange={(v) => setForm({ ...form, is_featured: v })}
             />
             <Toggle
-              label="Today's Special"
+              label={t('item_special_badge')}
               value={form.is_special}
               onChange={(v) => setForm({ ...form, is_special: v })}
             />
             <Toggle
-              label="Vegetarian"
+              label={t('veg')}
               value={form.is_vegetarian}
               onChange={(v) => setForm({ ...form, is_vegetarian: v })}
             />
             <Toggle
-              label="Spicy"
+              label={t('spicy')}
               value={form.is_spicy}
               onChange={(v) => setForm({ ...form, is_spicy: v })}
             />
             <Toggle
-              label="Fasting (ጾም)"
+              label={t('fasting')}
               value={form.is_fasting}
               onChange={(v) => setForm({ ...form, is_fasting: v })}
             />
@@ -1226,7 +1234,7 @@ function ItemForm({
               onClick={onClose}
               className="rounded-md border border-border px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
             >
-              Cancel
+              {t('cancel' as any) || 'Cancel'}
             </button>
             <button
               disabled={saving}
@@ -1237,7 +1245,7 @@ function ItemForm({
               ) : (
                 <Check className="h-3.5 w-3.5" />
               )}
-              {item ? 'Save' : 'Add'}
+              {item ? t('save' as any) || 'Save' : t('add' as any) || 'Add'}
             </button>
           </div>
         </form>
@@ -1386,27 +1394,28 @@ function CategoriesTab({
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Category name"
+          placeholder={t('category_name_placeholder' as any) || 'Category name'}
           className={inputCls}
         />
         <input
           value={nameAm}
           onChange={(e) => setNameAm(e.target.value)}
-          placeholder="Amharic (optional)"
+          placeholder={t('amharic_optional' as any) || 'Amharic (optional)'}
           className={inputCls}
         />
         <button
           disabled={busy || !name.trim()}
           className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground disabled:opacity-50"
         >
-          <Plus className="h-4 w-4" /> Add
+          <Plus className="h-4 w-4" /> {t('add' as any) || 'Add'}
         </button>
       </form>
 
       <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
         {localCats.length === 0 ? (
           <p className="p-6 text-center text-sm text-muted-foreground">
-            No categories yet — add your first one above.
+            {t('no_categories' as any) ||
+              'No categories yet — add your first one above.'}
           </p>
         ) : (
           localCats
@@ -1482,6 +1491,7 @@ function CategoryRow({
   onDrop?: () => void
   isDragging?: boolean
 }) {
+  const { t, dt } = useTranslation()
   const [editing, setEditing] = useState(false)
   const [n, setN] = useState(cat.name)
   const [na, setNa] = useState(cat.name_am ?? '')
@@ -1549,9 +1559,10 @@ function CategoryRow({
           {cat.sort_order}
         </span>
         <div className="flex-1">
-          <p className="text-sm font-semibold">{cat.name}</p>
+          <p className="text-sm font-semibold">{dt(cat, 'name')}</p>
           <p className="text-xs text-muted-foreground">
-            {cat.name_am ?? '—'} · {itemCount} item{itemCount !== 1 ? 's' : ''}
+            {cat.name_am ?? '—'} · {itemCount}{' '}
+            {itemCount === 1 ? t('item') : t('items')}
           </p>
         </div>
         <button
@@ -1579,18 +1590,18 @@ function CategoryRow({
           >
             <Trash2 className="mx-auto mb-4 h-10 w-10 text-destructive/80" />
             <h3 className="font-display text-xl text-foreground">
-              Delete Category
+              {t('delete_category' as any) || 'Delete Category'}
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Are you sure you want to delete "{cat.name}"? The {itemCount}{' '}
-              items inside it will also be deleted. This cannot be undone.
+              {t('delete_category_confirm' as any) ||
+                `Are you sure you want to delete "${dt(cat, 'name')}"? The ${itemCount} items inside it will also be deleted. This cannot be undone.`}
             </p>
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => setShowConfirm(false)}
                 className="flex-1 rounded-md border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-muted"
               >
-                Cancel
+                {t('cancel' as any) || 'Cancel'}
               </button>
               <button
                 disabled={busy}
@@ -1607,7 +1618,7 @@ function CategoryRow({
                 {busy ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  'Delete'
+                  t('delete' as any) || 'Delete'
                 )}
               </button>
             </div>
@@ -1836,72 +1847,106 @@ function InfoTab({
         </h2>
       </div>
       <div className="grid gap-4 rounded-xl border border-border bg-card p-5 sm:grid-cols-2">
-        <Field label="Restaurant Name">
+        <Field label={t('restaurant_name')}>
           <input
             required
-            className={inputCls}
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
+            className={inputCls}
           />
         </Field>
-        <Field label="Tagline">
+        <Field label={t('tagline_label')}>
           <input
-            className={inputCls}
             value={form.tagline}
             onChange={(e) => setForm({ ...form, tagline: e.target.value })}
+            className={inputCls}
           />
         </Field>
-        <Field label="Address">
+        <Field label={t('address_label')}>
           <input
-            className={inputCls}
             value={form.address}
             onChange={(e) => setForm({ ...form, address: e.target.value })}
+            className={inputCls}
           />
         </Field>
-        <Field label="Phone">
+        <Field label={t('phone_label')}>
           <input
-            className={inputCls}
             value={form.phone}
             onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            className={inputCls}
           />
         </Field>
-        <Field label="Instagram URL">
+        <Field label={t('instagram_label')}>
           <input
-            className={inputCls}
             value={form.instagram_url}
             onChange={(e) =>
               setForm({ ...form, instagram_url: e.target.value })
             }
-            placeholder="https://instagram.com/…"
+            className={inputCls}
           />
         </Field>
-        <Field label="TikTok URL">
+        <Field label={t('tiktok_label')}>
           <input
-            className={inputCls}
             value={form.tiktok_url}
             onChange={(e) => setForm({ ...form, tiktok_url: e.target.value })}
-            placeholder="https://tiktok.com/@…"
+            className={inputCls}
           />
         </Field>
-        <div className="sm:col-span-2">
-          <Field label="Google Maps URL">
-            <div className="flex gap-2">
-              <MapPin className="mt-2.5 h-4 w-4 shrink-0 text-primary" />
-              <input
-                className={inputCls}
-                value={form.map_url}
-                onChange={(e) => setForm({ ...form, map_url: e.target.value })}
-                placeholder="https://maps.google.com/?q=…"
-              />
-            </div>
-          </Field>
-        </div>
+        <Field label={t('google_maps_label')}>
+          <input
+            value={form.map_url}
+            onChange={(e) => setForm({ ...form, map_url: e.target.value })}
+            className={inputCls}
+          />
+        </Field>
+        <Field label={t('google_maps_embed_label')}>
+          <input
+            value={form.map_embed_url}
+            onChange={(e) =>
+              setForm({ ...form, map_embed_url: e.target.value })
+            }
+            className={inputCls}
+          />
+        </Field>
+        <Field label={t('max_tables_label')}>
+          <input
+            type="number"
+            value={form.max_tables}
+            onChange={(e) =>
+              setForm({ ...form, max_tables: Number(e.target.value) })
+            }
+            className={inputCls}
+          />
+        </Field>
+        <Field label={t('wifi_password_label')}>
+          <input
+            value={form.wifi_password}
+            onChange={(e) =>
+              setForm({ ...form, wifi_password: e.target.value })
+            }
+            className={inputCls}
+          />
+        </Field>
+        <Field label={t('service_charge_label')}>
+          <input
+            type="number"
+            step="0.1"
+            value={form.service_charge_pct}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                service_charge_pct: Number(e.target.value),
+              })
+            }
+            className={inputCls}
+          />
+        </Field>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-display text-sm uppercase tracking-wider">
-            Opening Hours
+            {t('opening_hours')}
           </h3>
           <button
             type="button"
@@ -1913,7 +1958,7 @@ function InfoTab({
             }
             className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
           >
-            <Plus className="h-3 w-3" /> Add row
+            <Plus className="h-3 w-3" /> {t('add_row')}
           </button>
         </div>
         <div className="space-y-2">
@@ -1922,7 +1967,7 @@ function InfoTab({
               <input
                 className={inputCls}
                 value={h.day}
-                placeholder="Mon–Fri"
+                placeholder={t('mon_fri_placeholder')}
                 onChange={(e) => {
                   const a = [...form.hours]
                   a[i] = { ...a[i], day: e.target.value }
@@ -1932,7 +1977,7 @@ function InfoTab({
               <input
                 className={inputCls}
                 value={h.hours}
-                placeholder="10:00 – 22:00"
+                placeholder={t('hours_placeholder')}
                 onChange={(e) => {
                   const a = [...form.hours]
                   a[i] = { ...a[i], hours: e.target.value }
@@ -1945,7 +1990,7 @@ function InfoTab({
                   setShowConfirm({
                     type: 'hours',
                     index: i,
-                    title: 'Remove these hours?',
+                    title: t('remove_hours_confirm'),
                   })
                 }
                 className="rounded border border-border p-2 text-muted-foreground hover:border-destructive hover:text-destructive"
@@ -1960,25 +2005,25 @@ function InfoTab({
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="mb-4 font-display text-sm uppercase tracking-wider text-primary">
-            Promotional Banner
+            {t('promo_banner_title')}
           </h3>
           <div className="space-y-4">
             <Toggle
-              label="Enable Promotional Banner on Public Menu"
+              label={t('promo_banner_enable')}
               value={form.promo_banner_active}
               onChange={(v) => setForm({ ...form, promo_banner_active: v })}
             />
-            <Field label="Banner Announcement (e.g. '10% off Friday!')">
+            <Field label={t('promo_banner_announcement')}>
               <input
                 className={inputCls}
                 value={form.promo_banner_text}
                 onChange={(e) =>
                   setForm({ ...form, promo_banner_text: e.target.value })
                 }
-                placeholder="Text goes here..."
+                placeholder={t('ingredients_placeholder')}
               />
             </Field>
-            <Field label="Banner Redirect URL (Optional)">
+            <Field label={t('promo_banner_url_label')}>
               <input
                 className={inputCls}
                 value={form.promo_banner_url}
@@ -1993,10 +2038,10 @@ function InfoTab({
 
         <div className="rounded-xl border border-border bg-card p-5">
           <h3 className="mb-4 font-display text-sm uppercase tracking-wider text-primary">
-            Store Utilities
+            {t('store_utilities')}
           </h3>
           <div className="space-y-4">
-            <Field label="Wi-Fi Password for Guests">
+            <Field label={t('wifi_password_label')}>
               <input
                 className={inputCls}
                 value={form.wifi_password}
@@ -2006,7 +2051,7 @@ function InfoTab({
                 placeholder="FreeWifi_123"
               />
             </Field>
-            <Field label="Service Charge (%)">
+            <Field label={t('service_charge_label')}>
               <input
                 type="number"
                 min={0}
@@ -2028,7 +2073,7 @@ function InfoTab({
       <div className="rounded-xl border border-border bg-card p-5">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="font-display text-sm uppercase tracking-wider">
-            Payment Methods
+            {t('payment_methods')}
           </h3>
           <button
             type="button"
@@ -2043,7 +2088,7 @@ function InfoTab({
             }
             className="inline-flex items-center gap-1 text-xs font-semibold text-primary"
           >
-            <Plus className="h-3 w-3" /> Add Method
+            <Plus className="h-3 w-3" /> {t('add_payment_method')}
           </button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -2096,7 +2141,7 @@ function InfoTab({
                     setShowConfirm({
                       type: 'payment',
                       index: i,
-                      title: 'Delete this payment method?',
+                      title: t('delete_payment_confirm'),
                     })
                   }
                   className="rounded p-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -2133,11 +2178,10 @@ function InfoTab({
       <div className="space-y-3 rounded-xl border border-border bg-card p-5">
         <div>
           <h3 className="font-display text-sm uppercase tracking-wider">
-            Staff PIN
+            {t('staff_pin_title')}
           </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Set the 4-digit PIN that staff use to log in to the Kitchen Display
-            (Staff Console).
+            {t('staff_pin_desc')}
           </p>
         </div>
         <div className="flex gap-2">
@@ -2161,12 +2205,12 @@ function InfoTab({
               setPinSaving(true)
               try {
                 await setStaffPin({ data: { pin: pinValue } })
-                setPinMsg('PIN updated!')
+                setPinMsg(t('pin_updated'))
                 setPinValue('')
-                toast.success('Staff PIN updated')
+                toast.success(t('staff_pin_updated'))
               } catch (err: any) {
-                setPinMsg(err.message || 'Failed')
-                toast.error('Failed to update PIN')
+                setPinMsg(err.message || t('failed'))
+                toast.error(t('failed_update_pin'))
               } finally {
                 setPinSaving(false)
                 setTimeout(() => setPinMsg(''), 3000)
@@ -2255,7 +2299,7 @@ function InfoTab({
                         type: 'revoke-session',
                         index: -1,
                         sessionId: s.id,
-                        title: 'Force-logout this KDS device?',
+                        title: t('force_logout_title'),
                       })
                     }
                     className="shrink-0 rounded bg-destructive/10 px-3 py-1.5 text-xs font-bold text-destructive hover:bg-destructive hover:text-white transition-colors"
@@ -2280,7 +2324,7 @@ function InfoTab({
           ) : (
             <Check className="h-3.5 w-3.5" />
           )}
-          Save Info
+          {t('save_info')}
         </button>
       </div>
 
@@ -2303,23 +2347,22 @@ function InfoTab({
             </h3>
             <p className="mt-2 text-sm text-muted-foreground">
               {showConfirm.title}
-              {showConfirm.type !== 'revoke-session' &&
-                ' This action is local until you save.'}
+              {showConfirm.type !== 'revoke-session' && t('local_action_note')}
             </p>
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => setShowConfirm(null)}
                 className="flex-1 rounded-md border border-border px-4 py-2 text-xs font-bold uppercase tracking-wider hover:bg-muted"
               >
-                Cancel
+                {t('cancel')}
               </button>
               <button
                 onClick={handleConfirmDelete}
                 className="flex-1 flex items-center justify-center gap-2 rounded-md bg-destructive px-4 py-2 text-xs font-bold uppercase tracking-wider text-destructive-foreground hover:opacity-90"
               >
                 {showConfirm.type === 'revoke-session'
-                  ? 'Force Logout'
-                  : 'Delete'}
+                  ? t('force_logout')
+                  : t('delete')}
               </button>
             </div>
           </div>
@@ -2385,6 +2428,7 @@ function ConfirmationModal({
   onCancel: () => void
   busy?: boolean
 }) {
+  const { t } = useTranslation()
   if (!open) return null
 
   return (
@@ -2399,7 +2443,7 @@ function ConfirmationModal({
             disabled={busy}
             className="rounded-xl border border-border bg-background px-4 py-2.5 text-sm font-semibold hover:bg-muted disabled:opacity-50"
           >
-            Cancel
+            {t('cancel')}
           </button>
           <button
             onClick={onConfirm}
@@ -2671,9 +2715,11 @@ function TablesTab() {
     <div className="space-y-4">
       <ConfirmationModal
         open={!!showConfirm}
-        title="Delete Table"
-        description={`Are you sure you want to delete "${showConfirm?.label}"? This will break any existing QR codes.`}
-        confirmLabel="Delete"
+        title={t('delete_table_title')}
+        description={t('delete_table_confirm', {
+          label: showConfirm?.label ?? '',
+        })}
+        confirmLabel={t('delete')}
         onConfirm={() => showConfirm && handleDelete(showConfirm.id)}
         onCancel={() => setShowConfirm(null)}
         busy={busyId === showConfirm?.id}
@@ -2682,10 +2728,10 @@ function TablesTab() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="font-display text-lg uppercase tracking-wider text-primary">
-            Tables
+            {t('tables_title')}
           </h2>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Each table gets a unique QR code. Print and place on the table.
+            {t('tables_desc')}
           </p>
         </div>
         <div className="flex w-full flex-wrap justify-end gap-2 sm:w-auto">
@@ -2701,7 +2747,7 @@ function TablesTab() {
                 ) : (
                   <Printer className="h-3.5 w-3.5" />
                 )}
-                Print All
+                {t('print_all')}
               </button>
               <button
                 onClick={handleDownloadAll}
@@ -2713,7 +2759,7 @@ function TablesTab() {
                 ) : (
                   <Download className="h-3.5 w-3.5" />
                 )}
-                Download All
+                {t('download_all')}
               </button>
             </>
           )}
@@ -2721,7 +2767,7 @@ function TablesTab() {
             onClick={() => setAdding(true)}
             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"
           >
-            <Plus className="h-3.5 w-3.5" /> Add Table
+            <Plus className="h-3.5 w-3.5" /> {t('add_table')}
           </button>
         </div>
       </div>
@@ -2735,7 +2781,7 @@ function TablesTab() {
             autoFocus
             required
             className={inputCls}
-            placeholder='e.g. "Table 1" or "VIP 2"'
+            placeholder={t('table_placeholder')}
             value={newLabel}
             onChange={(e) => setNewLabel(e.target.value)}
           />
@@ -2749,7 +2795,7 @@ function TablesTab() {
             ) : (
               <Check className="h-3 w-3" />
             )}
-            Save
+            {t('save')}
           </button>
           <button
             type="button"
@@ -2962,6 +3008,7 @@ function TableRow({
 // ─── Orders Tab ───────────────────────────────────────────────────────────────
 
 function OrdersTab() {
+  const { t } = useTranslation()
   const [orders, setOrders] = useState<TableOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -2996,10 +3043,9 @@ function OrdersTab() {
     try {
       await updateOrderStatus({ data: { id, status } })
       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
-      if (status === 'accepted')
-        toast.success('Order accepted — send to kitchen!')
-      if (status === 'rejected') toast('Order rejected')
-      if (status === 'completed') toast.success('Order marked complete')
+      if (status === 'accepted') toast.success(t('order_accepted_toast'))
+      if (status === 'rejected') toast(t('order_rejected_toast'))
+      if (status === 'completed') toast.success(t('order_completed_toast'))
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -3015,9 +3061,10 @@ function OrdersTab() {
 
   const timeAgo = (ts: string) => {
     const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
-    if (diff < 60) return `${diff}s ago`
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`
-    return `${Math.floor(diff / 3600)}h ago`
+    if (diff < 60) return t('seconds_ago_short', { count: diff })
+    if (diff < 3600)
+      return t('minutes_ago_short', { count: Math.floor(diff / 60) })
+    return t('hours_ago_short', { count: Math.floor(diff / 3600) })
   }
 
   function OrderCard({ order }: { order: TableOrder }) {
@@ -3056,7 +3103,13 @@ function OrdersTab() {
                     : 'bg-muted text-muted-foreground'
               }`}
             >
-              {order.status}
+              {order.status === 'pending'
+                ? t('status_pending')
+                : order.status === 'accepted'
+                  ? t('status_preparing')
+                  : order.status === 'completed'
+                    ? t('status_completed')
+                    : t('status_rejected')}
             </span>
           </div>
           <span className="shrink-0 text-[11px] text-muted-foreground">
@@ -3072,7 +3125,7 @@ function OrdersTab() {
                 {item.name}
               </span>
               <span className="text-muted-foreground">
-                {(item.qty * item.price).toLocaleString()} ETB
+                {(item.qty * item.price).toLocaleString()} {t('currency')}
               </span>
             </li>
           ))}
@@ -3096,14 +3149,14 @@ function OrdersTab() {
               ) : (
                 <Check className="h-3.5 w-3.5" />
               )}
-              Accept
+              {t('accept')}
             </button>
             <button
               disabled={busy}
               onClick={() => handleStatus(order.id, 'rejected')}
               className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-60"
             >
-              <X className="h-3.5 w-3.5" /> Reject
+              <X className="h-3.5 w-3.5" /> {t('reject')}
             </button>
           </div>
         )}
@@ -3119,7 +3172,7 @@ function OrdersTab() {
             ) : (
               <Check className="h-3.5 w-3.5" />
             )}
-            Mark Completed
+            {t('mark_completed')}
           </button>
         )}
       </div>
@@ -3141,7 +3194,7 @@ function OrdersTab() {
       <section>
         <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-primary">
           <ChefHat className="h-4 w-4" />
-          Pending Orders
+          {t('pending_orders_title')}
           {pending.length > 0 && (
             <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
               {pending.length}
@@ -3150,7 +3203,7 @@ function OrdersTab() {
         </h2>
         {pending.length === 0 ? (
           <div className="flex min-h-32 items-center justify-center rounded-xl border border-dashed border-border text-sm text-muted-foreground">
-            No pending orders
+            {t('no_pending_orders')}
           </div>
         ) : (
           <div className="columns-1 sm:columns-2 gap-3">
@@ -3164,7 +3217,7 @@ function OrdersTab() {
       {accepted.length > 0 && (
         <section>
           <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-green-600 dark:text-green-400">
-            <Check className="h-4 w-4" /> In Kitchen
+            <Check className="h-4 w-4" /> {t('in_kitchen_title')}
           </h2>
           <div className="columns-1 sm:columns-2 gap-3">
             {accepted.map((o) => (
@@ -3177,7 +3230,8 @@ function OrdersTab() {
       {done.length > 0 && (
         <section>
           <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-muted-foreground">
-            <ClipboardList className="h-4 w-4" /> Completed / Rejected
+            <ClipboardList className="h-4 w-4" />{' '}
+            {t('completed_rejected_title')}
           </h2>
           <div className="columns-1 sm:columns-2 gap-3 opacity-70">
             {done.slice(0, doneLimit).map((o) => (
@@ -3199,10 +3253,14 @@ function OrdersTab() {
               {doneLoadingMore ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading...
+                  {t('loading_dots')}
                 </>
               ) : (
-                <>Load More ({done.length - doneLimit} remaining)</>
+                <>
+                  {t('load_more_with_count', {
+                    count: done.length - doneLimit,
+                  })}
+                </>
               )}
             </button>
           )}

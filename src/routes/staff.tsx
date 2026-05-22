@@ -199,7 +199,10 @@ function StaffPage() {
           setCalls((prev) => [c, ...prev])
           playKDSAlert()
           toast(
-            t('waiter_calling_toast').replace('{tableLabel}', c.table_label ?? ''),
+            t('waiter_calling_toast').replace(
+              '{tableLabel}',
+              c.table_label ?? '',
+            ),
             {
               duration: 10000,
             },
@@ -350,7 +353,7 @@ function StaffPage() {
               onClick={() => setEightyOpen(true)}
               className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary"
             >
-              86 Board
+              {t('eighty_board')}
             </button>
             <button
               onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
@@ -415,7 +418,7 @@ function StaffPage() {
                           {t('kds_title')}
                         </h1>
                       </div>
-                      <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-primary">
+                      <h2 className="my-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-primary">
                         <ChefHat className="h-4 w-4" /> {t('status_pending')}
                         <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
                           {pending.length}
@@ -589,7 +592,9 @@ function StaffPage() {
                             : 'bg-muted text-muted-foreground'
                         }`}
                       >
-                        {c.status}
+                        {c.status === 'pending'
+                          ? t('status_pending')
+                          : t('acknowledged')}
                       </span>
                     </div>
                     <LiveTimeAgo
@@ -651,6 +656,7 @@ function KDSOrderCard({
   busyStatus: string | null
   onStatus: (id: string, s: 'accepted' | 'rejected' | 'completed') => void
 }) {
+  const { t } = useTranslation()
   const isPending = order.status === 'pending'
   const isAccepted = order.status === 'accepted'
   return (
@@ -673,7 +679,13 @@ function KDSOrderCard({
                   : 'bg-muted text-muted-foreground'
             }`}
           >
-            {order.status}
+            {order.status === 'pending'
+              ? t('status_pending')
+              : order.status === 'accepted'
+                ? t('status_accepted')
+                : order.status === 'completed'
+                  ? t('status_completed')
+                  : t('status_rejected')}
           </span>
         </div>
         <LiveTimeAgo
@@ -690,7 +702,7 @@ function KDSOrderCard({
               {item.name}
             </span>
             <span className="text-muted-foreground">
-              {(item.qty * item.price).toLocaleString()} ETB
+              {(item.qty * item.price).toLocaleString()} {t('currency')}
             </span>
           </li>
         ))}
@@ -714,7 +726,7 @@ function KDSOrderCard({
             ) : (
               <Check className="h-4 w-4" />
             )}
-            Accept
+            {t('accept')}
           </button>
           <button
             disabled={!!busyStatus}
@@ -741,7 +753,7 @@ function KDSOrderCard({
           ) : (
             <Check className="h-4 w-4" />
           )}
-          Mark Done
+          {t('mark_done')}
         </button>
       )}
     </div>
@@ -756,6 +768,7 @@ function EightyBoardModal({
   isOpen: boolean
   onClose: () => void
 }) {
+  const { t, dt } = useTranslation()
   const [items, setItems] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
   const [togglingIds, setTogglingIds] = useState<string[]>([])
@@ -798,9 +811,11 @@ function EightyBoardModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
-            <h2 className="font-display text-xl text-primary">86 Board</h2>
+            <h2 className="font-display text-xl text-primary">
+              {t('eighty_board')}
+            </h2>
             <p className="text-xs text-muted-foreground">
-              Toggle item availability in real time
+              {t('eighty_board_subtitle')}
             </p>
           </div>
           <button
@@ -838,7 +853,7 @@ function EightyBoardModal({
                     <span
                       className={`text-sm font-medium ${!item.is_available ? 'line-through text-muted-foreground' : ''}`}
                     >
-                      {item.name}
+                      {dt(item, 'name')}
                     </span>
                     <button
                       onClick={() => handleToggle(item)}
@@ -861,7 +876,9 @@ function EightyBoardModal({
                           <span
                             className={`text-[10px] font-black uppercase tracking-wider ${item.is_available ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}
                           >
-                            {item.is_available ? 'In Stock' : "86'd"}
+                            {item.is_available
+                              ? t('in_stock')
+                              : t('eighty_six_d')}
                           </span>
                         </div>
                       )}

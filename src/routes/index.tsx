@@ -71,7 +71,6 @@ export const Route = createFileRoute('/')({
 })
 
 import { useTranslation } from '@/lib/i18n'
-import type { Lang } from '@/lib/translations'
 
 type FilterTag = 'special' | 'veg' | 'fasting' | 'spicy'
 
@@ -169,22 +168,13 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
 
     const maxTables = info?.max_tables ?? 999
     if (isNaN(tableNum) || tableNum < 1 || tableNum > maxTables) {
-      toast(
-        lang === 'am'
-          ? `የጠረጴዛ ቁጥር ከ ${maxTables} መብለጥ አይችልም`
-          : `Table number cannot exceed ${maxTables}`,
-      )
+      toast(t('verify_error')) // Generic error if table invalid
       return
     }
 
     // Local device rate-limit check (fast fail)
     if (isRateLimitedLocally(tableNum)) {
-      toast(
-        lang === 'am'
-          ? 'አስተናጋጅ ወደ ጠረጴዛዎ ተጠርቷል። ትንሽ ይጠብቁ።'
-          : 'A waiter is already on the way — please wait a moment.',
-        { duration: 5000 },
-      )
+      toast(t('waiter_already_on_way'), { duration: 5000 })
       return
     }
 
@@ -196,20 +186,15 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
         data: { table_label: lbl, device_id: did },
       })
       recordWaiterCall(tableNum)
-      toast(
-        lang === 'am'
-          ? 'አስተናጋጅ ወደ ጠረጴዛዎ እየመጣ ነው'
-          : 'A waiter is on their way to your table!',
-        { duration: 5000 },
-      )
+      toast(t('waiter_calling_toast').replace('{tableLabel}', lbl), {
+        duration: 5000,
+      })
     } catch (e: any) {
       const raw: string = e.message || ''
       const isRateLimit = raw.toLowerCase().includes('already on their way')
       const errMsg = isRateLimit
-        ? lang === 'am'
-          ? 'አስተናጋጅ ወደ ጠረጴዛዎ ተጠርቷል። ትንሽ ይጠብቁ።'
-          : 'A waiter is already on the way — please wait a moment.'
-        : raw || (lang === 'am' ? 'ስህተት ተፈጥሯል' : 'Something went wrong')
+        ? t('waiter_already_on_way')
+        : raw || t('error_general')
       toast(errMsg)
     } finally {
       setIsCalling(false)
@@ -239,9 +224,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
         // Token invalid — clear any stale session
         localStorage.removeItem(SESSION_KEY)
         setTableSession(null)
-        toast.error(
-          'Invalid QR code — please scan the QR code on your table again.',
-        )
+        toast.error(t('invalid_qr'))
       })
   }, [qrToken])
 
@@ -504,7 +487,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
             <Star
               className={`h-3.5 w-3.5 ${activeFilters.has('special') ? 'fill-current' : ''}`}
             />{' '}
-            {lang === 'am' ? 'የዛሬ ልዩ' : "Today's Special"}
+            {t('todays_special')}
           </button>
           <button
             onClick={() => toggleFilter('veg')}
@@ -514,8 +497,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                 : 'border-border bg-card text-muted-foreground hover:border-success hover:text-success'
             }`}
           >
-            <Leaf className="h-3.5 w-3.5" />{' '}
-            {lang === 'am' ? 'የፆም/አትክልት' : 'Veg'}
+            <Leaf className="h-3.5 w-3.5" /> {t('veg')}
           </button>
           <button
             onClick={() => toggleFilter('fasting')}
@@ -525,8 +507,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                 : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary'
             }`}
           >
-            <Clock className="h-3.5 w-3.5" />{' '}
-            {lang === 'am' ? 'ለፆም' : 'Fasting'}
+            <Clock className="h-3.5 w-3.5" /> {t('fasting')}
           </button>
           <button
             onClick={() => toggleFilter('spicy')}
@@ -536,7 +517,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                 : 'border-border bg-card text-muted-foreground hover:border-destructive hover:text-destructive'
             }`}
           >
-            <Flame className="h-3.5 w-3.5" /> {lang === 'am' ? 'ቅመም' : 'Spicy'}
+            <Flame className="h-3.5 w-3.5" /> {t('spicy')}
           </button>
         </div>
 
@@ -544,18 +525,13 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
         {featured.length > 0 && query === '' && (
           <section className="mb-8">
             <SectionTitle
-              label={lang === 'am' ? 'የቤቱ ምርጥ' : "Chef's Picks"}
+              label={t('chefs_picks')}
               icon={<Sparkles className="h-3 w-3" />}
             />
             <ScrollFade direction="horizontal" className="-mx-4 mt-3">
               <div className="scrollbar-none flex gap-3 overflow-x-auto px-4">
                 {featured.map((i) => (
-                  <FeaturedCard
-                    key={i.id}
-                    item={i}
-                    lang={lang}
-                    onPreview={setPreviewImage}
-                  />
+                  <FeaturedCard key={i.id} item={i} />
                 ))}
               </div>
             </ScrollFade>
@@ -584,16 +560,11 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
               <div className="mt-3 space-y-3">
                 {list.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
-                    {lang === 'am' ? 'ምንም የሚታይ ምግብ የለም።' : 'No items yet.'}
+                    {t('no_items_in_cat')}
                   </p>
                 ) : (
                   list.map((i) => (
-                    <ItemCard
-                      key={i.id}
-                      item={i}
-                      lang={lang}
-                      onPreview={setPreviewImage}
-                    />
+                    <ItemCard key={i.id} item={i} onPreview={setPreviewImage} />
                   ))
                 )}
               </div>
@@ -604,7 +575,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
         {grouped.every(({ items: l }) => l.length === 0) &&
           (query !== '' || activeFilters.size > 0) && (
             <p className="mt-12 text-center text-sm text-muted-foreground">
-              {lang === 'am' ? 'ምንም ውጤት የለም።' : 'No matching items.'}
+              {t('no_matching_items')}
             </p>
           )}
       </main>
@@ -615,7 +586,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
               <h3 className="font-display text-lg text-primary">
-                {lang === 'am' ? 'ጎብኙን' : 'Visit Us'}
+                {t('visit_us')}
               </h3>
               {info?.address && (
                 <p className="mt-2 flex items-start gap-2 text-sm text-muted-foreground">
@@ -638,13 +609,13 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                   rel="noreferrer"
                   className="mt-3 inline-flex text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
                 >
-                  {lang === 'am' ? 'በካርታ ላይ →' : 'Open in Maps →'}
+                  {t('open_in_maps')} →
                 </a>
               )}
             </div>
             <div>
               <h3 className="font-display text-lg text-primary">
-                {lang === 'am' ? 'የሥራ ሰዓት' : 'Hours'}
+                {t('opening_hours')}
               </h3>
               <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
                 {(Array.isArray(info?.hours)
@@ -672,7 +643,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                   {info.wifi_password && (
                     <div className="mb-4">
                       <h4 className="font-display text-sm uppercase tracking-wider text-primary">
-                        {lang === 'am' ? 'ዋይፋይ' : 'Wi-Fi'}
+                        {t('wifi')}
                       </h4>
                       <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
                         <Wifi className="h-4 w-4 text-primary" />
@@ -681,9 +652,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                             navigator.clipboard.writeText(
                               info.wifi_password || '',
                             )
-                            toast.success(
-                              lang === 'am' ? 'ኮፒ ተደርጓል' : 'Copied!',
-                            )
+                            toast.success(t('copied'))
                           }}
                           className="flex items-center gap-1.5 hover:opacity-80 transition active:scale-95 cursor-copy"
                           title="Copy to clipboard"
@@ -700,7 +669,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                     info!.payment_methods.length > 0 && (
                       <div>
                         <h4 className="font-display text-sm uppercase tracking-wider text-primary">
-                          {lang === 'am' ? 'የመክፈያ ዘዴዎች' : 'Payment Methods'}
+                          {t('payment_methods')}
                         </h4>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {info.payment_methods.map((pm: any, idx: number) => (
@@ -723,9 +692,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                                   navigator.clipboard.writeText(
                                     pm.account || '',
                                   )
-                                  toast.success(
-                                    lang === 'am' ? 'ኮፒ ተደርጓል' : 'Copied!',
-                                  )
+                                  toast.success(t('copied'))
                                 }}
                                 className="flex w-full cursor-copy items-center justify-center gap-1 hover:opacity-80 transition active:scale-95"
                                 title="Copy account number"
@@ -771,11 +738,11 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
               )}
             </div>
             <p className="text-center text-[11px] uppercase tracking-widest text-muted-foreground">
-              © {new Date().getFullYear()} {info?.name ?? 'Origin'} · All Rights
-              Reserved
+              © {new Date().getFullYear()} {info?.name ?? 'Origin'} ·{' '}
+              {t('all_rights_reserved')}
             </p>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-              Crafted by{' '}
+              {t('crafted_by')}{' '}
               <a
                 href="https://kidusportfoloio.netlify.app/"
                 target="_blank"
@@ -797,7 +764,9 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
             <div className="flex items-center gap-2 text-sm">
               <ShoppingBag className="h-4 w-4 text-primary" />
               <span className="font-semibold">
-                {count} item{count !== 1 ? 's' : ''}
+                {count === 1
+                  ? t('cart_item_single').replace('{count}', count.toString())
+                  : t('cart_items').replace('{count}', count.toString())}
               </span>
             </div>
             <button
@@ -806,7 +775,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
             >
               <span>{t('view_bill')}</span>
               <span className="font-display text-base">
-                {formatBirr(total)} ETB
+                {formatBirr(total)} {t('currency')}
               </span>
               <ChevronUp className="h-4 w-4" />
             </button>
@@ -835,7 +804,6 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
         onClose={() => setBillOpen(false)}
         info={info}
         tableSession={tableSession}
-        setTableSession={setTableSession}
       />
 
       {/* AI Drawer */}
@@ -899,16 +867,14 @@ function SectionTitle({
 
 function ItemCard({
   item,
-  lang,
   onPreview,
 }: {
   item: MenuItem
-  lang: Lang
   onPreview: (p: { url: string; name: string }) => void
 }) {
-  const name = lang === 'am' ? (item.name_am ?? item.name) : item.name
-  const desc =
-    lang === 'am' ? (item.description_am ?? item.description) : item.description
+  const { t, dt } = useTranslation()
+  const name = dt(item, 'name')
+  const desc = dt(item, 'description')
   const unavailable = !item.is_available
   const [imgLoaded, setImgLoaded] = useState(false)
   const { add, decrement, items: cartItems } = useCart()
@@ -958,7 +924,7 @@ function ItemCard({
           <div className="shrink-0 text-right">
             <div className="font-display text-base text-primary">
               {formatBirr(Number(item.price))}{' '}
-              <span className="text-[10px]">ETB</span>
+              <span className="text-[10px]">{t('currency')}</span>
             </div>
           </div>
         </div>
@@ -967,25 +933,19 @@ function ItemCard({
             {item.is_special && (
               <span className="flex items-center gap-1 rounded bg-yellow-400/15 border border-yellow-400/50 px-1.5 py-0.5 text-[10px] font-bold text-yellow-600 dark:text-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.2)]">
                 <Star className="h-2.5 w-2.5 fill-current" />
-                {lang === 'am' ? 'ልዩ' : 'Special'}
+                {t('item_special_badge')}
               </span>
             )}
-            {unavailable && (
-              <Tag tone="muted">{lang === 'am' ? 'አልቆ' : 'Sold out'}</Tag>
-            )}
+            {unavailable && <Tag tone="muted">{t('out_of_stock')}</Tag>}
             {item.is_vegetarian && (
               <Tag tone="success">
-                <Leaf className="h-2.5 w-2.5" />{' '}
-                {lang === 'am' ? 'አትክልት' : 'Veg'}
+                <Leaf className="h-2.5 w-2.5" /> {t('veg')}
               </Tag>
             )}
-            {item.is_fasting && (
-              <Tag tone="success">{lang === 'am' ? 'ጾም' : 'Fasting'}</Tag>
-            )}
+            {item.is_fasting && <Tag tone="success">{t('fasting')}</Tag>}
             {item.is_spicy && (
               <Tag tone="primary">
-                <Flame className="h-2.5 w-2.5" />{' '}
-                {lang === 'am' ? 'ቅመማማ' : 'Spicy'}
+                <Flame className="h-2.5 w-2.5" /> {t('spicy')}
               </Tag>
             )}
           </div>
@@ -1024,16 +984,9 @@ function ItemCard({
   )
 }
 
-function FeaturedCard({
-  item,
-  lang,
-  onPreview,
-}: {
-  item: MenuItem
-  lang: Lang
-  onPreview: (p: { url: string; name: string }) => void
-}) {
-  const name = lang === 'am' ? (item.name_am ?? item.name) : item.name
+function FeaturedCard({ item }: { item: MenuItem }) {
+  const { dt, t } = useTranslation()
+  const name = dt(item, 'name')
   const [imgLoaded, setImgLoaded] = useState(false)
   const { add, decrement, items: cartItems } = useCart()
   const cartItem = cartItems.find((i) => i.id === item.id)
@@ -1087,7 +1040,7 @@ function FeaturedCard({
           <p className="truncate text-xs font-semibold">{name}</p>
           <p className="mt-0.5 font-display text-sm text-primary">
             {formatBirr(Number(item.price))}{' '}
-            <span className="text-[9px]">ETB</span>
+            <span className="text-[9px]">{t('currency')}</span>
           </p>
         </div>
       </button>
@@ -1153,13 +1106,11 @@ function BillDrawer({
   open,
   info,
   tableSession,
-  setTableSession,
 }: {
   onClose: () => void
   open: boolean
   info?: any
   tableSession?: { token: string; tableId: string; tableLabel: string } | null
-  setTableSession: (session: any) => void
 }) {
   const { lang, t } = useTranslation()
   const { items, increment, decrement, remove, clear, total } = useCart()
@@ -1274,7 +1225,8 @@ function BillDrawer({
                             {item.name}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {formatBirr(item.price)} ETB × {item.qty}
+                            {formatBirr(item.price)} {t('currency')} ×{' '}
+                            {item.qty}
                           </p>
                         </div>
                         <div className="flex shrink-0 items-center gap-1.5">
@@ -1317,7 +1269,7 @@ function BillDrawer({
                       <span>{t('subtotal')}</span>
                       <span>
                         {formatBirr(total)}{' '}
-                        <span className="text-[10px]">ETB</span>
+                        <span className="text-[10px]">{t('currency')}</span>
                       </span>
                     </div>
                     {scPct > 0 && (
@@ -1327,7 +1279,7 @@ function BillDrawer({
                         </span>
                         <span>
                           {formatBirr(scAmt)}{' '}
-                          <span className="text-[10px]">ETB</span>
+                          <span className="text-[10px]">{t('currency')}</span>
                         </span>
                       </div>
                     )}
@@ -1338,7 +1290,7 @@ function BillDrawer({
                     </span>
                     <span className="font-display text-2xl text-primary">
                       {formatBirr(grandTotal)}{' '}
-                      <span className="text-sm">ETB</span>
+                      <span className="text-sm">{t('currency')}</span>
                     </span>
                   </div>
                   {tableSession ? (

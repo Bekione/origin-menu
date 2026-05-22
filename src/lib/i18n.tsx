@@ -4,7 +4,7 @@ import { translations, type Lang, type TranslationKey } from './translations'
 type LanguageContextType = {
   lang: Lang
   setLang: (lang: Lang) => void
-  t: (key: TranslationKey) => string
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string
   dt: (obj: any, key: string) => any
 }
 
@@ -65,8 +65,18 @@ export function LanguageProvider({
     setCookie(STORAGE_KEY, newLang) // Set immediately for next navigation
   }
 
-  const t = (key: TranslationKey): string => {
-    return translations[lang][key] || translations['en'][key] || key
+  const t = (
+    key: TranslationKey,
+    params?: Record<string, string | number>,
+  ): string => {
+    const dict = translations[lang] as any
+    let text = dict[key] || (translations['en'] as any)[key] || key
+    if (params) {
+      Object.entries(params).forEach(([k, v]) => {
+        text = text.replace(`{${k}}`, String(v))
+      })
+    }
+    return text
   }
 
   /**
