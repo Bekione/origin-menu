@@ -69,6 +69,7 @@ import ScrollFade from '#/components/ScrollFade'
 import { optimizeImage, compressImageFile } from '@/lib/image'
 import qrLogo from '@/assets/origin-logo-qr-svg.svg'
 import { useTranslation } from '@/lib/i18n'
+import { LiveTimeAgo } from '@/lib/date-utils'
 
 type TabValue = 'items' | 'categories' | 'info' | 'tables' | 'orders' | 'staff'
 
@@ -3059,14 +3060,6 @@ function OrdersTab() {
     ['rejected', 'completed'].includes(o.status),
   )
 
-  const timeAgo = (ts: string) => {
-    const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000)
-    if (diff < 60) return t('seconds_ago_short', { count: diff })
-    if (diff < 3600)
-      return t('minutes_ago_short', { count: Math.floor(diff / 60) })
-    return t('hours_ago_short', { count: Math.floor(diff / 3600) })
-  }
-
   function OrderCard({ order }: { order: TableOrder }) {
     const { t, dt } = useTranslation()
     const isPending = order.status === 'pending'
@@ -3114,7 +3107,7 @@ function OrdersTab() {
             </span>
           </div>
           <span className="shrink-0 text-[11px] text-muted-foreground">
-            {timeAgo(order.created_at)}
+            <LiveTimeAgo ts={order.created_at} />
           </span>
         </div>
 
