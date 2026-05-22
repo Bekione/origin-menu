@@ -63,7 +63,9 @@ export const Route = createFileRoute('/admin/')({
         : undefined,
     }
   },
-  beforeLoad: async () => {
+  beforeLoad: async ({ cause }) => {
+    // Only check auth on initial page load, not on search param changes (tab switches)
+    if (cause !== 'enter') return
     let session = null
     try {
       session = await getAuthSession()
@@ -88,7 +90,7 @@ function AdminPage() {
   const initial = Route.useLoaderData() as MenuData
   const [data, setData] = useState<MenuData>(initial)
   const searchParams = Route.useSearch()
-  const tab = searchParams.tab || 'items'
+  const tab = searchParams.tab || 'dashboard'
   const navigate = Route.useNavigate()
   const setTab = useCallback(
     (t: TabValue) => navigate({ search: { tab: t }, replace: true }),
@@ -177,14 +179,14 @@ function AdminPage() {
         <div className={tab === 'info' ? undefined : 'hidden'}>
           <MemoInfoTab info={data.info} onChange={refresh} />
         </div>
-        <div className={tab === 'settings' ? undefined : 'hidden'}>
-          <MemoSettingsTab />
-        </div>
         <div className={tab === 'tables' ? undefined : 'hidden'}>
           <MemoTablesTab />
         </div>
         <div className={tab === 'orders' ? undefined : 'hidden'}>
           <MemoOrdersTab />
+        </div>
+        <div className={tab === 'settings' ? undefined : 'hidden'}>
+          <MemoSettingsTab />
         </div>
       </main>
     </div>

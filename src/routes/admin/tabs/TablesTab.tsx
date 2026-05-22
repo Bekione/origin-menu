@@ -70,7 +70,7 @@ export function TablesTab() {
       setNewLabel('')
       setAdding(false)
       await fetchTables()
-      toast.success('Table created!')
+      toast.success(t('table_created'))
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -85,7 +85,7 @@ export function TablesTab() {
       await upsertTable({ data: { id, label: editLabel.trim() } })
       setEditingId(null)
       await fetchTables()
-      toast.success('Table renamed!')
+      toast.success(t('table_renamed'))
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -98,7 +98,7 @@ export function TablesTab() {
     try {
       await regenerateTableToken({ data: { id } })
       await fetchTables()
-      toast.success(`QR code regenerated for ${label}`)
+      toast.success(t('qr_regenerated').replace('{label}', label))
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -112,7 +112,7 @@ export function TablesTab() {
       await deleteTable({ data: { id } })
       setShowConfirm(null)
       await fetchTables()
-      toast.success('Table deleted')
+      toast.success(t('table_deleted'))
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -132,7 +132,7 @@ export function TablesTab() {
     a.href = dataUrl
     a.download = `qr-${table.label.replace(/\s+/g, '-').toLowerCase()}.png`
     a.click()
-    toast.success(`QR code downloaded for ${table.label}`)
+    toast.success(t('qr_downloaded').replace('{label}', table.label))
   }
 
   const buildQRWithLogo = async (token: string): Promise<string> => {
@@ -257,9 +257,9 @@ export function TablesTab() {
       }
 
       doc.save('origin-table-qr-codes.pdf')
-      toast.success('Downloaded all QR codes as PDF!')
+      toast.success(t('pdf_downloaded'))
     } catch {
-      toast.error('Failed to generate PDF')
+      toast.error(t('pdf_failed'))
     } finally {
       setIsDownloading(false)
     }
@@ -373,9 +373,7 @@ export function TablesTab() {
       ) : tables.length === 0 ? (
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-16 text-center">
           <QrCode className="h-8 w-8 text-muted-foreground/40" />
-          <p className="text-sm text-muted-foreground">
-            No tables yet. Add your first table above.
-          </p>
+          <p className="text-sm text-muted-foreground">{t('no_tables_yet')}</p>
         </div>
       ) : (
         <div className="rounded-xl border border-border bg-card divide-y divide-border overflow-hidden">
@@ -420,7 +418,7 @@ export function TablesTab() {
               onClick={() => setPreviewQR(null)}
               className="mt-5 w-full rounded-lg bg-primary py-2.5 text-sm font-bold text-primary-foreground"
             >
-              Close Preview
+              {t('close_preview')}
             </button>
           </div>
         </div>
@@ -457,6 +455,7 @@ function TableRow({
   setPreviewQR: (v: { url: string; label: string } | null) => void
 }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null)
+  const { t } = useTranslation()
 
   useEffect(() => {
     buildQRDataUrl(table.token).then(setQrDataUrl)
@@ -499,7 +498,7 @@ function TableRow({
               {busyId === table.id ? (
                 <Loader2 className="h-3 w-3 animate-spin" />
               ) : (
-                'Save'
+                t('save')
               )}
             </button>
             <button
@@ -518,14 +517,14 @@ function TableRow({
       </div>
       <div className="flex shrink-0 items-center gap-1.5 pt-1">
         <button
-          title="Download QR Code"
+          title={t('title_download_qr')}
           onClick={() => downloadQR(table)}
           className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary"
         >
-          <Download className="h-3.5 w-3.5" /> QR
+          <Download className="h-3.5 w-3.5" /> {t('download_qr')}
         </button>
         <button
-          title="Rename"
+          title={t('rename')}
           onClick={() => {
             setEditingId(table.id)
             setEditLabel(table.label)
@@ -535,7 +534,7 @@ function TableRow({
           <Pencil className="h-3.5 w-3.5" />
         </button>
         <button
-          title="Regenerate token — invalidates old QR"
+          title={t('regenerate_qr')}
           disabled={busyId === table.id}
           onClick={() => handleRegenerate(table.id, table.label)}
           className="rounded-md border border-border p-1.5 text-muted-foreground hover:border-amber-500 hover:text-amber-500 disabled:opacity-50"
