@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, memo } from 'react'
 import { authClient } from '#/lib/auth-client'
 import { getAuthSession } from '@/server/auth-helpers'
 import { getMenuData, type MenuData } from '@/server/menu.functions'
@@ -22,6 +22,14 @@ import { TablesTab } from './tabs/TablesTab'
 import { OrdersTab } from './tabs/OrdersTab'
 import { DashboardTab } from './tabs/DashboardTab'
 import { SettingsTab } from './tabs/SettingsTab'
+
+const MemoDashboardTab = memo(DashboardTab)
+const MemoItemsTab = memo(ItemsTab)
+const MemoCategoriesTab = memo(CategoriesTab)
+const MemoInfoTab = memo(InfoTab)
+const MemoSettingsTab = memo(SettingsTab)
+const MemoTablesTab = memo(TablesTab)
+const MemoOrdersTab = memo(OrdersTab)
 
 // ─── Route types ──────────────────────────────────────────────────────────────
 
@@ -67,6 +75,8 @@ export const Route = createFileRoute('/admin/')({
     }
   },
   loader: () => getMenuData(),
+  staleTime: 1000 * 60 * 5, // 5 minutes cache
+  shouldReload: false,
   component: AdminPage,
   pendingComponent: AdminSkeleton,
   pendingMs: 0,
@@ -80,8 +90,10 @@ function AdminPage() {
   const searchParams = Route.useSearch()
   const tab = searchParams.tab || 'items'
   const navigate = Route.useNavigate()
-  const setTab = (t: TabValue) =>
-    navigate({ search: { tab: t }, replace: true })
+  const setTab = useCallback(
+    (t: TabValue) => navigate({ search: { tab: t }, replace: true }),
+    [navigate],
+  )
 
   const [calls, setCalls] = useState<WaiterCall[]>([])
   const [callsOpen, setCallsOpen] = useState(false)
@@ -101,7 +113,7 @@ function AdminPage() {
   // Hook up realtime
   useAdminRealtime({ setCalls, setPendingOrderCount, setCallsOpen })
 
-  const handleAcknowledge = async (id: string) => {
+  const handleAcknowledge = useCallback(async (id: string) => {
     setAcknowledgingId(id)
     try {
       await acknowledgeCall({ data: { id } })
@@ -111,14 +123,14 @@ function AdminPage() {
     } finally {
       setAcknowledgingId(null)
     }
-  }
+  }, [])
 
   const pendingCount = calls.filter((c) => c.status === 'pending').length
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     const fresh = await getMenuData()
     setData(fresh)
-  }
-  const logout = async () => {
+  }, [])
+  const logout = useCallback(async () => {
     setLoggingOut(true)
     try {
       await authClient.signOut()
@@ -126,7 +138,7 @@ function AdminPage() {
     } catch {
       setLoggingOut(false)
     }
-  }
+  }, [navigate])
 
   return (
     <div className="min-h-screen bg-background">
@@ -153,19 +165,26 @@ function AdminPage() {
 
       {/* ── Tab Content ── */}
       <main className="mx-auto max-w-5xl px-4 py-8">
-        {tab === 'dashboard' && <DashboardTab />}
-        {tab === 'items' && <ItemsTab data={data} onChange={refresh} />}
-        {tab === 'categories' && (
-          <CategoriesTab data={data} onChange={refresh} />
-        )}
-        {tab === 'info' && <InfoTab info={data.info} onChange={refresh} />}
-        {tab === 'settings' && <SettingsTab />}
-        {/* Tables + Orders: always mounted, hidden when not active, to preserve data across tab switches */}
+        <div className={tab === 'dashboard' ? undefined : 'hidden'}>
+          <MemoDashboardTab />
+        </div>
+        <div className={tab === 'items' ? undefined : 'hidden'}>
+          <MemoItemsTab data={data} onChange={refresh} />
+        </div>
+        <div className={tab === 'categories' ? undefined : 'hidden'}>
+          <MemoCategoriesTab data={data} onChange={refresh} />
+        </div>
+        <div className={tab === 'info' ? undefined : 'hidden'}>
+          <MemoInfoTab info={data.info} onChange={refresh} />
+        </div>
+        <div className={tab === 'settings' ? undefined : 'hidden'}>
+          <MemoSettingsTab />
+        </div>
         <div className={tab === 'tables' ? undefined : 'hidden'}>
-          <TablesTab />
+          <MemoTablesTab />
         </div>
         <div className={tab === 'orders' ? undefined : 'hidden'}>
-          <OrdersTab />
+          <MemoOrdersTab />
         </div>
       </main>
     </div>
