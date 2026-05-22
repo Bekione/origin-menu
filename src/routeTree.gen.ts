@@ -12,8 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as StaffLoginRouteImport } from './routes/staff-login'
 import { Route as StaffRouteImport } from './routes/staff'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as ApiSeedAdminRouteImport } from './routes/api/seed-admin'
 import { Route as ApiAiChatRouteImport } from './routes/api/ai-chat'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -33,14 +33,14 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminIndexRoute = AdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiSeedAdminRoute = ApiSeedAdminRouteImport.update({
@@ -61,76 +61,76 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/staff': typeof StaffRoute
   '/staff-login': typeof StaffLoginRoute
   '/api/ai-chat': typeof ApiAiChatRoute
   '/api/seed-admin': typeof ApiSeedAdminRoute
+  '/admin/': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/staff': typeof StaffRoute
   '/staff-login': typeof StaffLoginRoute
   '/api/ai-chat': typeof ApiAiChatRoute
   '/api/seed-admin': typeof ApiSeedAdminRoute
+  '/admin': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
   '/login': typeof LoginRoute
   '/staff': typeof StaffRoute
   '/staff-login': typeof StaffLoginRoute
   '/api/ai-chat': typeof ApiAiChatRoute
   '/api/seed-admin': typeof ApiSeedAdminRoute
+  '/admin/': typeof AdminIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/admin'
     | '/login'
     | '/staff'
     | '/staff-login'
     | '/api/ai-chat'
     | '/api/seed-admin'
+    | '/admin/'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/admin'
     | '/login'
     | '/staff'
     | '/staff-login'
     | '/api/ai-chat'
     | '/api/seed-admin'
+    | '/admin'
     | '/api/auth/$'
   id:
     | '__root__'
     | '/'
-    | '/admin'
     | '/login'
     | '/staff'
     | '/staff-login'
     | '/api/ai-chat'
     | '/api/seed-admin'
+    | '/admin/'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
   LoginRoute: typeof LoginRoute
   StaffRoute: typeof StaffRoute
   StaffLoginRoute: typeof StaffLoginRoute
   ApiAiChatRoute: typeof ApiAiChatRoute
   ApiSeedAdminRoute: typeof ApiSeedAdminRoute
+  AdminIndexRoute: typeof AdminIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -157,18 +157,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/': {
+      id: '/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AdminIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/seed-admin': {
@@ -197,12 +197,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
   LoginRoute: LoginRoute,
   StaffRoute: StaffRoute,
   StaffLoginRoute: StaffLoginRoute,
   ApiAiChatRoute: ApiAiChatRoute,
   ApiSeedAdminRoute: ApiSeedAdminRoute,
+  AdminIndexRoute: AdminIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
