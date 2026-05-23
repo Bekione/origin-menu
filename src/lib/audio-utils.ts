@@ -6,7 +6,7 @@
  * playAdminAlert — Short double-beep used in the Admin dashboard
  * for new orders and waiter calls.
  */
-export function playAdminAlert() {
+export function playAdminAlert(volume = 0.3) {
   try {
     const ctx = new (
       window.AudioContext || (window as any).webkitAudioContext
@@ -17,7 +17,7 @@ export function playAdminAlert() {
     gain.connect(ctx.destination)
     osc.frequency.setValueAtTime(880, ctx.currentTime)
     osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1)
-    gain.gain.setValueAtTime(0.3, ctx.currentTime)
+    gain.gain.setValueAtTime(volume, ctx.currentTime)
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
     osc.start(ctx.currentTime)
     osc.stop(ctx.currentTime + 0.5)
