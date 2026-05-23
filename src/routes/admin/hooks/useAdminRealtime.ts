@@ -4,13 +4,12 @@ import { useNavigate } from '@tanstack/react-router'
 import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 import { useTranslation } from '@/lib/i18n'
 import { playAdminAlert } from '@/lib/audio-utils'
+import { getPendingOrderCount } from '@/server/admin.functions'
 import type { WaiterCall } from '@/server/table.functions'
 
 interface RealtimeProps {
   setCalls: (fn: (prev: WaiterCall[]) => WaiterCall[]) => void
-  setPendingOrderCount: (
-    fn: (n: number | ((n: number) => number)) => number,
-  ) => void
+  setPendingOrderCount: (n: number) => void
   setCallsOpen: (v: boolean) => void
 }
 
@@ -24,100 +23,54 @@ export function useAdminRealtime({
   const channelRef = useRef<ReturnType<typeof supabaseBrowser.channel> | null>(
     null,
   )
-  const ordersChannelRef = useRef<ReturnType<
-    typeof supabaseBrowser.channel
-  > | null>(null)
+
+  const fetchInitialCount = async () => {
+    try {
+      const count = await getPendingOrderCount()
+      setPendingOrderCount(count)
+    } catch (err) {
+      console.error('Failed to fetch pending count', err)
+    }
+  }
 
   useEffect(() => {
     const channel = supabaseBrowser
-      .channel('admin-realtime')
-      // 1. Waiter Calls INSERT
+      .channel('origin-realtime')
+      // 1. Waiter Calls Changes
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'waiter_calls' },
+        { event: '*', schema: 'public', table: 'waiter_calls' },
         (payload) => {
-          const newCall = payload.new as WaiterCall
-          setCalls((prev) => [newCall, ...prev])
-          playAdminAlert()
-          toast(
-            t('waiter_calling_admin_toast').replace(
-              '{tableLabel}',
-              newCall.table_label ?? '',
-            ),
-            {
-              duration: 8000,
-              action: { label: t('view'), onClick: () => setCallsOpen(true) },
-            },
-          )
-        },
-      )
-      // 2. Waiter Calls UPDATE
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'waiter_calls' },
-        (payload) => {
-          const updated = payload.new as WaiterCall
-          setCalls((prev) =>
-            prev.map((c) => (c.id === updated.id ? updated : c)),
-          )
-        },
-      )
-      // 3. Table Orders INSERT
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'table_orders' },
-        (payload) => {
-          const order = payload.new as any
-          setPendingOrderCount((n: any) =>
-            typeof n === 'function' ? n(0) + 1 : n + 1,
-          )
-          playAdminAlert()
-          window.dispatchEvent(new CustomEvent('reload-orders'))
-          toast(
-            t('new_order_toast').replace('{tableLabel}', order.table_label),
-            {
-              duration: 10000,
-              action: {
-                label: t('view_orders'),
-                onClick: () =>
-                  navigate({
-                    to: '/admin',
-                    search: { tab: 'orders' } as any,
-                    replace: true,
-                  }),
+          if (payload.eventType === 'INSERT') {
+            const newCall = payload.new as WaiterCall
+            setCalls((prev) => {
+              if (prev.find((c) => c.id === newCall.id)) return prev
+              return [newCall, ...prev]
+            })
+            playAdminAlert()
+            toast(
+              t('waiter_calling_admin_toast').replace(
+                '{tableLabel}',
+                newCall.table_label ?? '',
+              ),
+              {
+                duration: 8000,
+                action: { label: t('view'), onClick: () => setCallsOpen(true) },
               },
-            },
-          )
-        },
-      )
-      // 4. Table Orders UPDATE
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'table_orders' },
-        (payload) => {
-          const order = payload.new as any
-          if (order.status !== 'pending') {
-            setPendingOrderCount((n: any) =>
-              typeof n === 'function'
-                ? Math.max(0, n(0) - 1)
-                : Math.max(0, n - 1),
+            )
+          } else if (payload.eventType === 'UPDATE') {
+            const updated = payload.new as WaiterCall
+            setCalls((prev) =>
+              prev.map((c) => (c.id === updated.id ? updated : c)),
             )
           }
-          window.dispatchEvent(new CustomEvent('reload-orders'))
         },
       )
-      .subscribe()
-
-    channelRef.current = channel
-
-    // 5. Broadcast channel for direct server-sent events
-    const bc = supabaseBrowser
-      .channel('admin-orders')
+      // 2. Broadcasts for orders
       .on('broadcast', { event: 'new_order' }, (payload) => {
         const order = payload.payload as any
-        setPendingOrderCount((n: any) =>
-          typeof n === 'function' ? n(0) + 1 : n + 1,
-        )
+        if (!order?.id) return
+        fetchInitialCount()
         playAdminAlert()
         window.dispatchEvent(new CustomEvent('reload-orders'))
         toast(
@@ -136,13 +89,32 @@ export function useAdminRealtime({
           },
         )
       })
+      .on('broadcast', { event: 'order_status_updated' }, (payload) => {
+        const order = payload.payload as any
+        if (!order?.id) return
+        fetchInitialCount()
+        window.dispatchEvent(new CustomEvent('reload-orders'))
+      })
+      // 3. Simple Broadcasts for acknowledgments
+      .on('broadcast', { event: 'call_acknowledged' }, (payload) => {
+        const { id } = payload.payload
+        setCalls((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, status: 'acknowledged' } : c)),
+        )
+      })
+      .on('broadcast', { event: 'call_rejected' }, (payload) => {
+        const { id } = payload.payload
+        setCalls((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, status: 'rejected' } : c)),
+        )
+      })
       .subscribe()
 
-    ordersChannelRef.current = bc
+    channelRef.current = channel
+    fetchInitialCount()
 
     return () => {
       supabaseBrowser.removeChannel(channel)
-      supabaseBrowser.removeChannel(bc)
     }
   }, [navigate, setCalls, setPendingOrderCount, setCallsOpen, t])
 }

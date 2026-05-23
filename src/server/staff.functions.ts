@@ -141,5 +141,13 @@ export const revokeStaffSession = createServerFn({ method: 'POST' })
       .delete()
       .eq('id', data.id)
     if (error) throw new Error(error.message)
+
+    // Broadcast session revocation to force logout/lock on KDS
+    await supabaseAdmin.channel('origin-realtime').send({
+      type: 'broadcast',
+      event: 'session_revoked',
+      payload: { id: data.id },
+    })
+
     return { ok: true }
   })
