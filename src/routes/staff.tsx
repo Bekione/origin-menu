@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { getAuthSession } from '@/server/auth-helpers'
 import {
@@ -7,6 +7,7 @@ import {
   updateOrderStatus,
   getWaiterCalls,
   acknowledgeCall,
+  dismissCall,
   type TableOrder,
   type WaiterCall,
 } from '@/server/table.functions'
@@ -29,8 +30,6 @@ import {
   ClipboardList,
   Loader2,
   LogOut,
-  ToggleLeft,
-  ToggleRight,
   X,
   Utensils,
 } from 'lucide-react'
@@ -50,17 +49,12 @@ export const Route = createFileRoute('/staff')({
 })
 
 // ── Notification sound ─────────────────────────────────────────────────────────
-// Synthesize a clean bell/chime sound using Web Audio API
-// macOS Style
 function playKDSAlert() {
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
-
   const masterGain = ctx.createGain()
   masterGain.gain.value = 0.32
   masterGain.connect(ctx.destination)
-
   const now = ctx.currentTime
-
   function createTone(
     freq: number,
     delay: number,
@@ -70,44 +64,27 @@ function playKDSAlert() {
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     const filter = ctx.createBiquadFilter()
-
     osc.type = 'sine'
     osc.frequency.setValueAtTime(freq, now + delay)
-
-    // Gentle low-pass filter for softness
     filter.type = 'lowpass'
     filter.frequency.setValueAtTime(3200, now + delay)
-
-    // Fast but smooth attack + natural decay
     gain.gain.setValueAtTime(0.001, now + delay)
     gain.gain.exponentialRampToValueAtTime(volume, now + delay + 0.008)
     gain.gain.exponentialRampToValueAtTime(0.001, now + delay + duration)
-
     osc.connect(filter)
     filter.connect(gain)
     gain.connect(masterGain)
-
     osc.start(now + delay)
     osc.stop(now + delay + duration + 0.2)
   }
-
-  // Main macOS-like tones
-  createTone(880, 0.0, 1.2, 0.45) // A5
-  createTone(1109, 0.0, 1.1, 0.38) // C#6
-  createTone(1320, 0.05, 0.95, 0.3) // E6
-
-  // Higher sparkle (decays faster)
-  createTone(1760, 0.03, 0.65, 0.18) // A6
-  createTone(2200, 0.08, 0.55, 0.12) // C#7
-
-  // Very subtle second hit (classic macOS double feel)
+  createTone(880, 0.0, 1.2, 0.45)
+  createTone(1109, 0.0, 1.1, 0.38)
+  createTone(1320, 0.05, 0.95, 0.3)
   setTimeout(() => {
-    createTone(987.8, 0, 0.8, 0.22) // B5
-    createTone(1244.5, 0.02, 0.7, 0.18) // D#6
+    createTone(987.8, 0, 0.8, 0.22)
+    createTone(1244.5, 0.02, 0.7, 0.18)
   }, 220)
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 function StaffPage() {
@@ -123,112 +100,102 @@ function StaffPage() {
   const [eightyOpen, setEightyOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [doneLimit, setDoneLimit] = useState(20)
-  const [doneLoadingMore, setDoneLoadingMore] = useState(false)
-  const channelRef = useRef<ReturnType<typeof supabaseBrowser.channel> | null>(
-    null,
-  )
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
 
   // Initial fetch
   useEffect(() => {
+    authClient.getSession().then(({ data }) => {
+      if (data?.session?.id) setCurrentSessionId(data.session.id)
+    })
     Promise.all([
       getTableOrders().then((d) => setOrders((d as TableOrder[]) || [])),
       getWaiterCalls().then((d) => setCalls((d as WaiterCall[]) || [])),
     ]).finally(() => setOrdersLoading(false))
   }, [])
 
-  // Realtime subscriptions
+  // Realtime
   useEffect(() => {
     const channel = supabaseBrowser
-      .channel('kds-realtime')
-      // Waiter calls
+      .channel('origin-realtime')
+      // Waiter calls: postgres_changes works (table is in realtime publication)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'waiter_calls' },
-        (p) => {
-          const c = p.new as WaiterCall
-          setCalls((prev) => [c, ...prev])
+        (p: any) => {
+          const call = p.new as WaiterCall
+          setCalls((prev) => {
+            if (prev.find((c) => c.id === call.id)) return prev
+            return [call, ...prev]
+          })
           playKDSAlert()
           toast(
             t('waiter_calling_toast').replace(
               '{tableLabel}',
-              c.table_label ?? '',
+              call.table_label ?? '',
             ),
-            {
-              duration: 10000,
-            },
+            { duration: 10000 },
           )
         },
       )
       .on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'waiter_calls' },
-        (p) => {
-          const updated = p.new as WaiterCall
+        (p: any) => {
+          const call = p.new as WaiterCall
           setCalls((prev) =>
-            prev.map((c) => (c.id === updated.id ? updated : c)),
+            prev.map((c) =>
+              c.id === call.id ? { ...c, status: call.status } : c,
+            ),
           )
         },
       )
-      // Broadcast orders
-      .subscribe()
-
-    const bc = supabaseBrowser
-      .channel('admin-orders')
-      .on('broadcast', { event: 'new_order' }, (payload) => {
-        const order = payload.payload as TableOrder
-        setOrders((prev) => [order as any, ...prev])
+      // Orders: use broadcasts only (table_orders may not be in realtime publication)
+      .on('broadcast', { event: 'new_order' }, (p: any) => {
+        const order = p.payload as TableOrder
+        if (!order?.id) return
+        setOrders((prev) => {
+          if (prev.find((o) => o.id === order.id)) return prev
+          return [order, ...prev]
+        })
         playKDSAlert()
         toast(
           t('new_order_toast').replace(
             '{tableLabel}',
-            (order as any).table_label,
+            (order as any).table_label ?? '',
           ),
           { duration: 10000 },
         )
       })
+      .on('broadcast', { event: 'order_status_updated' }, (p: any) => {
+        const order = p.payload as TableOrder
+        if (!order?.id) return
+        setOrders((prev) =>
+          prev.map((o) => (o.id === order.id ? { ...o, ...order } : o)),
+        )
+      })
+      .on('broadcast', { event: 'session_revoked' }, async (p: any) => {
+        const { id } = p.payload
+        if (currentSessionId === id || !currentSessionId) {
+          const { data } = await authClient.getSession()
+          if (data?.session?.id === id || !data?.session) {
+            await authClient.signOut()
+            navigate({ to: '/staff-login' })
+            toast.info('Session revoked by admin')
+          }
+        }
+      })
       .subscribe()
 
-    channelRef.current = channel
     return () => {
       supabaseBrowser.removeChannel(channel)
-      supabaseBrowser.removeChannel(bc)
     }
-  }, [])
+  }, [t, navigate, currentSessionId])
 
-  // ── Session health check ──────────────────────────────────────────────────────
-  // Poll every 30 seconds. If admin revokes this device's session, we redirect immediately.
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const { data } = await authClient.getSession()
-        if (!data?.session) {
-          navigate({ to: '/staff-login' })
-        }
-      } catch {
-        navigate({ to: '/staff-login' })
-      }
-    }
-
-    const id = setInterval(checkSession, 30_000)
-    return () => clearInterval(id)
-  }, [navigate])
-
-  const handleStatus = async (
-    id: string,
-    status:
-      | 'pending'
-      | 'accepted'
-      | 'rejected'
-      | 'completed'
-      | 'in-kitchen'
-      | 'ready'
-      | 'delivered'
-      | string,
-  ) => {
+  const handleStatus = async (id: string, status: string) => {
     setBusyId(id)
     setBusyStatus(status)
     try {
-      await updateOrderStatus({ data: { id, status } })
+      await updateOrderStatus({ data: { id, status: status as any } })
       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
     } catch (err: any) {
       toast.error(err.message)
@@ -241,7 +208,7 @@ function StaffPage() {
   const handleAcknowledge = async (id: string) => {
     setAckId(id)
     try {
-      await acknowledgeCall({ data: { id, action: 'acknowledged' } as any })
+      await acknowledgeCall({ data: { id } })
       setCalls((prev) =>
         prev.map((c) => (c.id === id ? { ...c, status: 'acknowledged' } : c)),
       )
@@ -255,12 +222,15 @@ function StaffPage() {
   const handleRejectCall = async (id: string) => {
     setRejId(id)
     try {
-      await updateOrderStatus({ data: { id, status: 'rejected' } as any })
-    } catch {}
-    setCalls((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: 'rejected' } : c)),
-    )
-    setRejId(null)
+      await dismissCall({ data: { id } })
+      setCalls((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, status: 'rejected' } : c)),
+      )
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setRejId(null)
+    }
   }
 
   const handleLock = async () => {
@@ -278,11 +248,9 @@ function StaffPage() {
   const done = orders.filter((o) =>
     ['rejected', 'completed'].includes(o.status),
   )
-  const pendingCalls = calls.filter((c) => c.status === 'pending')
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden bg-background">
-      {/* ── Header ── */}
       <header className="relative z-10 shrink-0 border-b border-border bg-card/60 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -308,7 +276,6 @@ function StaffPage() {
             <button
               onClick={() => setLang(lang === 'en' ? 'am' : 'en')}
               className="rounded-md border border-border px-2.5 py-1 text-xs font-semibold text-muted-foreground transition hover:border-primary hover:text-primary"
-              aria-label="Toggle language"
             >
               {lang === 'en' ? 'አማ' : 'EN'}
             </button>
@@ -316,7 +283,6 @@ function StaffPage() {
             <button
               onClick={handleLock}
               disabled={loggingOut}
-              title="Lock screen"
               className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-50"
             >
               {loggingOut ? (
@@ -330,12 +296,9 @@ function StaffPage() {
         </div>
       </header>
 
-      {/* ── Body: Orders + Calls ── */}
       <div className="relative z-10 flex flex-1 flex-col overflow-hidden lg:flex-row">
-        {/* Orders Board */}
         <div className="relative flex-1 min-h-0">
           <div className="absolute inset-0 flex flex-col">
-            {/* Background Logo Overlay for Orders Pane */}
             <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center opacity-[0.03]">
               <img
                 src={grayLogo}
@@ -343,12 +306,8 @@ function StaffPage() {
                 className="w-1/2 max-w-[50vmin] grayscale filter"
               />
             </div>
-            <ScrollFade
-              fadeSize={40}
-              direction="vertical"
-              className="flex flex-col flex-1 min-h-0"
-            >
-              <main className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+            <ScrollFade fadeSize={40} direction="vertical" className="flex-1">
+              <main className="h-full overflow-y-auto p-4 custom-scrollbar">
                 {ordersLoading ? (
                   <div className="columns-1 gap-3 sm:columns-2 lg:columns-3">
                     {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -360,7 +319,6 @@ function StaffPage() {
                   </div>
                 ) : (
                   <div className="space-y-6">
-                    {/* Pending */}
                     <section>
                       <div className="flex h-14 items-center gap-3 border-b border-border bg-muted/30 px-4">
                         <ChefHat className="h-5 w-5 text-primary" />
@@ -387,12 +345,7 @@ function StaffPage() {
                         </div>
                       ) : (
                         <div className="flex h-32 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-muted/5 text-muted-foreground opacity-50">
-                          <div className="relative rounded-full bg-muted/20 p-3">
-                            <ChefHat className="h-8 w-8" />
-                            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-10 text-5xl">
-                              /
-                            </span>
-                          </div>
+                          <ChefHat className="h-8 w-8" />
                           <span className="text-sm font-medium">
                             {t('no_pending_orders')}
                           </span>
@@ -400,7 +353,6 @@ function StaffPage() {
                       )}
                     </section>
 
-                    {/* In Kitchen */}
                     {accepted.length > 0 && (
                       <section>
                         <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-green-600 dark:text-green-400">
@@ -419,7 +371,6 @@ function StaffPage() {
                       </section>
                     )}
 
-                    {/* Completed */}
                     {done.length > 0 && (
                       <section>
                         <h2 className="mb-3 flex items-center gap-2 font-display text-sm uppercase tracking-wider text-muted-foreground">
@@ -438,53 +389,8 @@ function StaffPage() {
                             />
                           ))}
                         </div>
-                        {doneLimit < done.length && (
-                          <button
-                            onClick={() => {
-                              setDoneLoadingMore(true)
-                              setTimeout(() => {
-                                setDoneLimit((l) => l + 20)
-                                setDoneLoadingMore(false)
-                              }, 300)
-                            }}
-                            disabled={doneLoadingMore}
-                            className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2.5 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-60"
-                          >
-                            {doneLoadingMore ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                {t('loading_dots')}
-                              </>
-                            ) : (
-                              <>
-                                {t('load_more_remaining').replace(
-                                  '{count}',
-                                  (done.length - doneLimit).toString(),
-                                )}
-                              </>
-                            )}
-                          </button>
-                        )}
                       </section>
                     )}
-
-                    {pending.length === 0 &&
-                      accepted.length === 0 &&
-                      done.length === 0 && (
-                        <div className="flex h-48 flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/5 text-muted-foreground">
-                          <div className="rounded-full bg-muted/30 p-4">
-                            <Utensils className="h-10 w-10 opacity-40" />
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-bold">
-                              {t('no_orders_yet')}
-                            </p>
-                            <p className="text-xs opacity-60">
-                              {t('waiting_for_orders')}
-                            </p>
-                          </div>
-                        </div>
-                      )}
                   </div>
                 )}
               </main>
@@ -492,7 +398,6 @@ function StaffPage() {
           </div>
         </div>
 
-        {/* Waiter Calls Sidebar */}
         <div className="flex h-64 shrink-0 flex-col border-t border-border bg-card/40 lg:h-auto lg:w-64 lg:border-l lg:border-t-0 min-h-0">
           <div className="flex-none p-4 pb-2">
             <div className="flex items-center gap-2 px-1">
@@ -502,49 +407,35 @@ function StaffPage() {
               </h2>
             </div>
           </div>
-          <ScrollFade
-            fadeSize={40}
-            direction="vertical"
-            className="flex flex-col flex-1 min-h-0"
-          >
-            <div className="flex-1 space-y-2 overflow-y-auto px-4 pb-4">
+          <ScrollFade fadeSize={40} direction="vertical" className="flex-1">
+            <div className="h-full space-y-2 overflow-y-auto px-4 pb-4">
               {ordersLoading ? (
-                <div className="space-y-2">
-                  {[1, 2, 3].map((i) => (
-                    <Skeleton key={i} className="h-20 w-full rounded-xl" />
-                  ))}
-                </div>
+                [1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-20 w-full rounded-xl" />
+                ))
               ) : calls.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center gap-3 pb-12 text-muted-foreground opacity-50">
-                  <div className="rounded-full bg-muted/20 p-3">
-                    <Bell className="h-8 w-8 opacity-40" />
-                  </div>
+                  <Bell className="h-8 w-8 opacity-40" />
                   <p className="text-xs font-medium">{t('clear_for_now')}</p>
                 </div>
               ) : (
                 calls.map((c) => (
                   <div
                     key={c.id}
-                    className={`rounded-xl border p-3 transition-all ${
-                      c.status === 'pending'
-                        ? 'border-destructive/50 bg-destructive/5'
-                        : 'border-border opacity-50'
-                    }`}
+                    className={`rounded-xl border p-3 transition-all ${c.status === 'pending' ? 'border-destructive/50 bg-destructive/5 shadow-sm' : 'border-border opacity-50'}`}
                   >
                     <div className="mb-2 flex items-center justify-between">
                       <span className="font-display text-sm font-bold tracking-tight text-foreground">
                         {c.table_label}
                       </span>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          c.status === 'pending'
-                            ? 'bg-destructive/10 text-destructive'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${c.status === 'pending' ? 'bg-destructive/10 text-destructive' : 'bg-muted text-muted-foreground'}`}
                       >
                         {c.status === 'pending'
                           ? t('status_pending')
-                          : t('acknowledged')}
+                          : c.status === 'acknowledged'
+                            ? t('acknowledged')
+                            : t('status_rejected')}
                       </span>
                     </div>
                     <LiveTimeAgo
@@ -562,7 +453,7 @@ function StaffPage() {
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
                             <Check className="h-3 w-3" />
-                          )}
+                          )}{' '}
                           {t('ack')}
                         </button>
                         <button
@@ -574,7 +465,7 @@ function StaffPage() {
                             <Loader2 className="h-3 w-3 animate-spin" />
                           ) : (
                             <X className="h-3 w-3" />
-                          )}
+                          )}{' '}
                           {t('dismiss')}
                         </button>
                       </div>
@@ -587,7 +478,6 @@ function StaffPage() {
         </div>
       </div>
 
-      {/* 86 Board Modal */}
       <EightyBoardModal
         isOpen={eightyOpen}
         onClose={() => setEightyOpen(false)}
@@ -596,7 +486,6 @@ function StaffPage() {
   )
 }
 
-// ── Order Card ────────────────────────────────────────────────────────────────
 function KDSOrderCard({
   order,
   busyStatus,
@@ -604,7 +493,7 @@ function KDSOrderCard({
 }: {
   order: TableOrder
   busyStatus: string | null
-  onStatus: (id: string, s: 'accepted' | 'rejected' | 'completed') => void
+  onStatus: (id: string, s: string) => void
 }) {
   const { t, dt } = useTranslation()
   const isPending = order.status === 'pending'
@@ -613,7 +502,6 @@ function KDSOrderCard({
     <div
       className={`mb-3 inline-block w-full break-inside-avoid rounded-2xl border bg-card p-4 shadow-sm transition-all ${busyStatus ? 'opacity-50' : ''}`}
     >
-      {/* Header */}
       <div className="mb-3 flex items-center justify-between border-b pb-3">
         <div className="flex items-center gap-2">
           <Utensils className="h-4 w-4 text-primary" />
@@ -621,13 +509,7 @@ function KDSOrderCard({
             {order.table_label}
           </span>
           <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
-              isPending
-                ? 'bg-destructive/10 text-destructive'
-                : isAccepted
-                  ? 'bg-primary/20 text-primary'
-                  : 'bg-muted text-muted-foreground'
-            }`}
+            className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${isPending ? 'bg-destructive/10 text-destructive' : isAccepted ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}
           >
             {order.status === 'pending'
               ? t('status_pending')
@@ -643,7 +525,6 @@ function KDSOrderCard({
           className="text-[11px] text-muted-foreground"
         />
       </div>
-
       <ul className="mb-3 space-y-1">
         {order.items.map((item, i) => (
           <li key={i} className="flex items-center justify-between text-sm">
@@ -657,14 +538,12 @@ function KDSOrderCard({
           </li>
         ))}
       </ul>
-
       {order.note && (
-        <p className="mb-3 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs italic text-muted-foreground">
-          "{order.note}"
+        <p className="mb-3 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs italic text-muted-foreground mr-auto">
+          {order.note}
         </p>
       )}
-
-      {isPending && (
+      {(isPending || order.status === 'pending') && (
         <div className="flex gap-2">
           <button
             disabled={!!busyStatus}
@@ -675,7 +554,7 @@ function KDSOrderCard({
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Check className="h-4 w-4" />
-            )}
+            )}{' '}
             {t('accept')}
           </button>
           <button
@@ -691,8 +570,7 @@ function KDSOrderCard({
           </button>
         </div>
       )}
-
-      {isAccepted && (
+      {(isAccepted || order.status === 'accepted') && (
         <button
           disabled={!!busyStatus}
           onClick={() => onStatus(order.id, 'completed')}
@@ -702,7 +580,7 @@ function KDSOrderCard({
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Check className="h-4 w-4" />
-          )}
+          )}{' '}
           {t('mark_done')}
         </button>
       )}
@@ -710,7 +588,6 @@ function KDSOrderCard({
   )
 }
 
-// ── 86 Board Modal ────────────────────────────────────────────────────────────
 function EightyBoardModal({
   isOpen,
   onClose,
@@ -722,14 +599,12 @@ function EightyBoardModal({
   const [items, setItems] = useState<MenuItem[]>([])
   const [loading, setLoading] = useState(true)
   const [togglingIds, setTogglingIds] = useState<string[]>([])
-
   useEffect(() => {
     getMenuData().then((d) => {
       setItems(d.items)
       setLoading(false)
     })
   }, [])
-
   const handleToggle = async (item: MenuItem) => {
     setTogglingIds((prev) => [...prev, item.id])
     try {
@@ -747,7 +622,6 @@ function EightyBoardModal({
       setTogglingIds((prev) => prev.filter((id) => id !== item.id))
     }
   }
-
   return (
     <div
       className={`fixed inset-0 z-50 items-center justify-center bg-black/70 p-4 backdrop-blur-sm transition-opacity duration-200 ${isOpen ? 'flex opacity-100' : 'pointer-events-none opacity-0'}`}
@@ -758,7 +632,6 @@ function EightyBoardModal({
         onClick={(e) => e.stopPropagation()}
         style={{ maxHeight: '85vh' }}
       >
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
             <h2 className="font-display text-xl text-primary">
@@ -775,62 +648,33 @@ function EightyBoardModal({
             <X className="h-5 w-5" />
           </button>
         </div>
-
-        {/* Item List */}
-        <ScrollFade
-          fadeSize={40}
-          direction="vertical"
-          className="flex flex-col flex-1 min-h-0"
-        >
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+        <ScrollFade fadeSize={40} direction="vertical" className="flex-1">
+          <div className="h-full overflow-y-auto p-4 custom-scrollbar">
             {loading ? (
-              <div className="space-y-2">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Skeleton key={i} className="h-12 w-full rounded-xl" />
-                ))}
-              </div>
+              [1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-12 w-full rounded-xl mb-2" />
+              ))
             ) : (
               <ul className="space-y-2">
                 {items.map((item) => (
                   <li
                     key={item.id}
-                    className={`flex items-center justify-between rounded-xl border px-4 py-3 transition-all ${
-                      item.is_available
-                        ? 'border-border bg-card'
-                        : 'border-destructive/30 bg-destructive/5 opacity-60'
-                    }`}
+                    className="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-3"
                   >
-                    <span
-                      className={`text-sm font-medium ${!item.is_available ? 'line-through text-muted-foreground' : ''}`}
-                    >
+                    <span className="text-sm font-medium">
                       {dt(item, 'name')}
                     </span>
                     <button
                       onClick={() => handleToggle(item)}
                       disabled={togglingIds.includes(item.id)}
-                      className="flex items-center gap-3 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50 w-32 border border-border/50 hover:border-primary/50"
+                      className={`rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${item.is_available ? 'bg-success/20 text-success hover:bg-success/30' : 'bg-destructive/20 text-destructive hover:bg-destructive/30'}`}
                     >
                       {togglingIds.includes(item.id) ? (
-                        <div className="flex w-full justify-center">
-                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        </div>
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : item.is_available ? (
+                        t('in')
                       ) : (
-                        <div className="flex w-full items-center gap-2">
-                          <div className="flex w-6 justify-center">
-                            {item.is_available ? (
-                              <ToggleRight className="h-6 w-6 text-green-500" />
-                            ) : (
-                              <ToggleLeft className="h-6 w-6 text-destructive" />
-                            )}
-                          </div>
-                          <span
-                            className={`text-[10px] font-black uppercase tracking-wider ${item.is_available ? 'text-green-600 dark:text-green-400' : 'text-destructive'}`}
-                          >
-                            {item.is_available
-                              ? t('in_stock')
-                              : t('eighty_six_d')}
-                          </span>
-                        </div>
+                        t('out')
                       )}
                     </button>
                   </li>
