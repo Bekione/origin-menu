@@ -462,7 +462,7 @@ function TableRow({
   }, [table.token])
 
   return (
-    <div className="flex flex-wrap items-start gap-3 px-4 py-3">
+    <div className="flex items-center gap-3 px-4 py-3 sm:flex-nowrap">
       <div className="shrink-0">
         {qrDataUrl ? (
           <img
@@ -515,13 +515,15 @@ function TableRow({
           ?t={table.token.slice(0, 16)}…
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-1.5 pt-1">
+      <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-1.5 pt-1">
         <button
           title={t('title_download_qr')}
           onClick={() => downloadQR(table)}
-          className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary"
+          className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary hover:text-primary"
         >
-          <Download className="h-3.5 w-3.5" /> {t('download_qr')}
+          <Download className="h-3.5 w-3.5" />
+          <span className="sm:hidden">QR</span>
+          <span className="hidden sm:inline">{t('download_qr')}</span>
         </button>
         <button
           title={t('rename')}

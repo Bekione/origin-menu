@@ -6,6 +6,7 @@ import { getMenuData, type MenuData } from '@/server/menu.functions'
 import {
   getWaiterCalls,
   acknowledgeCall,
+  dismissCall,
   getTableOrders,
   type WaiterCall,
 } from '@/server/table.functions'
@@ -98,14 +99,19 @@ function AdminPage() {
   )
 
   const [calls, setCalls] = useState<WaiterCall[]>([])
+  const [callsLoading, setCallsLoading] = useState(true)
   const [callsOpen, setCallsOpen] = useState(false)
   const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null)
+  const [dismissingId, setDismissingId] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [pendingOrderCount, setPendingOrderCount] = useState(0)
 
   // Load initial state
   useEffect(() => {
-    getWaiterCalls().then((data) => setCalls(data as WaiterCall[]))
+    setCallsLoading(true)
+    getWaiterCalls()
+      .then((data) => setCalls(data as WaiterCall[]))
+      .finally(() => setCallsLoading(false))
     getTableOrders().then((data) => {
       const orders = (data as any[]) || []
       setPendingOrderCount(orders.filter((o) => o.status === 'pending').length)
@@ -124,6 +130,18 @@ function AdminPage() {
       )
     } finally {
       setAcknowledgingId(null)
+    }
+  }, [])
+
+  const handleDismiss = useCallback(async (id: string) => {
+    setDismissingId(id)
+    try {
+      await dismissCall({ data: { id } })
+      setCalls((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, status: 'rejected' } : c)),
+      )
+    } finally {
+      setDismissingId(null)
     }
   }, [])
 
@@ -158,10 +176,13 @@ function AdminPage() {
       {callsOpen && (
         <WaiterCallsPanel
           calls={calls}
+          loading={callsLoading}
           pendingCount={pendingCount}
           onClose={() => setCallsOpen(false)}
           onAcknowledge={handleAcknowledge}
           acknowledgingId={acknowledgingId}
+          onDismiss={handleDismiss}
+          dismissingId={dismissingId}
         />
       )}
 
@@ -201,31 +222,32 @@ function AdminSkeleton() {
       <header className="border-b border-border bg-card/50">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
-            <Skeleton className="h-9 w-9 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
             <div className="flex flex-col gap-1.5">
-              <Skeleton className="h-6 w-24" />
-              <Skeleton className="h-2 w-16" />
+              <Skeleton className="h-5 w-32" />
+              <Skeleton className="h-2 w-20 opacity-50" />
             </div>
           </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-4 w-16" />
-            <Skeleton className="h-8 w-24 rounded-md" />
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-full" />
+            <Skeleton className="h-9 w-24 rounded-lg" />
           </div>
         </div>
-        <div className="mx-auto flex max-w-5xl gap-1 px-4">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-10 w-32 rounded-t-md" />
+        <div className="mx-auto flex max-w-5xl gap-1 px-4 overflow-x-auto no-scrollbar">
+          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+            <Skeleton key={i} className="h-10 w-24 min-w-[90px] rounded-t-md" />
           ))}
         </div>
       </header>
       <main className="mx-auto max-w-5xl px-4 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-32" />
+        <div className="mb-8">
+          <Skeleton className="h-9 w-48 mb-2" />
+          <Skeleton className="h-4 w-64 opacity-50" />
         </div>
-        <div className="space-y-3">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-xl" />
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-32 w-full rounded-2xl" />
           ))}
         </div>
       </main>

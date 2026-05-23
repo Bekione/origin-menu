@@ -10,6 +10,7 @@ import {
   Check,
   X,
   GripVertical,
+  ChefHat,
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslation } from '@/lib/i18n'
@@ -38,6 +39,10 @@ export function ItemsTab({
   const [showForm, setShowForm] = useState(false)
   const [localItems, setLocalItems] = useState(data.items)
   const [draggedId, setDraggedId] = useState<string | null>(null)
+  const density =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('admin_layout_density') || 'Comfortable'
+      : 'Comfortable'
   const reorder = useServerFn(reorderMenuItems)
 
   useEffect(() => {
@@ -150,6 +155,7 @@ export function ItemsTab({
                   <ItemRow
                     key={item.id}
                     item={item}
+                    density={density as any}
                     onEdit={() => {
                       setEditing(item)
                       setShowForm(true)
@@ -182,6 +188,7 @@ export function ItemsTab({
                   <ItemRow
                     key={item.id}
                     item={item}
+                    density={density as any}
                     onEdit={() => {
                       setEditing(item)
                       setShowForm(true)
@@ -210,9 +217,12 @@ function ItemRow({
   onDragOver,
   onDrop,
   isDragging,
+  density,
 }: {
   item: MenuItem
+  density: 'Compact' | 'Comfortable'
   onEdit: () => void
+
   onChanged: () => void
   onDragStart?: (e: any) => void
   onDragOver?: (e: any) => void
@@ -262,7 +272,7 @@ function ItemRow({
   return (
     <>
       <div
-        className={`flex items-center gap-3 px-4 py-3 ${isDragging ? 'opacity-50 bg-muted/20' : ''}`}
+        className={`flex items-center gap-3 ${density === 'Compact' ? 'px-4 py-1.5' : 'px-4 py-3'} ${isDragging ? 'opacity-50 bg-muted/20' : ''}`}
         draggable={!!onDragStart}
         onDragStart={onDragStart}
         onDragOver={onDragOver}
@@ -294,9 +304,14 @@ function ItemRow({
               {Number(item.price)} {t('currency')}
             </p>
             {item.is_featured && (
-              <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                {t('chefs_picks')}
-              </span>
+              <>
+                <span className="hidden sm:blockrounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
+                  {t('chefs_picks')}
+                </span>
+                <span className="block sm:hidden rounded bg-primary/20 p-0.5 text-primary">
+                  <ChefHat className="h-3.5 w-3.5" />
+                </span>
+              </>
             )}
           </div>
         </div>

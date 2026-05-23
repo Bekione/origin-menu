@@ -17,6 +17,14 @@ export function OrdersTab() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [doneLimit, setDoneLimit] = useState(20)
   const [doneLoadingMore, setDoneLoadingMore] = useState(false)
+  const density =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('admin_layout_density') || 'Comfortable'
+      : 'Comfortable'
+  const refreshInterval =
+    typeof window !== 'undefined'
+      ? localStorage.getItem('admin_refresh_interval') || 'Live'
+      : 'Live'
 
   const fetchOrders = async () => {
     try {
@@ -29,14 +37,18 @@ export function OrdersTab() {
 
   useEffect(() => {
     fetchOrders()
-    const interval = setInterval(fetchOrders, 8000)
+    let interval: any
+    if (refreshInterval !== 'Live' && refreshInterval !== 'Off') {
+      const ms = refreshInterval === '1m' ? 60000 : 300000
+      interval = setInterval(fetchOrders, ms)
+    }
     const handleReload = () => fetchOrders()
     window.addEventListener('reload-orders', handleReload)
     return () => {
-      clearInterval(interval)
+      if (interval) clearInterval(interval)
       window.removeEventListener('reload-orders', handleReload)
     }
-  }, [])
+  }, [refreshInterval])
 
   const handleStatus = async (
     id: string,
@@ -46,6 +58,10 @@ export function OrdersTab() {
     try {
       await updateOrderStatus({ data: { id, status } })
       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
+
+      // Dispatch event to refresh Dashboard/Info tabs
+      window.dispatchEvent(new CustomEvent('reload-orders'))
+
       if (status === 'accepted') toast.success(t('order_accepted_toast'))
       if (status === 'rejected') toast(t('order_rejected_toast'))
       if (status === 'completed') toast.success(t('order_completed_toast'))
@@ -70,7 +86,7 @@ export function OrdersTab() {
 
     return (
       <div
-        className={`rounded-xl border bg-card p-4 transition-all w-full inline-block break-inside-avoid mb-3 ${
+        className={`rounded-xl border bg-card transition-all w-full inline-block break-inside-avoid mb-3 ${density === 'Compact' ? 'p-3' : 'p-4'} ${
           isPending
             ? 'border-primary/60 shadow-[0_0_0_1px_hsl(var(--primary)/0.2)]'
             : isAccepted
@@ -177,10 +193,23 @@ export function OrdersTab() {
 
   if (loading) {
     return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-40 w-full rounded-xl" />
-        ))}
+      <div className="space-y-8">
+        <section>
+          <Skeleton className="h-6 w-32 mb-4" />
+          <div className="columns-1 sm:columns-2 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-40 w-full rounded-xl mb-3" />
+            ))}
+          </div>
+        </section>
+        <section>
+          <Skeleton className="h-6 w-48 mb-4 opacity-50" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 opacity-30">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-32 w-full rounded-xl" />
+            ))}
+          </div>
+        </section>
       </div>
     )
   }

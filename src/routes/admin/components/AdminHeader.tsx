@@ -41,7 +41,7 @@ export function AdminHeader({
   const { lang, setLang, t } = useTranslation()
 
   return (
-    <header className="border-b border-border bg-card/50">
+    <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-y-4 px-4 py-4">
         <div className="flex items-center gap-3">
           <img
@@ -58,7 +58,7 @@ export function AdminHeader({
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2 ml-auto sm:ml-0">
           <button
             onClick={() => setCallsOpen((v) => !v)}
             className="relative rounded-md border border-border p-1.5 text-muted-foreground transition hover:border-primary hover:text-primary"
