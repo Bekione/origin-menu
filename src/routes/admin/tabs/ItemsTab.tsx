@@ -39,17 +39,30 @@ export function ItemsTab({
   const [showForm, setShowForm] = useState(false)
   const [localItems, setLocalItems] = useState(data.items)
   const [draggedId, setDraggedId] = useState<string | null>(null)
-  const [density, setDensity] = useState(() => {
-    if (typeof window === 'undefined') return 'Comfortable'
-    return localStorage.getItem('admin_layout_density') || 'Comfortable'
-  })
+  const [density, setDensity] = useState('Comfortable')
+  const [showDescriptions, setShowDescriptions] = useState(true)
 
   useEffect(() => {
-    const handleStorage = () => {
+    // Read from localStorage only after mount to avoid SSR/client hydration mismatch
+    setDensity(localStorage.getItem('admin_layout_density') || 'Comfortable')
+    setShowDescriptions(
+      localStorage.getItem('app_show_descriptions') !== 'false',
+    )
+
+    const handleSettingsChange = () => {
       setDensity(localStorage.getItem('admin_layout_density') || 'Comfortable')
+      setShowDescriptions(
+        localStorage.getItem('app_show_descriptions') !== 'false',
+      )
     }
-    window.addEventListener('storage', handleStorage)
-    return () => window.removeEventListener('storage', handleStorage)
+    window.addEventListener('storage', handleSettingsChange)
+    window.addEventListener('density-changed', handleSettingsChange)
+    window.addEventListener('settings-changed', handleSettingsChange)
+    return () => {
+      window.removeEventListener('storage', handleSettingsChange)
+      window.removeEventListener('density-changed', handleSettingsChange)
+      window.removeEventListener('settings-changed', handleSettingsChange)
+    }
   }, [])
 
   const reorder = useServerFn(reorderMenuItems)
@@ -165,6 +178,7 @@ export function ItemsTab({
                     key={item.id}
                     item={item}
                     density={density as any}
+                    showDescription={showDescriptions}
                     onEdit={() => {
                       setEditing(item)
                       setShowForm(true)
@@ -198,6 +212,7 @@ export function ItemsTab({
                     key={item.id}
                     item={item}
                     density={density as any}
+                    showDescription={showDescriptions}
                     onEdit={() => {
                       setEditing(item)
                       setShowForm(true)
@@ -227,16 +242,17 @@ function ItemRow({
   onDrop,
   isDragging,
   density,
+  showDescription,
 }: {
   item: MenuItem
   density: 'Compact' | 'Comfortable'
   onEdit: () => void
-
   onChanged: () => void
   onDragStart?: (e: any) => void
   onDragOver?: (e: any) => void
   onDrop?: () => void
   isDragging?: boolean
+  showDescription?: boolean
 }) {
   const { t, dt } = useTranslation()
   const toggle = useServerFn(toggleAvailability)
@@ -308,6 +324,11 @@ function ItemRow({
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{dt(item, 'name')}</p>
+          {showDescription && dt(item, 'description') && (
+            <p className="line-clamp-1 text-[10px] text-muted-foreground/60 italic">
+              {dt(item, 'description')}
+            </p>
+          )}
           <div className="flex items-center gap-2 mt-0.5">
             <p className="truncate text-xs text-muted-foreground">
               {Number(item.price)} {t('currency')}

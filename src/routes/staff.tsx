@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import logo from '@/assets/origin-logo.jpg'
 import grayLogo from '@/assets/origin-logo-gray.png'
 import ScrollFade from '@/components/ScrollFade'
+import { EightyBoard } from '#/components/EightyBoard'
 import {
   Bell,
   Check,
@@ -32,6 +33,8 @@ import {
   LogOut,
   X,
   Utensils,
+  Plus,
+  RefreshCw,
 } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 import { LiveTimeAgo } from '@/lib/date-utils'
@@ -95,6 +98,7 @@ function StaffPage() {
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [busyStatus, setBusyStatus] = useState<string | null>(null)
+  const [isFetchingMore, setIsFetchingMore] = useState(false)
   const [ackId, setAckId] = useState<string | null>(null)
   const [rejId, setRejId] = useState<string | null>(null)
   const [eightyOpen, setEightyOpen] = useState(false)
@@ -389,6 +393,31 @@ function StaffPage() {
                             />
                           ))}
                         </div>
+                        {done.length > doneLimit && (
+                          <div className="mt-4 flex justify-center pb-4">
+                            <button
+                              disabled={isFetchingMore}
+                              onClick={async () => {
+                                setIsFetchingMore(true)
+                                setDoneLimit((prev) => prev + 20)
+                                setTimeout(() => setIsFetchingMore(false), 400)
+                              }}
+                              className="group flex w-full max-w-xs items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/40 py-4 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary active:scale-[0.98] disabled:opacity-50"
+                            >
+                              {isFetchingMore ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                  {t('loading_dots')}
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                                  {t('load_more')}
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
                       </section>
                     )}
                   </div>
@@ -478,10 +507,7 @@ function StaffPage() {
         </div>
       </div>
 
-      <EightyBoardModal
-        isOpen={eightyOpen}
-        onClose={() => setEightyOpen(false)}
-      />
+      {eightyOpen && <EightyBoard onClose={() => setEightyOpen(false)} />}
     </div>
   )
 }
@@ -584,106 +610,6 @@ function KDSOrderCard({
           {t('mark_done')}
         </button>
       )}
-    </div>
-  )
-}
-
-function EightyBoardModal({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean
-  onClose: () => void
-}) {
-  const { t, dt } = useTranslation()
-  const [items, setItems] = useState<MenuItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [togglingIds, setTogglingIds] = useState<string[]>([])
-  useEffect(() => {
-    getMenuData().then((d) => {
-      setItems(d.items)
-      setLoading(false)
-    })
-  }, [])
-  const handleToggle = async (item: MenuItem) => {
-    setTogglingIds((prev) => [...prev, item.id])
-    try {
-      await toggleAvailability({
-        data: { id: item.id, is_available: !item.is_available },
-      })
-      setItems((prev) =>
-        prev.map((i) =>
-          i.id === item.id ? { ...i, is_available: !i.is_available } : i,
-        ),
-      )
-    } catch (err: any) {
-      toast.error(err.message)
-    } finally {
-      setTogglingIds((prev) => prev.filter((id) => id !== item.id))
-    }
-  }
-  return (
-    <div
-      className={`fixed inset-0 z-50 items-center justify-center bg-black/70 p-4 backdrop-blur-sm transition-opacity duration-200 ${isOpen ? 'flex opacity-100' : 'pointer-events-none opacity-0'}`}
-      onClick={onClose}
-    >
-      <div
-        className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-card shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        style={{ maxHeight: '85vh' }}
-      >
-        <div className="flex items-center justify-between border-b border-border px-5 py-4">
-          <div>
-            <h2 className="font-display text-xl text-primary">
-              {t('eighty_board')}
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              {t('eighty_board_subtitle')}
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <ScrollFade fadeSize={40} direction="vertical" className="flex-1">
-          <div className="h-full overflow-y-auto p-4 custom-scrollbar">
-            {loading ? (
-              [1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-12 w-full rounded-xl mb-2" />
-              ))
-            ) : (
-              <ul className="space-y-2">
-                {items.map((item) => (
-                  <li
-                    key={item.id}
-                    className="flex items-center justify-between rounded-xl border border-border bg-muted/20 p-3"
-                  >
-                    <span className="text-sm font-medium">
-                      {dt(item, 'name')}
-                    </span>
-                    <button
-                      onClick={() => handleToggle(item)}
-                      disabled={togglingIds.includes(item.id)}
-                      className={`rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-colors ${item.is_available ? 'bg-success/20 text-success hover:bg-success/30' : 'bg-destructive/20 text-destructive hover:bg-destructive/30'}`}
-                    >
-                      {togglingIds.includes(item.id) ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : item.is_available ? (
-                        t('in')
-                      ) : (
-                        t('out')
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </ScrollFade>
-      </div>
     </div>
   )
 }

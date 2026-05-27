@@ -108,6 +108,14 @@ export function useAdminRealtime({
           prev.map((c) => (c.id === id ? { ...c, status: 'rejected' } : c)),
         )
       })
+      // 4. Menu Availability changes (postgres) for real-time 86'd list
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'menu_items' },
+        () => {
+          window.dispatchEvent(new CustomEvent('reload-menu'))
+        },
+      )
       .subscribe()
 
     channelRef.current = channel

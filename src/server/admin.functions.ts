@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import { getRequest } from '@tanstack/react-start/server'
+import { z } from 'zod'
 import { auth } from '#/lib/auth'
 
 async function checkAdminAuth() {
@@ -17,13 +18,16 @@ export type DashboardStats = {
   todayOrders: number
   avgOrderValue: number
   topItems: Array<{ name: string; qty: number }>
+  topTables: Array<{ label: string; count: number }>
   outOfStockItems: Array<{ id: string; name: string; name_am: string | null }>
+
   salesTrend: Array<{ date: string; amount: number }>
   todayCustomers: number
 }
 
-export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
-  async () => {
+export const getDashboardStats = createServerFn({ method: 'GET' })
+  .inputValidator(z.object({ isMonth: z.boolean() }))
+  .handler(async ({ data: { isMonth } }) => {
     await checkAdminAuth()
 
     const today = new Date()
@@ -33,7 +37,7 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
     // 1. Fetch today's orders
     const { data: orders, error } = await supabaseAdmin
       .from('table_orders')
-      .select('items, status')
+      .select('items, status, table_label')
       .gte('created_at', todayISO)
 
     if (error) throw new Error(error.message)
@@ -41,6 +45,7 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
     let todayRevenue = 0
     let todayOrders = 0
     const itemTally: Record<string, number> = {}
+    const tableTally: Record<string, number> = {}
 
     orders?.forEach((order) => {
       const items = (order.items as any[]) || []
@@ -48,22 +53,28 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
 
       todayOrders++
 
+      if (order.table_label) {
+        tableTally[order.table_label] = (tableTally[order.table_label] || 0) + 1
+      }
+
       items.forEach((item: any) => {
         if (isPaid) {
           todayRevenue += (item.price || 0) * (item.qty || 0)
         }
-
-        // Tally top items (volume-based)
         const name = item.name || 'Unknown'
         itemTally[name] = (itemTally[name] || 0) + (item.qty || 0)
       })
     })
 
     const avgOrderValue = todayOrders > 0 ? todayRevenue / todayOrders : 0
-
     const topItems = Object.entries(itemTally)
       .map(([name, qty]) => ({ name, qty }))
       .sort((a, b) => b.qty - a.qty)
+      .slice(0, 5)
+
+    const topTables = Object.entries(tableTally)
+      .map(([label, count]) => ({ label, count }))
+      .sort((a, b) => b.count - a.count)
       .slice(0, 5)
 
     const { data: outOfStock } = await supabaseAdmin
@@ -71,19 +82,20 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
       .select('id, name, name_am')
       .eq('is_available', false)
 
-    // 2. Fetch Sales Trend (Last 7 Days)
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    sevenDaysAgo.setHours(0, 0, 0, 0)
+    // 2. Fetch Sales Trend (Last 7 or 30 Days)
+    const rangeDays = isMonth ? 30 : 7
+    const rangeStart = new Date()
+    rangeStart.setDate(rangeStart.getDate() - rangeDays)
+    rangeStart.setHours(0, 0, 0, 0)
 
     const { data: trendOrders } = await supabaseAdmin
       .from('table_orders')
       .select('created_at, items, status')
-      .gte('created_at', sevenDaysAgo.toISOString())
+      .gte('created_at', rangeStart.toISOString())
       .in('status', ['accepted', 'completed'])
 
     const trendMap: Record<string, number> = {}
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < rangeDays; i++) {
       const d = new Date()
       d.setDate(d.getDate() - i)
       trendMap[d.toISOString().split('T')[0]] = 0
@@ -105,7 +117,6 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
       .map(([date, amount]) => ({ date, amount }))
       .sort((a, b) => a.date.localeCompare(b.date))
 
-    // 3. Unique Customers today (based on device_id)
     const { data: dailyUnique } = await supabaseAdmin
       .from('table_orders')
       .select('device_id')
@@ -118,12 +129,12 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
       todayOrders,
       avgOrderValue,
       topItems,
+      topTables,
       outOfStockItems: outOfStock || [],
       salesTrend,
       todayCustomers: uniqueDevices.size,
     } as DashboardStats
-  },
-)
+  })
 
 export const getPendingOrderCount = createServerFn({
   method: 'GET',
