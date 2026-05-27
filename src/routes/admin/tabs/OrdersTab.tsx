@@ -17,14 +17,14 @@ export function OrdersTab() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [doneLimit, setDoneLimit] = useState(20)
   const [doneLoadingMore, setDoneLoadingMore] = useState(false)
-  const density =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('admin_layout_density') || 'Comfortable'
-      : 'Comfortable'
-  const refreshInterval =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('admin_refresh_interval') || 'Live'
-      : 'Live'
+  const [density, setDensity] = useState(() => {
+    if (typeof window === 'undefined') return 'Comfortable'
+    return localStorage.getItem('admin_layout_density') || 'Comfortable'
+  })
+  const [refreshInterval, setRefreshInterval] = useState(() => {
+    if (typeof window === 'undefined') return 'Live'
+    return localStorage.getItem('admin_refresh_interval') || 'Live'
+  })
 
   const fetchOrders = async () => {
     try {
@@ -37,16 +37,29 @@ export function OrdersTab() {
 
   useEffect(() => {
     fetchOrders()
+
+    // Watch for localStorage changes (settings tab updates)
+    const handleSettingsChange = () => {
+      setDensity(localStorage.getItem('admin_layout_density') || 'Comfortable')
+      setRefreshInterval(
+        localStorage.getItem('admin_refresh_interval') || 'Live',
+      )
+    }
+    window.addEventListener('storage', handleSettingsChange)
+
     let interval: any
     if (refreshInterval !== 'Live' && refreshInterval !== 'Off') {
       const ms = refreshInterval === '1m' ? 60000 : 300000
       interval = setInterval(fetchOrders, ms)
     }
+
     const handleReload = () => fetchOrders()
     window.addEventListener('reload-orders', handleReload)
+
     return () => {
       if (interval) clearInterval(interval)
       window.removeEventListener('reload-orders', handleReload)
+      window.removeEventListener('storage', handleSettingsChange)
     }
   }, [refreshInterval])
 
@@ -94,20 +107,30 @@ export function OrdersTab() {
               : 'border-border opacity-60'
         }`}
       >
-        <div className="mb-3 flex items-start justify-between gap-2">
+        <div
+          className={`flex items-start justify-between gap-2 ${density === 'Compact' ? 'mb-2' : 'mb-3'}`}
+        >
           <div className="flex items-center gap-2">
             {isPending ? (
-              <ChefHat className="h-4 w-4 text-primary" />
+              <ChefHat
+                className={`text-primary ${density === 'Compact' ? 'h-3.5 w-3.5' : 'h-4 w-4'}`}
+              />
             ) : isAccepted ? (
-              <Check className="h-4 w-4 text-green-500" />
+              <Check
+                className={`text-green-500 ${density === 'Compact' ? 'h-3.5 w-3.5' : 'h-4 w-4'}`}
+              />
             ) : (
-              <X className="h-4 w-4 text-muted-foreground" />
+              <X
+                className={`text-muted-foreground ${density === 'Compact' ? 'h-3.5 w-3.5' : 'h-4 w-4'}`}
+              />
             )}
-            <span className="font-display text-sm font-semibold uppercase tracking-wider">
+            <span
+              className={`font-display font-semibold uppercase tracking-wider ${density === 'Compact' ? 'text-xs' : 'text-sm'}`}
+            >
               {order.table_label}
             </span>
             <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
+              className={`rounded-full px-2 py-0.5 font-bold uppercase ${density === 'Compact' ? 'text-[8px]' : 'text-[10px]'} ${
                 isPending
                   ? 'bg-primary/10 text-primary'
                   : isAccepted
@@ -124,19 +147,26 @@ export function OrdersTab() {
                     : t('status_rejected')}
             </span>
           </div>
-          <span className="shrink-0 text-[11px] text-muted-foreground">
+          <span
+            className={`shrink-0 text-muted-foreground ${density === 'Compact' ? 'text-[9px]' : 'text-[11px]'}`}
+          >
             <LiveTimeAgo ts={order.created_at} />
           </span>
         </div>
 
-        <ul className="mb-3 space-y-1">
+        <ul
+          className={`${density === 'Compact' ? 'mb-2 space-y-0.5' : 'mb-3 space-y-1'}`}
+        >
           {order.items.map((item, i) => (
-            <li key={i} className="flex items-center justify-between text-sm">
-              <span>
+            <li
+              key={i}
+              className={`flex items-center justify-between ${density === 'Compact' ? 'text-[11px]' : 'text-sm'}`}
+            >
+              <span className="truncate mr-4">
                 <span className="mr-2 font-bold text-primary">×{item.qty}</span>
                 {dt(item, 'name')}
               </span>
-              <span className="text-muted-foreground">
+              <span className="text-muted-foreground whitespace-nowrap">
                 {(item.qty * item.price).toLocaleString()} {t('currency')}
               </span>
             </li>
@@ -144,7 +174,9 @@ export function OrdersTab() {
         </ul>
 
         {order.note && (
-          <p className="mb-3 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs italic text-muted-foreground">
+          <p
+            className={`rounded-lg border border-border bg-muted/20 italic text-muted-foreground ${density === 'Compact' ? 'mb-2 px-2 py-1 text-[10px]' : 'mb-3 px-3 py-2 text-xs'}`}
+          >
             "{order.note}"
           </p>
         )}
@@ -154,7 +186,7 @@ export function OrdersTab() {
             <button
               disabled={busy}
               onClick={() => handleStatus(order.id, 'accepted')}
-              className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60"
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 ${density === 'Compact' ? 'px-2 py-1.5 text-[10px]' : 'px-3 py-2 text-xs'}`}
             >
               {busy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -166,7 +198,7 @@ export function OrdersTab() {
             <button
               disabled={busy}
               onClick={() => handleStatus(order.id, 'rejected')}
-              className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs font-semibold text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-60"
+              className={`flex items-center gap-1 rounded-lg border border-border font-semibold text-muted-foreground hover:border-destructive hover:text-destructive disabled:opacity-60 ${density === 'Compact' ? 'px-2 py-1.5 text-[10px]' : 'px-3 py-2 text-xs'}`}
             >
               <X className="h-3.5 w-3.5" /> {t('reject')}
             </button>
@@ -177,7 +209,7 @@ export function OrdersTab() {
           <button
             disabled={busy}
             onClick={() => handleStatus(order.id, 'completed')}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-green-500/40 px-3 py-2 text-xs font-semibold text-green-600 hover:bg-green-500/10 dark:text-green-400 disabled:opacity-60"
+            className={`flex w-full items-center justify-center gap-1.5 rounded-lg border border-green-500/40 font-semibold text-green-600 hover:bg-green-500/10 dark:text-green-400 disabled:opacity-60 ${density === 'Compact' ? 'px-2 py-1.5 text-[10px]' : 'px-3 py-2 text-xs'}`}
           >
             {busy ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />

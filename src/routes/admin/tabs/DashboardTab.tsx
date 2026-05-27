@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react'
-import { TrendingUp, ShoppingBag, Wallet, Flame, X, Check } from 'lucide-react'
+import {
+  TrendingUp,
+  ShoppingBag,
+  Wallet,
+  Flame,
+  X,
+  Check,
+  Users,
+  Activity,
+  BarChart3,
+} from 'lucide-react'
+
 import { useTranslation } from '@/lib/i18n'
 
 import {
@@ -28,10 +39,24 @@ export function DashboardTab() {
   useEffect(() => {
     fetchStats()
 
+    const refreshInterval =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('admin_refresh_interval') || 'Live'
+        : 'Live'
+
+    let interval: any
+    if (refreshInterval !== 'Live' && refreshInterval !== 'Off') {
+      const ms = refreshInterval === '1m' ? 60000 : 300000
+      interval = setInterval(fetchStats, ms)
+    }
+
     // Listen for order updates to refresh stats
     const handleReload = () => fetchStats()
     window.addEventListener('reload-orders', handleReload)
-    return () => window.removeEventListener('reload-orders', handleReload)
+    return () => {
+      if (interval) clearInterval(interval)
+      window.removeEventListener('reload-orders', handleReload)
+    }
   }, [])
 
   const kpis = [
@@ -48,6 +73,13 @@ export function DashboardTab() {
       value: `${stats?.todayRevenue.toLocaleString() ?? 0} ${t('currency')}`,
       color: 'text-emerald-500',
       bg: 'bg-emerald-500/10',
+    },
+    {
+      icon: Users,
+      label: 'Today Customers',
+      value: stats?.todayCustomers ?? 0,
+      color: 'text-violet-500',
+      bg: 'bg-violet-500/10',
     },
     {
       icon: Wallet,
@@ -71,10 +103,9 @@ export function DashboardTab() {
           {t('dashboard_desc')}
         </p>
       </div>
-
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {loading
-          ? [1, 2, 3].map((i) => (
+          ? [1, 2, 3, 4].map((i) => (
               <div
                 key={i}
                 className="h-32 w-full animate-pulse rounded-2xl border border-border bg-card/40 backdrop-blur-xl p-6"
@@ -88,33 +119,75 @@ export function DashboardTab() {
                 key={label}
                 className="group relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md p-6 shadow-xl transition-all hover:border-white/10 hover:shadow-2xl"
               >
-                {/* High-fidelity glass-glow effect */}
                 <div
                   className={`absolute -right-12 -top-12 h-48 w-36 rounded-full ${bg} opacity-20 blur-3xl transition-all duration-700 group-hover:scale-150 group-hover:opacity-40`}
                 />
-
-                {/* Secondary accent glow */}
                 <div
                   className={`absolute -right-8 -top-8 h-32 w-32 rounded-full ${bg} opacity-10 blur-2xl transition-all duration-500 group-hover:translate-x-4`}
                 />
-
                 <div className="relative z-10 flex flex-col gap-4">
                   <div className="flex items-center gap-3">
-                    <div
-                      className={`flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 backdrop-blur-sm border border-white/10`}
-                    >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
                       <Icon className={`h-5 w-5 ${color}`} />
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
                       {label}
                     </span>
                   </div>
-                  <p className="font-display text-3xl font-black tracking-tighter text-foreground">
+                  <p className="font-display text-2xl font-black tracking-tighter text-foreground">
                     {value}
                   </p>
                 </div>
               </div>
             ))}
+      </div>
+
+      {/* Sales Trend Chart Section */}
+      <div className="rounded-3xl border border-white/5 bg-card/30 backdrop-blur-xl p-8 shadow-2xl overflow-hidden relative group transition-all hover:border-white/10">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50" />
+
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <h3 className="font-display text-sm uppercase tracking-widest text-foreground">
+                Revenue Trend
+              </h3>
+            </div>
+            <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground/70">
+              Weekly Performance Analytics
+            </p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+              <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+              <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground">
+                Live Data
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="relative h-64 w-full">
+          {loading ? (
+            <Skeleton className="h-full w-full rounded-2xl" />
+          ) : (
+            <SalesChart data={stats?.salesTrend || []} />
+          )}
+        </div>
+
+        <div className="mt-8 grid grid-cols-7 gap-1">
+          {stats?.salesTrend.map((t) => (
+            <div key={t.date} className="text-center">
+              <p className="text-[9px] font-black uppercase tracking-tighter text-muted-foreground/60 whitespace-nowrap overflow-hidden">
+                {new Date(t.date).toLocaleDateString(undefined, {
+                  weekday: 'short',
+                })}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -217,5 +290,85 @@ export function DashboardTab() {
         </div>
       </div>
     </div>
+  )
+}
+
+function SalesChart({
+  data,
+}: {
+  data: Array<{ date: string; amount: number }>
+}) {
+  if (data.length === 0) return null
+
+  const max = Math.max(...data.map((d) => d.amount), 1)
+  const padding = 20
+  const width = 1000
+  const height = 200
+
+  const points = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * width
+    const y = height - (d.amount / max) * height
+    return `${x},${y}`
+  })
+
+  const pathData = `M ${points.join(' L ')}`
+  const areaData = `${pathData} L ${width},${height} L 0,${height} Z`
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="h-full w-full overflow-visible drop-shadow-[0_8px_24px_rgba(var(--primary-rgb),0.3)]"
+      preserveAspectRatio="none"
+    >
+      <defs>
+        <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      {/* Area under the curve */}
+      <path
+        d={areaData}
+        fill="url(#chartGradient)"
+        className="transition-all duration-1000 ease-out"
+      />
+
+      {/* Main Curve */}
+      <path
+        d={pathData}
+        fill="none"
+        stroke="hsl(var(--primary))"
+        strokeWidth="6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="transition-all duration-1000 ease-out"
+      />
+
+      {/* Glowing Points */}
+      {data.map((d, i) => {
+        const x = (i / (data.length - 1)) * width
+        const y = height - (d.amount / max) * height
+        return (
+          <g key={i} className="group/point">
+            <circle
+              cx={x}
+              cy={y}
+              r="8"
+              fill="white"
+              className="opacity-0 transition-opacity group-hover/point:opacity-100"
+            />
+            <circle
+              cx={x}
+              cy={y}
+              r="4"
+              fill="hsl(var(--primary))"
+              stroke="white"
+              strokeWidth="2"
+            />
+          </g>
+        )
+      })}
+    </svg>
   )
 }

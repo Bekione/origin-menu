@@ -47,6 +47,11 @@ export function TablesTab() {
     label: string
   } | null>(null)
 
+  const [density, setDensity] = useState(() => {
+    if (typeof window === 'undefined') return 'Comfortable'
+    return localStorage.getItem('admin_layout_density') || 'Comfortable'
+  })
+
   const fetchTables = async () => {
     setLoading(true)
     try {
@@ -59,6 +64,21 @@ export function TablesTab() {
 
   useEffect(() => {
     fetchTables()
+
+    // Density listener
+    const handleStorage = () => {
+      setDensity(localStorage.getItem('admin_layout_density') || 'Comfortable')
+    }
+    window.addEventListener('storage', handleStorage)
+
+    // Manual refresh event
+    const handleReload = () => fetchTables()
+    window.addEventListener('reload-orders', handleReload)
+
+    return () => {
+      window.removeEventListener('storage', handleStorage)
+      window.removeEventListener('reload-orders', handleReload)
+    }
   }, [])
 
   const handleAdd = async (e: React.FormEvent) => {

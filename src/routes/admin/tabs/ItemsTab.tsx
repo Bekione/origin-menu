@@ -39,10 +39,19 @@ export function ItemsTab({
   const [showForm, setShowForm] = useState(false)
   const [localItems, setLocalItems] = useState(data.items)
   const [draggedId, setDraggedId] = useState<string | null>(null)
-  const density =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('admin_layout_density') || 'Comfortable'
-      : 'Comfortable'
+  const [density, setDensity] = useState(() => {
+    if (typeof window === 'undefined') return 'Comfortable'
+    return localStorage.getItem('admin_layout_density') || 'Comfortable'
+  })
+
+  useEffect(() => {
+    const handleStorage = () => {
+      setDensity(localStorage.getItem('admin_layout_density') || 'Comfortable')
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
   const reorder = useServerFn(reorderMenuItems)
 
   useEffect(() => {

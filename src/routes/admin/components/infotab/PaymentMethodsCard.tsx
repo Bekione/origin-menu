@@ -1,5 +1,7 @@
 import { Plus, Trash2, Loader2, GripVertical } from 'lucide-react'
+import { toast } from 'sonner'
 import { useTranslation } from '@/lib/i18n'
+
 import { inputCls } from '../FormPrimitives'
 import { optimizeImage } from '@/lib/image'
 
@@ -37,6 +39,21 @@ export function PaymentMethodsCard({
   }
 
   const addPaymentMethod = () => {
+    // 1. Max Limit Guard (let's say 8 to keep layout clean)
+    if (form.payment_methods.length >= 8) {
+      toast.error('Maximum 8 payment methods allowed')
+      return
+    }
+
+    // 2. Empty card check (prevent creating multiple empty widgets)
+    const hasEmpty = form.payment_methods.some(
+      (m: any) => !m.provider.trim() || !m.account.trim(),
+    )
+    if (hasEmpty) {
+      toast.error('Please fill the existing empty payment forms first')
+      return
+    }
+
     setForm({
       ...form,
       payment_methods: [
@@ -45,6 +62,8 @@ export function PaymentMethodsCard({
       ],
     })
   }
+
+  const isAtLimit = form.payment_methods.length >= 8
 
   return (
     <div className="rounded-xl border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/20">
@@ -55,9 +74,16 @@ export function PaymentMethodsCard({
         <button
           type="button"
           onClick={addPaymentMethod}
-          className="group inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-primary transition hover:bg-primary/20"
+          disabled={isAtLimit}
+          className={`group inline-flex items-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all ${
+            isAtLimit
+              ? 'opacity-30 cursor-not-allowed bg-muted text-muted-foreground'
+              : 'bg-primary/10 text-primary hover:bg-primary/20 active:scale-95'
+          }`}
         >
-          <Plus className="h-3 w-3 transition-transform group-hover:rotate-90" />
+          <Plus
+            className={`h-3 w-3 transition-transform ${isAtLimit ? '' : 'group-hover:rotate-90'}`}
+          />
           {t('add_payment_method')}
         </button>
       </div>

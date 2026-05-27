@@ -18,6 +18,8 @@ export type DashboardStats = {
   avgOrderValue: number
   topItems: Array<{ name: string; qty: number }>
   outOfStockItems: Array<{ id: string; name: string; name_am: string | null }>
+  salesTrend: Array<{ date: string; amount: number }>
+  todayCustomers: number
 }
 
 export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
@@ -69,12 +71,56 @@ export const getDashboardStats = createServerFn({ method: 'GET' }).handler(
       .select('id, name, name_am')
       .eq('is_available', false)
 
+    // 2. Fetch Sales Trend (Last 7 Days)
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    sevenDaysAgo.setHours(0, 0, 0, 0)
+
+    const { data: trendOrders } = await supabaseAdmin
+      .from('table_orders')
+      .select('created_at, items, status')
+      .gte('created_at', sevenDaysAgo.toISOString())
+      .in('status', ['accepted', 'completed'])
+
+    const trendMap: Record<string, number> = {}
+    for (let i = 0; i < 7; i++) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      trendMap[d.toISOString().split('T')[0]] = 0
+    }
+
+    trendOrders?.forEach((o) => {
+      const date = o.created_at.split('T')[0]
+      if (trendMap[date] !== undefined) {
+        const items = (o.items as any[]) || []
+        const total = items.reduce(
+          (acc, it) => acc + (it.price || 0) * (it.qty || 0),
+          0,
+        )
+        trendMap[date] += total
+      }
+    })
+
+    const salesTrend = Object.entries(trendMap)
+      .map(([date, amount]) => ({ date, amount }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+
+    // 3. Unique Customers today (based on device_id)
+    const { data: dailyUnique } = await supabaseAdmin
+      .from('table_orders')
+      .select('device_id')
+      .gte('created_at', todayISO)
+
+    const uniqueDevices = new Set(dailyUnique?.map((o) => o.device_id))
+
     return {
       todayRevenue,
       todayOrders,
       avgOrderValue,
       topItems,
       outOfStockItems: outOfStock || [],
+      salesTrend,
+      todayCustomers: uniqueDevices.size,
     } as DashboardStats
   },
 )
