@@ -454,18 +454,17 @@ function InteractiveChart({
 
   return (
     <div
-      style={{ width: '100%', height: '100%', outline: 'none' }}
-      tabIndex={-1}
+      style={{ width: '100%', height: '100%', outline: 'none', border: 'none' }}
     >
       <ResponsiveContainer
         width="100%"
         height="100%"
-        style={{ outline: 'none' }}
+        style={{ outline: 'none', border: 'none' }}
       >
         <AreaChart
           data={chartData}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          style={{ outline: 'none', border: 'none' }}
+          style={{ outline: 'none' }}
         >
           <defs>
             <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -488,7 +487,7 @@ function InteractiveChart({
           />
           <XAxis
             dataKey="formattedDate"
-            axisLine={false}
+            axisLine={{ strokeWidth: 0 }}
             tickLine={false}
             tick={{
               fontSize: 9,
@@ -499,7 +498,12 @@ function InteractiveChart({
             interval={data.length > 7 ? 4 : 0}
             minTickGap={20}
           />
-          <YAxis hide domain={[0, 'auto']} />
+          <YAxis
+            hide
+            domain={[0, 'auto']}
+            axisLine={{ strokeWidth: 0 }}
+            tickLine={false}
+          />
           <Tooltip
             contentStyle={{
               backgroundColor: 'rgba(23, 23, 23, 0.95)',
