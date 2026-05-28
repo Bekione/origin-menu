@@ -277,16 +277,22 @@ export const placeOrder = createServerFn({ method: 'POST' })
       }
     })
 
+    const total_amount = enrichedItems.reduce(
+      (acc, it) => acc + (it.price || 0) * (it.qty || 0),
+      0,
+    )
+
     const { data: newOrder, error } = await supabaseAdmin
       .from('table_orders')
       .insert({
         table_id: data.table_id,
         table_label: data.table_label,
         items: enrichedItems,
+        total_amount,
         note: data.note ?? null,
         device_id: data.device_id,
         status: 'pending',
-      })
+      } as any)
       .select('id, created_at')
       .single()
 
@@ -398,6 +404,7 @@ export type TableOrder = {
   }>
   note: string | null
   status: 'pending' | 'accepted' | 'rejected' | 'completed' | string
+  total_amount?: number
   device_id: string
   created_at: string
 }

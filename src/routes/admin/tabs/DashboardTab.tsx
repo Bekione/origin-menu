@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   TrendingUp,
   ShoppingBag,
@@ -25,117 +25,136 @@ import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 import { useTranslation } from '@/lib/i18n'
 
 import {
-  getDashboardStats,
-  type DashboardStats,
+  getDashboardKPIs,
+  getDashboardTrends,
+  getDashboardTopStats,
+  getOutOfStockItems,
+  type DashboardKPIs,
+  type DashboardTrends,
+  type TopStats,
 } from '@/server/admin.functions'
 import { Skeleton } from '@/components/ui/skeleton'
+
+type OutOfStockItem = { id: string; name: string; name_am: string | null }
 
 export function DashboardTab() {
   const { t, dt } = useTranslation()
 
-  const [stats, setStats] = useState<DashboardStats | null>(null)
-  const [loading, setLoading] = useState(true)         // initial full-page load
-  const [chartLoading, setChartLoading] = useState(false) // range-switch overlay only
+  const [kpis, setKpis] = useState<DashboardKPIs | null>(null)
+  const [trends, setTrends] = useState<DashboardTrends | null>(null)
+  const [topStats, setTopStats] = useState<TopStats | null>(null)
+  const [outOfStock, setOutOfStock] = useState<OutOfStockItem[]>([])
+  const [loading, setLoading] = useState(true)
   const [range, setRange] = useState<'7' | '30'>('7')
 
-  const fetchStats = async (isMonthOverride?: boolean, isRangeSwitch = false) => {
-    const isMonth =
-      isMonthOverride !== undefined ? isMonthOverride : range === '30'
-    if (isRangeSwitch) setChartLoading(true)
-    try {
-      const data = await getDashboardStats({
-        data: { isMonth },
-      })
-      setStats(data as DashboardStats)
-    } catch (err) {
-      console.error('Failed to fetch dashboard stats', err)
-    } finally {
-      setLoading(false)
-      setChartLoading(false)
-    }
+  const fetchAll = async () => {
+    // Fire all requests in parallel and handle them independently
+    getDashboardKPIs().then(setKpis).catch(console.error)
+    getDashboardTrends().then(setTrends).catch(console.error)
+    getDashboardTopStats().then(setTopStats).catch(console.error)
+    getOutOfStockItems()
+      .then((os) => setOutOfStock(os as OutOfStockItem[]))
+      .catch(console.error)
+      .finally(() => setLoading(false))
   }
 
   // Fetch on mount
   useEffect(() => {
-    fetchStats(false, false)
+    fetchAll()
   }, [])
 
-  // Re-fetch when range changes — show chart overlay, NOT full skeleton
+  // Real-time listeners and patching
   useEffect(() => {
-    fetchStats(range === '30', true)
-  }, [range])
+    const handleReload = () => fetchAll()
 
-  // Set up auto-refresh and event listeners (runs once on mount)
-  useEffect(() => {
-    const refreshInterval =
-      typeof window !== 'undefined'
-        ? localStorage.getItem('admin_refresh_interval') || 'Live'
-        : 'Live'
-
-    let interval: any
-    if (refreshInterval !== 'Live' && refreshInterval !== 'Off') {
-      const ms = refreshInterval === '1m' ? 60000 : 300000
-      interval = setInterval(() => fetchStats(range === '30', false), ms)
-    }
-
-    const handleReload = () => fetchStats(range === '30', false)
-    const handleCurrency = () => fetchStats(range === '30', false)
-
-    // Listen for real-time broadcasts (e.g. from EightyBoard)
+    // Listen for real-time events
     const channel = supabaseBrowser
-      .channel('origin-notifications')
-      .on('broadcast', { event: 'reload-menu' }, () => {
-        console.log('[Dashboard] Received reload-menu broadcast')
-        handleReload()
+      .channel('origin-dashboard-sync')
+      .on('broadcast', { event: 'new_order' }, ({ payload }) => {
+        // Instant patch for KPIs
+        setKpis((prev) => {
+          if (!prev) return prev
+          const newOrder = payload
+          const newRevenue =
+            newOrder.status === 'accepted' || newOrder.status === 'completed'
+              ? prev.todayRevenue + Number(newOrder.total_amount || 0)
+              : prev.todayRevenue
+
+          return {
+            ...prev,
+            todayOrders: prev.todayOrders + 1,
+            todayRevenue: newRevenue,
+            avgOrderValue:
+              prev.todayOrders + 1 > 0
+                ? (prev.todayRevenue + Number(newOrder.total_amount || 0)) /
+                  (prev.todayOrders + 1)
+                : 0,
+          }
+        })
+        // Also refresh top stats in background since they require complex tallying
+        getDashboardTopStats().then(setTopStats)
       })
+      .on('broadcast', { event: 'order_status_updated' }, ({ payload }) => {
+        // If an order was accepted, update revenue
+        if (payload.status === 'accepted') {
+          setKpis((prev) => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              todayRevenue:
+                prev.todayRevenue + Number(payload.total_amount || 0),
+            }
+          })
+        }
+      })
+      .on('broadcast', { event: 'reload-menu' }, () => handleReload())
       .subscribe()
 
     window.addEventListener('reload-orders', handleReload)
     window.addEventListener('reload-menu', handleReload)
-    window.addEventListener('currency-changed', handleCurrency)
+    window.addEventListener('currency-changed', handleReload)
 
     return () => {
-      if (interval) clearInterval(interval)
       supabaseBrowser.removeChannel(channel)
       window.removeEventListener('reload-orders', handleReload)
       window.removeEventListener('reload-menu', handleReload)
-      window.removeEventListener('currency-changed', handleCurrency)
+      window.removeEventListener('currency-changed', handleReload)
     }
-  }, [range])
+  }, [])
 
-  const kpis = [
+  const kpiData = [
     {
       icon: ShoppingBag,
       label: t('today_orders'),
-      value: stats?.todayOrders ?? 0,
+      value: kpis?.todayOrders ?? 0,
       color: 'text-blue-500',
       bg: 'bg-blue-500/10',
     },
     {
       icon: TrendingUp,
       label: t('today_revenue'),
-      value: `${stats?.todayRevenue.toLocaleString() ?? 0} ${t('currency')}`,
+      value: `${kpis?.todayRevenue.toLocaleString() ?? 0} ${t('currency')}`,
       color: 'text-emerald-500',
       bg: 'bg-emerald-500/10',
     },
     {
       icon: Users,
       label: t('today_customers'),
-      value: stats?.todayCustomers ?? 0,
+      value: kpis?.todayCustomers ?? 0,
       color: 'text-violet-500',
       bg: 'bg-violet-500/10',
     },
     {
       icon: Wallet,
       label: t('avg_order_value'),
-      value: `${Math.round(stats?.avgOrderValue ?? 0).toLocaleString()} ${t('currency')}`,
+      value: `${Math.round(kpis?.avgOrderValue ?? 0).toLocaleString()} ${t('currency')}`,
       color: 'text-amber-500',
       bg: 'bg-amber-500/10',
     },
   ]
 
-  // Fix the typo in bg for orders
-  kpis[0].bg = 'bg-blue-500/10'
+  // Refine the background for the first KPI
+  kpiData[0].bg = 'bg-blue-500/10'
 
   return (
     <div className="space-y-8">
@@ -149,7 +168,7 @@ export function DashboardTab() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-        {loading
+        {!kpis
           ? [1, 2, 3, 4].map((i) => (
               <div
                 key={i}
@@ -159,7 +178,7 @@ export function DashboardTab() {
                 <Skeleton className="h-8 w-32" />
               </div>
             ))
-          : kpis.map(({ icon: Icon, label, value, color, bg }) => (
+          : kpiData.map(({ icon: Icon, label, value, color, bg }) => (
               <div
                 key={label}
                 className="group relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md p-6 shadow-xl transition-all hover:border-white/10 hover:shadow-2xl"
@@ -231,16 +250,15 @@ export function DashboardTab() {
         </div>
 
         <div className="relative h-64 w-full [&_svg]:outline-none [&_.recharts-wrapper]:outline-none">
-          {loading ? (
+          {!trends ? (
             <Skeleton className="h-full w-full rounded-2xl" />
           ) : (
             <div className="relative h-full w-full">
-              <InteractiveChart data={stats?.salesTrend || []} />
-              {chartLoading && (
-                <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-card/60 backdrop-blur-sm">
-                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                </div>
-              )}
+              <InteractiveChart
+                data={
+                  range === '7' ? trends?.weekly || [] : trends?.monthly || []
+                }
+              />
             </div>
           )}
         </div>
@@ -262,17 +280,17 @@ export function DashboardTab() {
           </div>
 
           <div className="space-y-3">
-            {loading ? (
+            {!topStats ? (
               [1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-14 w-full rounded-xl" />
               ))
-            ) : !stats?.topItems.length ? (
+            ) : !topStats?.items.length ? (
               <div className="flex flex-col items-center justify-center py-10 opacity-40">
                 <ShoppingBag className="h-10 w-10 mb-2" />
                 <p className="text-sm">{t('no_orders_yet')}</p>
               </div>
             ) : (
-              stats.topItems.map((item, idx) => (
+              topStats.items.map((item, idx) => (
                 <div
                   key={item.name}
                   className="flex items-center justify-between rounded-xl bg-muted/30 p-4 transition-colors hover:bg-muted/50 border border-transparent hover:border-border"
@@ -314,17 +332,17 @@ export function DashboardTab() {
           </div>
 
           <div className="space-y-3">
-            {loading ? (
+            {!topStats ? (
               [1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-14 w-full rounded-xl" />
               ))
-            ) : !stats?.topTables.length ? (
+            ) : !topStats?.tables.length ? (
               <div className="flex flex-col items-center justify-center py-10 opacity-40">
                 <Activity className="h-10 w-10 mb-2" />
                 <p className="text-sm">{t('no_orders_yet')}</p>
               </div>
             ) : (
-              stats.topTables.map((table, idx) => (
+              topStats.tables.map((table, idx) => (
                 <div
                   key={table.label}
                   className="flex items-center justify-between rounded-xl bg-blue-500/5 p-4 transition-colors hover:bg-blue-500/10 border border-transparent hover:border-blue-500/20"
@@ -360,25 +378,25 @@ export function DashboardTab() {
                 {t('eighty_board')}
               </h3>
             </div>
-            {stats?.outOfStockItems.length ? (
+            {outOfStock.length ? (
               <div className="rounded-full bg-destructive/10 px-2 py-0.5 text-[10px] font-bold text-destructive">
-                {stats.outOfStockItems.length} {t('items')}
+                {outOfStock.length} {t('items')}
               </div>
             ) : null}
           </div>
 
           <div className="space-y-3">
-            {loading ? (
+            {loading && outOfStock.length === 0 ? (
               [1, 2].map((i) => (
                 <Skeleton key={i} className="h-14 w-full rounded-xl" />
               ))
-            ) : !stats?.outOfStockItems.length ? (
+            ) : !outOfStock.length ? (
               <div className="flex flex-col items-center justify-center py-10 opacity-40">
                 <Check className="h-10 w-10 mb-2 text-emerald-500" />
                 <p className="text-sm">{t('in_stock_all')}</p>
               </div>
             ) : (
-              stats.outOfStockItems.map((item) => (
+              outOfStock.map((item) => (
                 <div
                   key={item.id}
                   className="flex items-center justify-between rounded-xl bg-destructive/5 p-4 border border-destructive/10"
@@ -407,104 +425,118 @@ function InteractiveChart({
   data: Array<{ date: string; amount: number }>
 }) {
   const { t } = useTranslation()
+  const chartData = useMemo(() => {
+    if (data.length === 0) return []
+    const now = new Date().setHours(0, 0, 0, 0)
+
+    return data.map((d) => {
+      const dateObj = new Date(d.date)
+      const isToday = dateObj.getTime() === now
+      return {
+        ...d,
+        formattedDate: dateObj.toLocaleDateString(undefined, {
+          weekday: data.length > 7 ? undefined : 'short',
+          day: 'numeric',
+          month: data.length > 7 ? 'short' : undefined,
+        }),
+        isToday,
+      }
+    })
+  }, [data])
+
   if (data.length === 0) return null
 
-  // Format data for Recharts
-  const chartData = data.map((d) => {
-    const isToday =
-      new Date(d.date).setHours(0, 0, 0, 0) === new Date().setHours(0, 0, 0, 0)
-    return {
-      ...d,
-      formattedDate: new Date(d.date).toLocaleDateString(undefined, {
-        weekday: data.length > 7 ? undefined : 'short',
-        day: 'numeric',
-        month: data.length > 7 ? 'short' : undefined,
-      }),
-      isToday,
-    }
-  })
-
   return (
-    <div style={{ width: '100%', height: '100%', outline: 'none' }} tabIndex={-1}>
-      <ResponsiveContainer width="100%" height="100%" style={{ outline: 'none' }}>
+    <div
+      style={{ width: '100%', height: '100%', outline: 'none' }}
+      tabIndex={-1}
+    >
+      <ResponsiveContainer
+        width="100%"
+        height="100%"
+        style={{ outline: 'none' }}
+      >
         <AreaChart
           data={chartData}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
           style={{ outline: 'none', border: 'none' }}
         >
-        <defs>
-          <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="hsl(25, 95%, 53%)" stopOpacity={0.4} />
-            <stop offset="95%" stopColor="hsl(25, 95%, 53%)" stopOpacity={0} />
-          </linearGradient>
-          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feComposite in="SourceGraphic" in2="blur" operator="over" />
-          </filter>
-        </defs>
-        <CartesianGrid
-          vertical={false}
-          strokeDasharray="3 3"
-          stroke="rgba(255,255,255,0.05)"
-        />
-        <XAxis
-          dataKey="formattedDate"
-          axisLine={false}
-          tickLine={false}
-          tick={{
-            fontSize: 9,
-            fill: 'rgba(156, 163, 175, 0.8)',
-            fontWeight: 700,
-          }}
-          dy={10}
-          interval={data.length > 7 ? 4 : 0}
-          minTickGap={20}
-        />
-        <YAxis hide domain={[0, 'auto']} />
-        <Tooltip
-          contentStyle={{
-            backgroundColor: 'rgba(23, 23, 23, 0.95)',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '16px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
-            backdropFilter: 'blur(12px)',
-            fontSize: '11px',
-            color: '#fff',
-            padding: '12px',
-          }}
-          itemStyle={{ color: 'hsl(var(--primary))', fontWeight: '900' }}
-          labelStyle={{
-            color: 'rgba(156, 163, 175, 0.9)',
-            marginBottom: '6px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-            fontWeight: '900',
-            fontSize: '9px',
-          }}
-          cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
-          formatter={(value: any) => [
-            `${Number(value).toLocaleString()} ${t('currency')}`,
-            t('revenue_trend'),
-          ]}
-        />
-        <Area
-          type="monotone"
-          dataKey="amount"
-          stroke="hsl(25, 95%, 53%)"
-          strokeWidth={4}
-          fillOpacity={1}
-          filter="url(#glow)"
-          fill="url(#colorRevenue)"
-          animationDuration={1500}
-          activeDot={{
-            r: 6,
-            fill: 'hsl(25, 95%, 53%)',
-            stroke: '#fff',
-            strokeWidth: 2,
-          }}
-        />
-      </AreaChart>
-    </ResponsiveContainer>
+          <defs>
+            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+              <stop
+                offset="5%"
+                stopColor="hsl(25, 95%, 53%)"
+                stopOpacity={0.4}
+              />
+              <stop
+                offset="95%"
+                stopColor="hsl(25, 95%, 53%)"
+                stopOpacity={0}
+              />
+            </linearGradient>
+          </defs>
+          <CartesianGrid
+            vertical={false}
+            strokeDasharray="3 3"
+            stroke="rgba(255,255,255,0.05)"
+          />
+          <XAxis
+            dataKey="formattedDate"
+            axisLine={false}
+            tickLine={false}
+            tick={{
+              fontSize: 9,
+              fill: 'rgba(156, 163, 175, 0.8)',
+              fontWeight: 700,
+            }}
+            dy={10}
+            interval={data.length > 7 ? 4 : 0}
+            minTickGap={20}
+          />
+          <YAxis hide domain={[0, 'auto']} />
+          <Tooltip
+            contentStyle={{
+              backgroundColor: 'rgba(23, 23, 23, 0.95)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '16px',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(12px)',
+              fontSize: '11px',
+              color: '#fff',
+              padding: '12px',
+            }}
+            itemStyle={{ color: 'hsl(var(--primary))', fontWeight: '900' }}
+            labelStyle={{
+              color: 'rgba(156, 163, 175, 0.9)',
+              marginBottom: '6px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              fontWeight: '900',
+              fontSize: '9px',
+            }}
+            cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1 }}
+            formatter={(value: any) => [
+              `${Number(value).toLocaleString()} ${t('currency')}`,
+              t('revenue_trend'),
+            ]}
+          />
+          <Area
+            type="monotone"
+            dataKey="amount"
+            stroke="hsl(25, 95%, 53%)"
+            strokeWidth={4}
+            fillOpacity={1}
+            fill="url(#colorRevenue)"
+            animationDuration={300}
+            activeDot={{
+              r: 6,
+              fill: 'hsl(25, 95%, 53%)',
+              stroke: '#fff',
+              strokeWidth: 2,
+            }}
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   )
 }

@@ -1,7 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import { getRequest } from '@tanstack/react-start/server'
-import { z } from 'zod'
 import { auth } from '#/lib/auth'
 
 async function checkAdminAuth() {
@@ -13,128 +12,153 @@ async function checkAdminAuth() {
   return session
 }
 
-export type DashboardStats = {
+export type DashboardKPIs = {
   todayRevenue: number
   todayOrders: number
   avgOrderValue: number
-  topItems: Array<{ name: string; qty: number }>
-  topTables: Array<{ label: string; count: number }>
-  outOfStockItems: Array<{ id: string; name: string; name_am: string | null }>
-
-  salesTrend: Array<{ date: string; amount: number }>
   todayCustomers: number
 }
 
-export const getDashboardStats = createServerFn({ method: 'GET' })
-  .inputValidator(z.object({ isMonth: z.boolean() }))
-  .handler(async ({ data: { isMonth } }) => {
+export type SalesTrend = Array<{ date: string; amount: number }>
+
+export type DashboardTrends = {
+  weekly: SalesTrend
+  monthly: SalesTrend
+}
+
+export type TopStats = {
+  items: Array<{ name: string; qty: number }>
+  tables: Array<{ label: string; count: number }>
+}
+
+/** 1. Fast KPIs (Today) */
+export const getDashboardKPIs = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<DashboardKPIs> => {
     await checkAdminAuth()
+    const todayISO = new Date().toISOString().split('T')[0] + 'T00:00:00Z'
 
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todayISO = today.toISOString()
-
-    // 1. Fetch today's orders
     const { data: orders, error } = await supabaseAdmin
       .from('table_orders')
-      .select('items, status, table_label')
+      .select('total_amount, status, device_id')
       .gte('created_at', todayISO)
 
     if (error) throw new Error(error.message)
 
     let todayRevenue = 0
     let todayOrders = 0
-    const itemTally: Record<string, number> = {}
-    const tableTally: Record<string, number> = {}
+    const devices = new Set<string>()
 
-    orders?.forEach((order) => {
-      const items = (order.items as any[]) || []
-      const isPaid = order.status === 'completed' || order.status === 'accepted'
-
+    orders?.forEach((o: any) => {
       todayOrders++
-
-      if (order.table_label) {
-        tableTally[order.table_label] = (tableTally[order.table_label] || 0) + 1
+      if (o.device_id) devices.add(o.device_id)
+      if (o.status === 'completed' || o.status === 'accepted') {
+        todayRevenue += Number(o.total_amount || 0)
       }
-
-      items.forEach((item: any) => {
-        if (isPaid) {
-          todayRevenue += (item.price || 0) * (item.qty || 0)
-        }
-        const name = item.name || 'Unknown'
-        itemTally[name] = (itemTally[name] || 0) + (item.qty || 0)
-      })
     })
 
-    const avgOrderValue = todayOrders > 0 ? todayRevenue / todayOrders : 0
-    const topItems = Object.entries(itemTally)
-      .map(([name, qty]) => ({ name, qty }))
-      .sort((a, b) => b.qty - a.qty)
-      .slice(0, 5)
+    return {
+      todayRevenue,
+      todayOrders,
+      avgOrderValue: todayOrders > 0 ? todayRevenue / todayOrders : 0,
+      todayCustomers: devices.size,
+    }
+  },
+)
 
-    const topTables = Object.entries(tableTally)
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5)
-
-    const { data: outOfStock } = await supabaseAdmin
-      .from('menu_items')
-      .select('id, name, name_am')
-      .eq('is_available', false)
-
-    // 2. Fetch Sales Trend (Last 7 or 30 Days)
-    const rangeDays = isMonth ? 30 : 7
+/** 2. Trends (7d & 30d) - Zero JSONB parsing */
+export const getDashboardTrends = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<DashboardTrends> => {
+    await checkAdminAuth()
     const rangeStart = new Date()
-    rangeStart.setDate(rangeStart.getDate() - rangeDays)
-    rangeStart.setHours(0, 0, 0, 0)
+    rangeStart.setDate(rangeStart.getDate() - 30)
+    const rangeISO = rangeStart.toISOString().split('T')[0] + 'T00:00:00Z'
 
-    const { data: trendOrders } = await supabaseAdmin
+    const { data: trendOrders, error } = await supabaseAdmin
       .from('table_orders')
-      .select('created_at, items, status')
-      .gte('created_at', rangeStart.toISOString())
+      .select('created_at, total_amount')
+      .gte('created_at', rangeISO)
       .in('status', ['accepted', 'completed'])
 
+    if (error) throw new Error(error.message)
+
     const trendMap: Record<string, number> = {}
-    for (let i = 0; i < rangeDays; i++) {
+    for (let i = 0; i < 30; i++) {
       const d = new Date()
       d.setDate(d.getDate() - i)
       trendMap[d.toISOString().split('T')[0]] = 0
     }
 
-    trendOrders?.forEach((o) => {
+    trendOrders?.forEach((o: any) => {
       const date = o.created_at.split('T')[0]
       if (trendMap[date] !== undefined) {
-        const items = (o.items as any[]) || []
-        const total = items.reduce(
-          (acc, it) => acc + (it.price || 0) * (it.qty || 0),
-          0,
-        )
-        trendMap[date] += total
+        trendMap[date] += Number(o.total_amount || 0)
       }
     })
 
-    const salesTrend = Object.entries(trendMap)
+    const allData = Object.entries(trendMap)
       .map(([date, amount]) => ({ date, amount }))
       .sort((a, b) => a.date.localeCompare(b.date))
 
-    const { data: dailyUnique } = await supabaseAdmin
+    return {
+      monthly: allData,
+      weekly: allData.slice(-7),
+    }
+  },
+)
+
+/** 3. Top Stats (Requires parsing today's items) */
+export const getDashboardTopStats = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<TopStats> => {
+    await checkAdminAuth()
+    const todayISO = new Date().toISOString().split('T')[0] + 'T00:00:00Z'
+
+    const { data: orders, error } = await supabaseAdmin
       .from('table_orders')
-      .select('device_id')
+      .select('items, table_label')
       .gte('created_at', todayISO)
 
-    const uniqueDevices = new Set(dailyUnique?.map((o) => o.device_id))
+    if (error) throw new Error(error.message)
+
+    const itemTally: Record<string, number> = {}
+    const tableTally: Record<string, number> = {}
+
+    orders?.forEach((o) => {
+      if (o.table_label) {
+        tableTally[o.table_label] = (tableTally[o.table_label] || 0) + 1
+      }
+      const items = (o.items as any[]) || []
+      items.forEach((it) => {
+        const name = it.name || 'Unknown'
+        itemTally[name] = (itemTally[name] || 0) + (it.qty || 0)
+      })
+    })
 
     return {
-      todayRevenue,
-      todayOrders,
-      avgOrderValue,
-      topItems,
-      topTables,
-      outOfStockItems: outOfStock || [],
-      salesTrend,
-      todayCustomers: uniqueDevices.size,
-    } as DashboardStats
-  })
+      items: Object.entries(itemTally)
+        .map(([name, qty]) => ({ name, qty }))
+        .sort((a, b) => b.qty - a.qty)
+        .slice(0, 5),
+      tables: Object.entries(tableTally)
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5),
+    }
+  },
+)
+
+/** 4. Out of Stock (Static) */
+export const getOutOfStockItems = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await checkAdminAuth()
+    const { data, error } = await supabaseAdmin
+      .from('menu_items')
+      .select('id, name, name_am')
+      .eq('is_available', false)
+
+    if (error) throw new Error(error.message)
+    return data || []
+  },
+)
 
 export const getPendingOrderCount = createServerFn({
   method: 'GET',
