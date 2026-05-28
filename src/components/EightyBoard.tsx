@@ -25,7 +25,7 @@ export function EightyBoard({ onClose }: EightyBoardProps) {
   const [items, setItems] = useState<Item[]>(cachedItems ?? [])
   const [loading, setLoading] = useState(cachedItems === null) // only show skeleton on very first load
   const [error, setError] = useState<string | null>(null)
-  const [busyId, setBusyId] = useState<string | null>(null)
+  const [busyIds, setBusyIds] = useState<string[]>([])
   const hasFetched = useRef(false)
 
   const fetchMenu = useServerFn(getMenuData)
@@ -68,7 +68,7 @@ export function EightyBoard({ onClose }: EightyBoardProps) {
   }, [])
 
   const handleToggle = async (id: string, current: boolean) => {
-    setBusyId(id)
+    setBusyIds((prev) => [...prev, id])
     // Optimistically update the local state and cache
     const updated = (prev: Item[]) =>
       prev.map((item) =>
@@ -102,7 +102,7 @@ export function EightyBoard({ onClose }: EightyBoardProps) {
         return next
       })
     } finally {
-      setBusyId(null)
+      setBusyIds((prev) => prev.filter((bid) => bid !== id))
     }
   }
 
@@ -169,13 +169,13 @@ export function EightyBoard({ onClose }: EightyBoardProps) {
               items.map((item) => (
                 <button
                   key={item.id}
-                  disabled={busyId === item.id}
+                  disabled={busyIds.includes(item.id)}
                   onClick={() => handleToggle(item.id, item.is_available)}
                   className={`flex w-full items-center justify-between rounded-2xl border p-4 transition-all active:scale-[0.98] focus:outline-none ${
                     item.is_available
                       ? 'border-border bg-muted/10 hover:bg-muted/20'
                       : 'border-destructive/20 bg-destructive/5 hover:bg-destructive/10'
-                  } ${busyId === item.id ? 'opacity-50' : ''}`}
+                  } ${busyIds.includes(item.id) ? 'opacity-50' : ''}`}
                 >
                   <span
                     className={`text-sm font-bold ${item.is_available ? 'text-foreground' : 'text-destructive'}`}
@@ -189,7 +189,7 @@ export function EightyBoard({ onClose }: EightyBoardProps) {
                         : 'bg-destructive/10 text-destructive'
                     }`}
                   >
-                    {busyId === item.id ? (
+                    {busyIds.includes(item.id) ? (
                       <div className="h-3 w-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
                     ) : item.is_available ? (
                       <>
