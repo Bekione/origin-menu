@@ -34,6 +34,7 @@ import {
   type TopStats,
 } from '@/server/admin.functions'
 import { Skeleton } from '@/components/ui/skeleton'
+import ScrollFade from '#/components/ScrollFade'
 
 type OutOfStockItem = { id: string; name: string; name_am: string | null }
 
@@ -271,8 +272,8 @@ export function DashboardTab() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Top Selling Items */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        {/* Top Items Widget */}
+        <div className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm h-[420px]">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Flame className="h-5 w-5 text-orange-500" />
@@ -280,51 +281,53 @@ export function DashboardTab() {
                 {t('top_items')}
               </h3>
             </div>
-            <div className="rounded-full bg-orange-500/10 px-2 py-0.5 text-[10px] font-bold text-orange-500">
+            <div className="rounded-full bg-orange-500/10 px-2 py-0.5 text-[10px] font-bold text-orange-500 uppercase tracking-widest">
               {t('item_special_badge')}
             </div>
           </div>
 
-          <div className="space-y-3">
-            {!topStats ? (
-              [1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-xl" />
-              ))
-            ) : !topStats?.items.length ? (
-              <div className="flex flex-col items-center justify-center py-10 opacity-40">
-                <ShoppingBag className="h-10 w-10 mb-2" />
-                <p className="text-sm">{t('no_orders_yet')}</p>
-              </div>
-            ) : (
-              topStats.items.map((item, idx) => (
-                <div
-                  key={item.name}
-                  className="flex items-center justify-between rounded-xl bg-muted/30 p-4 transition-colors hover:bg-muted/50 border border-transparent hover:border-border"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground/5 text-[10px] font-black text-muted-foreground border border-border/50">
-                      {idx + 1}
-                    </span>
-                    <span className="text-sm font-bold text-foreground">
-                      {item.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-black text-foreground">
-                      {item.qty}
-                    </span>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                      {t('items')}
-                    </span>
-                  </div>
+          <ScrollFade direction="vertical" className="flex">
+            <div className="flex-1 overflow-y-auto space-y-3 thin-scrollbar pr-1">
+              {!topStats ? (
+                [1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-xl" />
+                ))
+              ) : !topStats?.items.length ? (
+                <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                  <ShoppingBag className="h-10 w-10 mb-2" />
+                  <p className="text-sm">{t('no_orders_yet')}</p>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                topStats.items.map((item, idx) => (
+                  <div
+                    key={item.name}
+                    className="flex items-center justify-between rounded-xl bg-muted/30 p-4 transition-colors hover:bg-muted/50 border border-transparent hover:border-border"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-foreground/5 text-[10px] font-black text-muted-foreground border border-border/50">
+                        {idx + 1}
+                      </span>
+                      <span className="text-sm font-bold text-foreground">
+                        {item.name}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-black text-foreground">
+                        {item.qty}
+                      </span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                        {t('items')}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollFade>
         </div>
 
         {/* Top Tables Widget */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm h-[420px]">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Layout className="h-5 w-5 text-blue-500" />
@@ -337,46 +340,48 @@ export function DashboardTab() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {!topStats ? (
-              [1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-xl" />
-              ))
-            ) : !topStats?.tables.length ? (
-              <div className="flex flex-col items-center justify-center py-10 opacity-40">
-                <Activity className="h-10 w-10 mb-2" />
-                <p className="text-sm">{t('no_orders_yet')}</p>
-              </div>
-            ) : (
-              topStats.tables.map((table, idx) => (
-                <div
-                  key={table.label}
-                  className="flex items-center justify-between rounded-xl bg-blue-500/5 p-4 transition-colors hover:bg-blue-500/10 border border-transparent hover:border-blue-500/20"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/10 text-[10px] font-black text-blue-600 border border-blue-500/20">
-                      {idx + 1}
-                    </span>
-                    <span className="text-sm font-bold text-foreground">
-                      {table.label}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-black text-foreground">
-                      {table.count}
-                    </span>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
-                      {t('admin_orders')}
-                    </span>
-                  </div>
+          <ScrollFade direction="vertical" className="flex">
+            <div className="flex-1 overflow-y-auto space-y-3 thin-scrollbar pr-1">
+              {!topStats ? (
+                [1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-xl" />
+                ))
+              ) : !topStats?.tables.length ? (
+                <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                  <Activity className="h-10 w-10 mb-2" />
+                  <p className="text-sm">{t('no_orders_yet')}</p>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                topStats.tables.map((table, idx) => (
+                  <div
+                    key={table.label}
+                    className="flex items-center justify-between rounded-xl bg-blue-500/5 p-4 transition-colors hover:bg-blue-500/10 border border-transparent hover:border-blue-500/20"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-500/10 text-[10px] font-black text-blue-600 border border-blue-500/20">
+                        {idx + 1}
+                      </span>
+                      <span className="text-sm font-bold text-foreground">
+                        {table.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-black text-foreground">
+                        {table.count}
+                      </span>
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">
+                        {t('admin_orders')}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollFade>
         </div>
 
         {/* 86'd Items (Out of Stock) */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm h-[420px]">
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <X className="h-5 w-5 text-destructive" />
@@ -391,34 +396,36 @@ export function DashboardTab() {
             ) : null}
           </div>
 
-          <div className="space-y-3">
-            {loading && outOfStock.length === 0 ? (
-              [1, 2].map((i) => (
-                <Skeleton key={i} className="h-14 w-full rounded-xl" />
-              ))
-            ) : !outOfStock.length ? (
-              <div className="flex flex-col items-center justify-center py-10 opacity-40">
-                <Check className="h-10 w-10 mb-2 text-emerald-500" />
-                <p className="text-sm">{t('in_stock_all')}</p>
-              </div>
-            ) : (
-              outOfStock.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded-xl bg-destructive/5 p-4 border border-destructive/10"
-                >
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-bold text-foreground">
-                      {dt(item, 'name')}
+          <ScrollFade direction="vertical" className="flex">
+            <div className="flex-1 overflow-y-auto space-y-3 thin-scrollbar pr-1">
+              {loading && outOfStock.length === 0 ? (
+                [1, 2].map((i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-xl" />
+                ))
+              ) : !outOfStock.length ? (
+                <div className="flex flex-col items-center justify-center py-10 opacity-40">
+                  <Check className="h-10 w-10 mb-2 text-emerald-500" />
+                  <p className="text-sm">{t('in_stock_all')}</p>
+                </div>
+              ) : (
+                outOfStock.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-xl bg-destructive/5 p-4 border border-destructive/10"
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-bold text-foreground">
+                        {dt(item, 'name')}
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-widest text-destructive">
+                      {t('out')}
                     </span>
                   </div>
-                  <span className="text-[9px] font-black uppercase tracking-widest text-destructive">
-                    {t('out')}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
+                ))
+              )}
+            </div>
+          </ScrollFade>
         </div>
       </div>
     </div>
