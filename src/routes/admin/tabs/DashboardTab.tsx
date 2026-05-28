@@ -67,9 +67,10 @@ export function DashboardTab() {
   useEffect(() => {
     const handleReload = () => fetchAll()
 
-    // Listen for real-time events
-    const channel = supabaseBrowser
-      .channel('origin-dashboard-sync')
+    // Listen for real-time events across different channels
+    // We use a unique name here to avoid conflict with useAdminRealtime hook
+    const realtimeChannel = supabaseBrowser
+      .channel('origin-dashboard-patching')
       .on('broadcast', { event: 'new_order' }, ({ payload }) => {
         // Instant patch for KPIs
         setKpis((prev) => {
@@ -107,6 +108,10 @@ export function DashboardTab() {
           })
         }
       })
+      .subscribe()
+
+    const notificationsChannel = supabaseBrowser
+      .channel('origin-notifications')
       .on('broadcast', { event: 'reload-menu' }, () => handleReload())
       .subscribe()
 
@@ -115,7 +120,8 @@ export function DashboardTab() {
     window.addEventListener('currency-changed', handleReload)
 
     return () => {
-      supabaseBrowser.removeChannel(channel)
+      supabaseBrowser.removeChannel(realtimeChannel)
+      supabaseBrowser.removeChannel(notificationsChannel)
       window.removeEventListener('reload-orders', handleReload)
       window.removeEventListener('reload-menu', handleReload)
       window.removeEventListener('currency-changed', handleReload)
