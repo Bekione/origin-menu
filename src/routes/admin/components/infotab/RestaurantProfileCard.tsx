@@ -13,7 +13,16 @@ export function RestaurantProfileCard({
   const { t } = useTranslation()
 
   const updateField = (field: string, value: string | number) => {
-    setForm({ ...form, [field]: value })
+    let finalValue = value
+    if (
+      field === 'map_embed_url' &&
+      typeof value === 'string' &&
+      value.includes('<iframe')
+    ) {
+      const match = value.match(/src="([^"]+)"/)
+      if (match) finalValue = match[1]
+    }
+    setForm({ ...form, [field]: finalValue })
   }
 
   return (
@@ -58,6 +67,34 @@ export function RestaurantProfileCard({
         <input
           value={form.tiktok_url}
           onChange={(e) => updateField('tiktok_url', e.target.value)}
+          className={inputCls}
+        />
+      </Field>
+      <Field label={t('facebook_label')}>
+        <input
+          value={form.facebook_url}
+          onChange={(e) => updateField('facebook_url', e.target.value)}
+          className={inputCls}
+        />
+      </Field>
+      <Field label={t('telegram_label')}>
+        <input
+          value={form.telegram_url}
+          onChange={(e) => updateField('telegram_url', e.target.value)}
+          className={inputCls}
+        />
+      </Field>
+      <Field label={t('whatsapp_label')}>
+        <input
+          value={form.whatsapp_url}
+          onChange={(e) => updateField('whatsapp_url', e.target.value)}
+          className={inputCls}
+        />
+      </Field>
+      <Field label={t('youtube_label')}>
+        <input
+          value={form.youtube_url}
+          onChange={(e) => updateField('youtube_url', e.target.value)}
           className={inputCls}
         />
       </Field>

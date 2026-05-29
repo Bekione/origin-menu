@@ -34,17 +34,7 @@ export function StoreUtilitiesCard({
         <h3 className="mb-4 font-display text-sm uppercase tracking-widest text-primary">
           {t('store_utilities')}
         </h3>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label={t('max_tables_label')}>
-            <input
-              type="number"
-              value={form.max_tables}
-              onChange={(e) =>
-                setForm({ ...form, max_tables: Number(e.target.value) })
-              }
-              className={inputCls}
-            />
-          </Field>
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t('wifi_password_label')}>
             <input
               value={form.wifi_password}
