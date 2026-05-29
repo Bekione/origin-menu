@@ -14,17 +14,16 @@ async function checkAdminAuth() {
 
 /**
  * Admin sets or updates the staff PIN.
- * PIN is stored as a bcrypt hash in restaurant_info.staff_pin_hash.
- * We use the Web Crypto API to create a SHA-256 + salted hash since we're in
- * a serverless/edge environment where bcrypt may not be available.
- * We store: sha256(pin + secret_salt) as a hex string.
+ * We store: salt:sha256(pin + salt) as a hex string.
+ * This ensures the hash is environment-independent and portable.
  */
-async function hashPin(pin: string): Promise<string> {
-  const salt = process.env.BETTER_AUTH_SECRET || 'origin-default-salt'
-  const data = new TextEncoder().encode(pin + salt)
+async function hashPin(pin: string, salt?: string): Promise<string> {
+  const finalSalt = salt || Math.random().toString(36).substring(2, 18)
+  const data = new TextEncoder().encode(pin + finalSalt)
   const hashBuffer = await crypto.subtle.digest('SHA-256', data)
   const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  const hash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  return `${finalSalt}:${hash}`
 }
 
 export const setStaffPin = createServerFn({ method: 'POST' })
@@ -40,11 +39,11 @@ export const setStaffPin = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await checkAdminAuth()
-    const hash = await hashPin(data.pin)
+    const storedValue = await hashPin(data.pin)
     // Update the first (and only) restaurant_info row
     const { error } = await supabaseAdmin
       .from('restaurant_info')
-      .update({ staff_pin_hash: hash } as any)
+      .update({ staff_pin_hash: storedValue } as any)
       .gte('id', '00000000-0000-0000-0000-000000000000') // update all rows (should be 1)
     if (error) throw new Error(error.message)
     return { ok: true }
@@ -52,8 +51,6 @@ export const setStaffPin = createServerFn({ method: 'POST' })
 
 /**
  * Called from the staff-login PIN pad. If correct, signs in as the shared staff account.
- * The staff account credentials are stored in env vars:
- *   STAFF_ACCOUNT_EMAIL / STAFF_ACCOUNT_PASSWORD
  */
 export const verifyStaffPin = createServerFn({ method: 'POST' })
   .inputValidator((d) =>
@@ -67,7 +64,7 @@ export const verifyStaffPin = createServerFn({ method: 'POST' })
       .parse(d),
   )
   .handler(async ({ data }) => {
-    // 1. Fetch the stored hash
+    // 1. Fetch the stored value (salt:hash)
     const { data: info, error } = await supabaseAdmin
       .from('restaurant_info')
       .select('staff_pin_hash')
@@ -75,12 +72,15 @@ export const verifyStaffPin = createServerFn({ method: 'POST' })
       .maybeSingle()
 
     if (error || !info) throw new Error('Restaurant not configured')
-    const storedHash = (info as any).staff_pin_hash as string | null
-    if (!storedHash)
+    const storedValue = (info as any).staff_pin_hash as string | null
+    if (!storedValue || !storedValue.includes(':'))
       throw new Error('Staff PIN not configured. Ask the manager to set one.')
 
-    // 2. Hash the incoming PIN and compare
-    const inputHash = await hashPin(data.pin)
+    // 2. Extract salt and verify
+    const [salt, storedHash] = storedValue.split(':')
+    const inputResult = await hashPin(data.pin, salt)
+    const inputHash = inputResult.split(':')[1]
+
     if (inputHash !== storedHash) throw new Error('Incorrect PIN')
 
     // 3. Sign in as the shared staff Better Auth account
