@@ -24,6 +24,10 @@ import {
   Loader2,
   ScanLine,
   Bell,
+  Facebook,
+  Send,
+  Youtube,
+  MessageCircle,
 } from 'lucide-react'
 import {
   getMenuData,
@@ -607,11 +611,26 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                   href={info.map_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-3 inline-flex text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
+                  className="my-3 inline-flex text-xs font-semibold uppercase tracking-wider text-primary hover:underline"
                 >
                   {t('open_in_maps')} →
                 </a>
               )}
+              {info?.map_embed_url && (
+                <div className="overflow-hidden rounded-xl border border-border bg-muted/20">
+                <iframe
+                  src={info.map_embed_url}
+                  width="100%"
+                  height="200"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="invert-0 grayscale-[0.5] contrast-[1.2] dark:invert dark:grayscale-[0.8]"
+                />
+              </div>
+              )}
+              
             </div>
             <div>
               <h3 className="font-display text-lg text-primary">
@@ -713,14 +732,14 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
           </div>
 
           <div className="mt-8 flex flex-col items-center gap-4 border-t border-border pt-6">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               {info?.instagram_url && (
                 <a
                   href={info.instagram_url}
                   target="_blank"
                   rel="noreferrer"
                   aria-label="Instagram"
-                  className="text-muted-foreground transition hover:text-primary"
+                  className="text-muted-foreground transition hover:text-primary hover:scale-110 active:scale-95"
                 >
                   <Instagram className="h-5 w-5" />
                 </a>
@@ -731,9 +750,53 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                   target="_blank"
                   rel="noreferrer"
                   aria-label="TikTok"
-                  className="text-muted-foreground transition hover:text-primary"
+                  className="text-muted-foreground transition hover:text-primary hover:scale-110 active:scale-95"
                 >
                   <TikTokIcon />
+                </a>
+              )}
+              {(info as any)?.facebook_url && (
+                <a
+                  href={(info as any).facebook_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Facebook"
+                  className="text-muted-foreground transition hover:text-[#1877F2] hover:scale-110 active:scale-95"
+                >
+                  <Facebook className="h-5 w-5" />
+                </a>
+              )}
+              {(info as any)?.telegram_url && (
+                <a
+                  href={(info as any).telegram_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="Telegram"
+                  className="text-muted-foreground transition hover:text-[#0088cc] hover:scale-110 active:scale-95"
+                >
+                  <Send className="h-5 w-5" />
+                </a>
+              )}
+              {(info as any)?.whatsapp_url && (
+                <a
+                  href={(info as any).whatsapp_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="WhatsApp"
+                  className="text-muted-foreground transition hover:text-[#25D366] hover:scale-110 active:scale-95"
+                >
+                  <MessageCircle className="h-5 w-5" />
+                </a>
+              )}
+              {(info as any)?.youtube_url && (
+                <a
+                  href={(info as any).youtube_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label="YouTube"
+                  className="text-muted-foreground transition hover:text-[#FF0000] hover:scale-110 active:scale-95"
+                >
+                  <Youtube className="h-5 w-5" />
                 </a>
               )}
             </div>

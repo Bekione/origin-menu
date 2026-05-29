@@ -125,8 +125,8 @@ export function AIChatDrawer({
         role="dialog"
         aria-modal="true"
         aria-label="AI Meal Suggester"
-        className="fixed bottom-16 left-0 right-0 z-50 flex flex-col rounded-t-2xl border border-border bg-background shadow-2xl sm:bottom-24 sm:right-4 sm:left-auto sm:top-auto sm:h-[550px] sm:w-[380px] sm:rounded-2xl"
-        style={{ maxHeight: 'calc(100dvh - 4rem)' }}
+        className="fixed bottom-0 right-0 z-50 flex flex-col rounded-t-2xl border border-border bg-background shadow-2xl sm:bottom-18 sm:right-4 sm:left-auto sm:top-auto sm:h-[550px] sm:w-[380px] sm:rounded-2xl"
+        style={{ maxHeight: 'calc(100dvh - 4.5rem)' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
@@ -256,7 +256,7 @@ export function AIChatDrawer({
             e.preventDefault()
             handleSubmit(e)
           }}
-          className="flex items-center gap-2 rounded-b-2xl border-t border-border bg-card/80 px-4 py-3 backdrop-blur-sm"
+          className="flex items-center gap-2 sm:rounded-b-2xl border-t border-border bg-card/80 px-4 py-3 backdrop-blur-sm"
         >
           <input
             ref={inputRef}
