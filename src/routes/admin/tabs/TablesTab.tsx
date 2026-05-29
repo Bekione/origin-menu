@@ -47,13 +47,13 @@ export function TablesTab() {
     label: string
   } | null>(null)
 
-  const fetchTables = async () => {
-    setLoading(true)
+  const fetchTables = async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const data = await getTables()
       setTables((data as RestaurantTable[]) || [])
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -76,8 +76,7 @@ export function TablesTab() {
     try {
       await upsertTable({ data: { label: newLabel.trim() } })
       setNewLabel('')
-      setAdding(false)
-      await fetchTables()
+      await fetchTables(true)
       toast.success(t('table_created'))
     } catch (err: any) {
       toast.error(err.message)
@@ -91,8 +90,7 @@ export function TablesTab() {
     setBusyId(id)
     try {
       await upsertTable({ data: { id, label: editLabel.trim() } })
-      setEditingId(null)
-      await fetchTables()
+      await fetchTables(true)
       toast.success(t('table_renamed'))
     } catch (err: any) {
       toast.error(err.message)
@@ -105,7 +103,7 @@ export function TablesTab() {
     setBusyId(id)
     try {
       await regenerateTableToken({ data: { id } })
-      await fetchTables()
+      await fetchTables(true)
       toast.success(t('qr_regenerated').replace('{label}', label))
     } catch (err: any) {
       toast.error(err.message)
@@ -119,7 +117,7 @@ export function TablesTab() {
     try {
       await deleteTable({ data: { id } })
       setShowConfirm(null)
-      await fetchTables()
+      await fetchTables(true)
       toast.success(t('table_deleted'))
     } catch (err: any) {
       toast.error(err.message)

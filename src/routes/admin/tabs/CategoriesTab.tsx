@@ -129,7 +129,12 @@ export function CategoriesTab({
           disabled={busy || !name.trim()}
           className="inline-flex items-center justify-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs font-bold uppercase tracking-wider text-primary-foreground disabled:opacity-50"
         >
-          <Plus className="h-4 w-4" /> {t('add')}
+          {busy ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Plus className="h-4 w-4" />
+          )}
+          {t('add')}
         </button>
       </form>
 
@@ -222,24 +227,39 @@ function CategoryRow({
 
   if (editing) {
     return (
-      <div className="grid gap-2 p-3 sm:grid-cols-[1fr_1fr_80px_auto]">
-        <input
-          value={n}
-          onChange={(e) => setN(e.target.value)}
-          className={inputCls}
-        />
-        <input
-          value={na}
-          onChange={(e) => setNa(e.target.value)}
-          className={inputCls}
-        />
-        <input
-          type="number"
-          value={so}
-          onChange={(e) => setSo(Number(e.target.value))}
-          className={inputCls}
-        />
-        <div className="flex gap-1">
+      <div className="grid gap-4 p-3 sm:grid-cols-[1fr_1fr_80px_auto] bg-primary/5 rounded-lg border border-primary/10">
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+            {t('name_en')}
+          </label>
+          <input
+            value={n}
+            onChange={(e) => setN(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+            {t('name_am')}
+          </label>
+          <input
+            value={na}
+            onChange={(e) => setNa(e.target.value)}
+            className={inputCls}
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+            {t('order')}
+          </label>
+          <input
+            type="number"
+            value={so}
+            onChange={(e) => setSo(Number(e.target.value))}
+            className={inputCls}
+          />
+        </div>
+        <div className="flex items-end gap-1 pb-1">
           <button
             disabled={busy}
             onClick={async () => {

@@ -50,13 +50,22 @@ export function DashboardTab() {
 
   const fetchAll = async () => {
     // Fire all requests in parallel and handle them independently
-    getDashboardKPIs().then(setKpis).catch(console.error)
-    getDashboardTrends().then(setTrends).catch(console.error)
-    getDashboardTopStats().then(setTopStats).catch(console.error)
-    getOutOfStockItems()
-      .then((os) => setOutOfStock(os as OutOfStockItem[]))
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    setLoading(true)
+    try {
+      // Fire all requests in parallel and handle them independently
+      await Promise.all([
+        getDashboardKPIs().then(setKpis),
+        getDashboardTrends().then(setTrends),
+        getDashboardTopStats().then(setTopStats),
+        getOutOfStockItems().then((os) =>
+          setOutOfStock(os as OutOfStockItem[]),
+        ),
+      ])
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Fetch on mount

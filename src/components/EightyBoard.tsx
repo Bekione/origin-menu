@@ -27,11 +27,12 @@ export function EightyBoard({ onClose }: EightyBoardProps) {
   const [error, setError] = useState<string | null>(null)
   const [busyIds, setBusyIds] = useState<string[]>([])
   const hasFetched = useRef(false)
-
+  const [isRefreshing, setIsRefreshing] = useState(false)
   const fetchMenu = useServerFn(getMenuData)
 
   const fetchItems = async (showSkeleton = false) => {
     if (showSkeleton) setLoading(true)
+    else setIsRefreshing(true)
     setError(null)
     try {
       const data = await fetchMenu()
@@ -43,6 +44,7 @@ export function EightyBoard({ onClose }: EightyBoardProps) {
       setError(fetchErr.message || 'Failed to load menu items')
     } finally {
       setLoading(false)
+      setIsRefreshing(false)
     }
   }
 
@@ -127,10 +129,13 @@ export function EightyBoard({ onClose }: EightyBoardProps) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => fetchItems(false)}
-              className="rounded-full p-2 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+              disabled={isRefreshing}
+              className="rounded-full p-2 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground disabled:opacity-50"
               title="Refresh"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw
+                className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+              />
             </button>
             <button
               onClick={onClose}
