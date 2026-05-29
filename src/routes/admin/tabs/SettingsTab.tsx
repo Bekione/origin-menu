@@ -13,6 +13,7 @@ import {
   Layout,
   QrCode,
 } from 'lucide-react'
+import pkg from '../../../../package.json'
 
 import { useTranslation } from '@/lib/i18n'
 import { useTheme } from '@/components/ThemeProvider'
@@ -413,7 +414,7 @@ export function SettingsTab() {
                 </span>
               </div>
               <span className="text-[10px] font-black text-muted-foreground uppercase">
-                v0.1.0-alpha.1
+                v{pkg.version}
               </span>
             </div>
 
