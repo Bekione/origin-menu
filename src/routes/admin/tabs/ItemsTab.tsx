@@ -15,6 +15,7 @@ import {
 import { useTranslation } from '@/lib/i18n'
 import { optimizeImage, compressImageFile } from '@/lib/image'
 import { Field, Toggle, inputCls } from '../components/FormPrimitives'
+import { PremiumSelect } from '@/components/ui/PremiumSelect'
 import {
   upsertMenuItem,
   deleteMenuItem,
@@ -39,6 +40,17 @@ export function ItemsTab({
   const [localItems, setLocalItems] = useState(data.items)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [showDescriptions, setShowDescriptions] = useState(true)
+
+  useEffect(() => {
+    if (showForm) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [showForm])
 
   useEffect(() => {
     // Read from localStorage only after mount to avoid SSR/client hydration mismatch
@@ -252,10 +264,12 @@ function ItemRow({
   const [showConfirm, setShowConfirm] = useState(false)
   const [imgLoaded, setImgLoaded] = useState(false)
 
-  // Sync with prop if it changes externally
+  // Sync with prop if it changes externally, but only if we are not in the middle of a toggle operation
   useEffect(() => {
-    setLocalAvailable(item.is_available)
-  }, [item.is_available])
+    if (!busy) {
+      setLocalAvailable(item.is_available)
+    }
+  }, [item.is_available, busy])
 
   const handleToggle = async () => {
     const targetState = !localAvailable
@@ -532,7 +546,7 @@ function ItemForm({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 px-4 py-12 backdrop-blur-sm sm:items-center sm:py-8"
+      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-background/80 px-4 py-8 backdrop-blur-sm sm:items-center min-h-screen"
       onPointerDown={onClose}
     >
       <div
@@ -591,21 +605,15 @@ function ItemForm({
                 className={inputCls}
               />
             </Field>
-            <Field label={t('category')}>
-              <select
-                value={form.category_id ?? ''}
-                onChange={(e) =>
-                  setForm({ ...form, category_id: e.target.value })
-                }
-                className={inputCls}
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {dt(c, 'name')}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <PremiumSelect
+              label={t('category')}
+              value={form.category_id ?? ''}
+              onChange={(val) => setForm({ ...form, category_id: val })}
+              options={categories.map((c) => ({
+                id: c.id,
+                label: dt(c, 'name'),
+              }))}
+            />
             <Field label={t('price_label')}>
               <input
                 required
