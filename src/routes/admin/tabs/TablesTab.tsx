@@ -47,11 +47,6 @@ export function TablesTab() {
     label: string
   } | null>(null)
 
-  const [density, setDensity] = useState(() => {
-    if (typeof window === 'undefined') return 'Comfortable'
-    return localStorage.getItem('admin_layout_density') || 'Comfortable'
-  })
-
   const fetchTables = async () => {
     setLoading(true)
     try {
@@ -65,18 +60,11 @@ export function TablesTab() {
   useEffect(() => {
     fetchTables()
 
-    // Density listener
-    const handleStorage = () => {
-      setDensity(localStorage.getItem('admin_layout_density') || 'Comfortable')
-    }
-    window.addEventListener('storage', handleStorage)
-
     // Manual refresh event
     const handleReload = () => fetchTables()
     window.addEventListener('reload-orders', handleReload)
 
     return () => {
-      window.removeEventListener('storage', handleStorage)
       window.removeEventListener('reload-orders', handleReload)
     }
   }, [])
@@ -141,10 +129,17 @@ export function TablesTab() {
   }
 
   const downloadQR = async (table: RestaurantTable) => {
+    const sizeMap: Record<string, number> = {
+      Small: 300,
+      Medium: 500,
+      Large: 800,
+    }
+    const sizePref = localStorage.getItem('admin_qr_size') || 'Medium'
+    const size = sizeMap[sizePref] ?? 500
     const url = `${window.location.origin}/?t=${table.token}`
     const QRCode = (await import('qrcode')).default
     const dataUrl = await QRCode.toDataURL(url, {
-      width: 600,
+      width: size,
       margin: 2,
       color: { dark: '#000000', light: '#ffffff' },
     })
@@ -156,10 +151,17 @@ export function TablesTab() {
   }
 
   const buildQRWithLogo = async (token: string): Promise<string> => {
+    const sizeMap: Record<string, number> = {
+      Small: 300,
+      Medium: 500,
+      Large: 800,
+    }
+    const sizePref = localStorage.getItem('admin_qr_size') || 'Medium'
+    const size = sizeMap[sizePref] ?? 500
     const QRCode = (await import('qrcode')).default
     const canvas = document.createElement('canvas')
     await QRCode.toCanvas(canvas, `${window.location.origin}/?t=${token}`, {
-      width: 500,
+      width: size,
       margin: 2,
       color: { dark: '#000000', light: '#ffffff' },
       errorCorrectionLevel: 'H',
@@ -194,6 +196,15 @@ export function TablesTab() {
 
   const handlePrintAll = async () => {
     setIsPrinting(true)
+    const sizePref = localStorage.getItem('admin_qr_size') || 'Medium'
+    // Scale print dimensions based on target resolution
+    const scaleMap: Record<string, { card: number; img: number }> = {
+      Small: { card: 130, img: 110 },
+      Medium: { card: 190, img: 170 },
+      Large: { card: 280, img: 250 },
+    }
+    const dims = scaleMap[sizePref] ?? scaleMap.Medium
+
     try {
       const items = await Promise.all(
         tables.map(async (t) => ({
@@ -212,8 +223,8 @@ export function TablesTab() {
         <style>
           body { font-family: sans-serif; margin: 0; background: #fff; }
           .grid { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; justify-content: flex-start; }
-          .card { text-align: center; border: 1px solid #ddd; border-radius: 12px; padding: 16px; width: 160px; break-inside: avoid; }
-          .card img { width: 140px; height: 140px; }
+          .card { text-align: center; border: 1px solid #ddd; border-radius: 12px; padding: 16px; width: ${dims.card}px; break-inside: avoid; }
+          .card img { width: ${dims.img}px; height: ${dims.img}px; }
           .card p { margin: 8px 0 0; font-weight: 700; font-size: 16px; color: #000; }
           @media print { @page { margin: 10mm } .card { border: 1px solid #ccc; } }
         </style></head><body>

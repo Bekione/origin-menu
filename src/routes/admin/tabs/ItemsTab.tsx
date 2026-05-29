@@ -12,7 +12,6 @@ import {
   GripVertical,
   ChefHat,
 } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslation } from '@/lib/i18n'
 import { optimizeImage, compressImageFile } from '@/lib/image'
 import { Field, Toggle, inputCls } from '../components/FormPrimitives'
@@ -39,28 +38,23 @@ export function ItemsTab({
   const [showForm, setShowForm] = useState(false)
   const [localItems, setLocalItems] = useState(data.items)
   const [draggedId, setDraggedId] = useState<string | null>(null)
-  const [density, setDensity] = useState('Comfortable')
   const [showDescriptions, setShowDescriptions] = useState(true)
 
   useEffect(() => {
     // Read from localStorage only after mount to avoid SSR/client hydration mismatch
-    setDensity(localStorage.getItem('admin_layout_density') || 'Comfortable')
     setShowDescriptions(
       localStorage.getItem('app_show_descriptions') !== 'false',
     )
 
     const handleSettingsChange = () => {
-      setDensity(localStorage.getItem('admin_layout_density') || 'Comfortable')
       setShowDescriptions(
         localStorage.getItem('app_show_descriptions') !== 'false',
       )
     }
     window.addEventListener('storage', handleSettingsChange)
-    window.addEventListener('density-changed', handleSettingsChange)
     window.addEventListener('settings-changed', handleSettingsChange)
     return () => {
       window.removeEventListener('storage', handleSettingsChange)
-      window.removeEventListener('density-changed', handleSettingsChange)
       window.removeEventListener('settings-changed', handleSettingsChange)
     }
   }, [])
@@ -177,7 +171,6 @@ export function ItemsTab({
                   <ItemRow
                     key={item.id}
                     item={item}
-                    density={density as any}
                     showDescription={showDescriptions}
                     onEdit={() => {
                       setEditing(item)
@@ -211,7 +204,6 @@ export function ItemsTab({
                   <ItemRow
                     key={item.id}
                     item={item}
-                    density={density as any}
                     showDescription={showDescriptions}
                     onEdit={() => {
                       setEditing(item)
@@ -241,11 +233,9 @@ function ItemRow({
   onDragOver,
   onDrop,
   isDragging,
-  density,
   showDescription,
 }: {
   item: MenuItem
-  density: 'Compact' | 'Comfortable'
   onEdit: () => void
   onChanged: () => void
   onDragStart?: (e: any) => void
@@ -258,15 +248,24 @@ function ItemRow({
   const toggle = useServerFn(toggleAvailability)
   const del = useServerFn(deleteMenuItem)
   const [busy, setBusy] = useState(false)
+  const [localAvailable, setLocalAvailable] = useState(item.is_available)
   const [showConfirm, setShowConfirm] = useState(false)
   const [imgLoaded, setImgLoaded] = useState(false)
 
+  // Sync with prop if it changes externally
+  useEffect(() => {
+    setLocalAvailable(item.is_available)
+  }, [item.is_available])
+
   const handleToggle = async () => {
+    const targetState = !localAvailable
+    setLocalAvailable(targetState) // Optimistic update
     setBusy(true)
     try {
-      await toggle({ data: { id: item.id, is_available: !item.is_available } })
-      onChanged()
+      await toggle({ data: { id: item.id, is_available: targetState } })
+      onChanged() // Refresh data from server
     } catch (err: any) {
+      setLocalAvailable(!targetState) // Rollback on error
       toast.error('Failed to toggle item', {
         description: !navigator.onLine
           ? 'No internet connection'
@@ -297,80 +296,95 @@ function ItemRow({
   return (
     <>
       <div
-        className={`flex items-center gap-3 ${density === 'Compact' ? 'px-4 py-1.5' : 'px-4 py-3'} ${isDragging ? 'opacity-50 bg-muted/20' : ''}`}
-        draggable={!!onDragStart}
+        className={`flex items-center gap-3 transition-all px-4 py-3 ${isDragging ? 'opacity-50 bg-muted/20' : ''}`}
+        draggable
         onDragStart={onDragStart}
         onDragOver={onDragOver}
         onDrop={onDrop}
-        onDragEnd={onDrop}
       >
-        <GripVertical
-          className={`h-4 w-4 shrink-0 text-muted-foreground/40 ${onDragStart ? 'cursor-grab active:cursor-grabbing hover:text-primary' : ''}`}
-        />
-        {item.image_url ? (
-          <div className="relative h-10 w-10 shrink-0">
-            {!imgLoaded && (
-              <Skeleton className="absolute inset-0 h-10 w-10 rounded" />
-            )}
-            <img
-              src={optimizeImage(item.image_url, 150)}
-              alt=""
-              onLoad={() => setImgLoaded(true)}
-              className={`h-10 w-10 shrink-0 rounded object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-            />
-          </div>
-        ) : (
-          <div className="h-10 w-10 shrink-0 rounded bg-muted" />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold">{dt(item, 'name')}</p>
-          {showDescription && dt(item, 'description') && (
-            <p className="line-clamp-1 text-[10px] text-muted-foreground/60 italic">
-              {dt(item, 'description')}
-            </p>
-          )}
-          <div className="flex items-center gap-2 mt-0.5">
-            <p className="truncate text-xs text-muted-foreground">
-              {Number(item.price)} {t('currency')}
-            </p>
-            {item.is_featured && (
-              <>
-                <span className="hidden sm:blockrounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-primary">
-                  {t('chefs_picks')}
-                </span>
-                <span className="block sm:hidden rounded bg-primary/20 p-0.5 text-primary">
-                  <ChefHat className="h-3.5 w-3.5" />
-                </span>
-              </>
+        <div className="shrink-0 flex items-center">
+          <GripVertical className="h-3.5 w-3.5 cursor-grab text-muted-foreground/30 active:cursor-grabbing" />
+          <div className="ml-2 overflow-hidden rounded-lg bg-muted border border-border shrink-0 transition-all h-14 w-14">
+            {item.image_url ? (
+              <img
+                src={item.image_url}
+                className={`h-full w-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+                onLoad={() => setImgLoaded(true)}
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center opacity-20">
+                <ChefHat className="h-6 w-6" />
+              </div>
             )}
           </div>
         </div>
-        <button
-          onClick={handleToggle}
-          disabled={busy}
-          className={`rounded flex w-10 justify-center px-2 py-1 text-[10px] font-bold uppercase tracking-wider ${item.is_available ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'}`}
-        >
-          {busy ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : item.is_available ? (
-            t('in')
-          ) : (
-            t('out')
+
+        <div className="flex-1 min-w-0 pt-0.5">
+          <div className="flex items-center gap-2">
+            <span className="font-display font-black uppercase tracking-wider text-foreground leading-tight text-sm">
+              {item.name}
+            </span>
+            {item.is_special && (
+              <span className="rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-tighter text-amber-500 border border-amber-500/20">
+                TOP
+              </span>
+            )}
+          </div>
+          {item.name_am && (
+            <p className="font-medium text-muted-foreground leading-tight text-xs">
+              {item.name_am}
+            </p>
           )}
-        </button>
-        <button
-          onClick={onEdit}
-          className="rounded border border-border p-1.5 text-muted-foreground hover:text-foreground"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </button>
-        <button
-          onClick={() => setShowConfirm(true)}
-          disabled={busy}
-          className="rounded border border-border p-1.5 text-muted-foreground hover:border-destructive hover:text-destructive"
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
+          {showDescription && (item.description || item.description_am) && (
+            <p className="truncate text-muted-foreground mt-0.5 max-w-[200px] sm:max-w-md text-[11px]">
+              {dt(item, 'description')}
+            </p>
+          )}
+        </div>
+
+        <div className="hidden sm:block">
+          <span className="font-display font-black text-foreground text-sm">
+            {item.price}
+          </span>
+          <span className="ml-1 font-bold text-muted-foreground uppercase text-[10px]">
+            {t('currency')}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => handleToggle()}
+            disabled={busy}
+            className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase transition-all border ${
+              localAvailable
+                ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-500'
+                : 'border-destructive/20 bg-destructive/10 text-destructive'
+            }`}
+          >
+            {busy ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : localAvailable ? (
+              t('available')
+            ) : (
+              t('out')
+            )}
+          </button>
+
+          <div className="flex items-center">
+            <button
+              onClick={onEdit}
+              className="rounded-lg transition-colors hover:bg-muted p-1.5 text-muted-foreground hover:text-primary"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setShowConfirm(true)}
+              className="rounded-lg transition-colors hover:bg-muted p-1.5 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {showConfirm && (

@@ -47,7 +47,14 @@ export function useAdminRealtime({
               if (prev.find((c) => c.id === newCall.id)) return prev
               return [newCall, ...prev]
             })
-            playAdminAlert()
+
+            // Respect admin sound settings
+            if (localStorage.getItem('admin_sound_enabled') !== 'false') {
+              const vol =
+                Number(localStorage.getItem('admin_sound_volume') || '30') / 100
+              playAdminAlert(vol)
+            }
+
             toast(
               t('waiter_calling_admin_toast').replace(
                 '{tableLabel}',
@@ -71,7 +78,11 @@ export function useAdminRealtime({
         const order = payload.payload as any
         if (!order?.id) return
         fetchInitialCount()
-        playAdminAlert()
+        playAdminAlert(
+          localStorage.getItem('admin_sound_enabled') !== 'false'
+            ? Number(localStorage.getItem('admin_sound_volume') || '30') / 100
+            : 0,
+        )
         window.dispatchEvent(new CustomEvent('reload-orders'))
         toast(
           t('new_order_toast').replace('{tableLabel}', order.table_label ?? ''),

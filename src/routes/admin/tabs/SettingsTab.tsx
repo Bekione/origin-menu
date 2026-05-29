@@ -6,79 +6,134 @@ import {
   Sun,
   Volume2,
   Play,
-  RefreshCw,
-  QrCode,
   HardDrive,
-  LayoutDashboard,
   ShieldCheck,
   Wifi,
+  ChefHat,
+  Layout,
+  QrCode,
 } from 'lucide-react'
 
 import { useTranslation } from '@/lib/i18n'
 import { useTheme } from '@/components/ThemeProvider'
 import { playAdminAlert } from '@/lib/audio-utils'
 
+// Reusable Toggle component
+function Toggle({
+  enabled,
+  onChange,
+  color = 'bg-primary',
+}: {
+  enabled: boolean
+  onChange: (v: boolean) => void
+  color?: string
+}) {
+  return (
+    <button
+      onClick={() => onChange(!enabled)}
+      className={`relative h-6 w-11 rounded-full transition-colors outline-none focus:ring-2 focus:ring-primary/20 ${
+        enabled ? color : 'bg-muted'
+      }`}
+    >
+      <div
+        className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-300 ${
+          enabled ? 'translate-x-5' : 'translate-x-0'
+        }`}
+      />
+    </button>
+  )
+}
+
+// Reusable Volume Row component
+function VolumeRow({
+  label,
+  volume,
+  onChange,
+}: {
+  label: string
+  volume: number
+  onChange: (v: number) => void
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-bold text-foreground uppercase tracking-wider">
+          {label}
+        </span>
+        <span className="text-[10px] font-black text-muted-foreground bg-muted px-1.5 py-0.5 rounded min-w-[36px] text-center">
+          {volume}%
+        </span>
+      </div>
+      <div className="flex items-center gap-4">
+        <Volume2 className="h-4 w-4 text-muted-foreground shrink-0" />
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={volume}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary"
+        />
+      </div>
+    </div>
+  )
+}
+
 export function SettingsTab() {
   const { t, lang, setLang } = useTranslation()
   const { theme, setTheme } = useTheme()
 
-  // Notification settings
-  const [soundEnabled, setSoundEnabled] = useState(true)
-  const [volume, setVolume] = useState(30)
+  // Admin console notification
+  const [adminSoundEnabled, setAdminSoundEnabled] = useState(true)
+  const [adminVolume, setAdminVolume] = useState(30)
 
-  // Display & Reliability settings
-  const [density, setDensity] = useState('Comfortable')
-  const [refreshInterval, setRefreshInterval] = useState('Live')
-  const [appCurrency, setAppCurrency] = useState('ETB')
+  // KDS notification
+  const [kdsSoundEnabled, setKdsSoundEnabled] = useState(true)
+  const [kdsVolume, setKdsVolume] = useState(32)
 
-  // QR Settings
-  const [qrSize, setQrSize] = useState('Medium')
-  const [qrIncludeLogo, setQrIncludeLogo] = useState(true)
-
-  // KDS Settings
-  const [kdsSound, setKdsSound] = useState(true)
+  // Display & Layout
   const [showDescriptions, setShowDescriptions] = useState(true)
+  const [qrSize, setQrSize] = useState('Medium')
 
-  // Load all settings from localStorage after mount (avoids SSR/hydration mismatch)
+  // Load from localStorage after mount (avoids SSR/hydration mismatch)
   useEffect(() => {
-    setSoundEnabled(localStorage.getItem('admin_sound_enabled') !== 'false')
-    setVolume(Number(localStorage.getItem('admin_sound_volume') || '30'))
-    setDensity(localStorage.getItem('admin_layout_density') || 'Comfortable')
-    setRefreshInterval(localStorage.getItem('admin_refresh_interval') || 'Live')
-    setAppCurrency(localStorage.getItem('app_currency') || 'ETB')
-    setQrSize(localStorage.getItem('admin_qr_size') || 'Medium')
-    setQrIncludeLogo(localStorage.getItem('admin_qr_logo') !== 'false')
-    setKdsSound(localStorage.getItem('admin_kds_sound_enabled') !== 'false')
+    setAdminSoundEnabled(
+      localStorage.getItem('admin_sound_enabled') !== 'false',
+    )
+    setAdminVolume(Number(localStorage.getItem('admin_sound_volume') || '30'))
+    setKdsSoundEnabled(
+      localStorage.getItem('admin_kds_sound_enabled') !== 'false',
+    )
+    setKdsVolume(Number(localStorage.getItem('admin_kds_volume') || '32'))
     setShowDescriptions(
       localStorage.getItem('app_show_descriptions') !== 'false',
     )
+    setQrSize(localStorage.getItem('admin_qr_size') || 'Medium')
   }, [])
 
+  // Persist admin sound settings
   useEffect(() => {
-    localStorage.setItem('admin_sound_enabled', String(soundEnabled))
-    localStorage.setItem('admin_sound_volume', String(volume))
-    localStorage.setItem('admin_layout_density', density)
-    localStorage.setItem('admin_refresh_interval', refreshInterval)
-    localStorage.setItem('admin_qr_size', qrSize)
-    localStorage.setItem('admin_qr_logo', String(qrIncludeLogo))
-    localStorage.setItem('admin_kds_sound_enabled', String(kdsSound))
-  }, [
-    soundEnabled,
-    volume,
-    density,
-    refreshInterval,
-    qrSize,
-    qrIncludeLogo,
-    kdsSound,
-    showDescriptions,
-  ])
+    localStorage.setItem('admin_sound_enabled', String(adminSoundEnabled))
+    localStorage.setItem('admin_sound_volume', String(adminVolume))
+  }, [adminSoundEnabled, adminVolume])
 
+  // Persist KDS settings
+  useEffect(() => {
+    localStorage.setItem('admin_kds_sound_enabled', String(kdsSoundEnabled))
+    localStorage.setItem('admin_kds_volume', String(kdsVolume))
+  }, [kdsSoundEnabled, kdsVolume])
+
+  // Persist display settings + notify listeners
   useEffect(() => {
     localStorage.setItem('app_show_descriptions', String(showDescriptions))
-  }, [showDescriptions])
+    localStorage.setItem('admin_qr_size', qrSize)
 
-  const handleTestSound = () => {
-    playAdminAlert(volume / 100)
+    // Dispatch events for real-time updates in other tabs
+    window.dispatchEvent(new CustomEvent('settings-changed'))
+  }, [showDescriptions, qrSize])
+
+  const handleTestAdminSound = () => {
+    playAdminAlert(adminVolume / 100)
   }
 
   return (
@@ -93,7 +148,7 @@ export function SettingsTab() {
       </div>
 
       <div className="grid gap-6">
-        {/* Language Section */}
+        {/* Language & Theme */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/20">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -109,54 +164,67 @@ export function SettingsTab() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-4">
-            <div className="flex gap-2">
-              {[
-                { id: 'en', label: 'English' },
-                { id: 'am', label: 'አማርኛ' },
-              ].map((l) => (
-                <button
-                  key={l.id}
-                  onClick={() => setLang(l.id as any)}
-                  className={`flex-1 rounded-xl border px-4 py-3 text-sm font-black transition-all uppercase tracking-widest ${
-                    lang === l.id
-                      ? 'border-primary bg-primary/5 text-primary shadow-sm shadow-primary/10'
-                      : 'border-border bg-muted/20 text-muted-foreground hover:border-border-hover hover:bg-muted/40'
-                  }`}
-                >
-                  {l.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex flex-col space-y-3 pt-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                {t('currency_symbol')}
+          <div className="flex flex-col gap-6">
+            {/* Language */}
+            <div className="flex flex-col gap-3">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                {t('language_region')}
               </label>
               <div className="flex gap-2">
-                {['ETB', '$', '€', '£'].map((curr) => (
+                {[
+                  { id: 'en', label: 'English' },
+                  { id: 'am', label: 'አማርኛ' },
+                ].map((l) => (
                   <button
-                    key={curr}
-                    onClick={() => {
-                      setAppCurrency(curr)
-                      localStorage.setItem('app_currency', curr)
-                      window.dispatchEvent(new CustomEvent('currency-changed'))
-                    }}
-                    className={`flex-1 rounded-xl border p-3 text-xs font-black transition-all font-display ${
-                      appCurrency === curr
-                        ? 'border-primary bg-primary/10 text-primary shadow-sm shadow-primary/20'
+                    key={l.id}
+                    onClick={() => setLang(l.id as any)}
+                    className={`flex-1 rounded-xl border px-4 py-3 text-sm font-black transition-all uppercase tracking-widest ${
+                      lang === l.id
+                        ? 'border-primary bg-primary/5 text-primary shadow-sm shadow-primary/10'
                         : 'border-border bg-muted/20 text-muted-foreground hover:border-border-hover hover:bg-muted/40'
                     }`}
                   >
-                    {curr}
+                    {l.label}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            {/* Theme */}
+            <div className="flex flex-col gap-3">
+              <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                {t('light_mode')} / {t('dark_mode')}
+              </label>
+              <div className="flex gap-2">
+                {[
+                  { id: 'light', icon: Sun, label: t('light_mode') },
+                  { id: 'dark', icon: Moon, label: t('dark_mode') },
+                  { id: 'system', icon: Globe, label: t('system_mode') },
+                ].map((m) => {
+                  const Icon = m.icon
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => setTheme(m.id as any)}
+                      className={`flex flex-1 flex-col items-center gap-2 rounded-xl border p-3 transition-all ${
+                        theme === m.id
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border bg-muted/5 text-muted-foreground hover:bg-muted/10'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="text-[9px] font-black uppercase tracking-widest">
+                        {m.label}
+                      </span>
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Notifications Section */}
+        {/* Admin Console Notifications */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-amber-500/20">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10">
@@ -167,7 +235,7 @@ export function SettingsTab() {
                 {t('notification_sound')}
               </h3>
               <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-0.5">
-                {t('manage_background')}
+                Admin console alerts (new orders, waiter calls)
               </p>
             </div>
           </div>
@@ -177,45 +245,22 @@ export function SettingsTab() {
               <span className="text-sm font-bold text-foreground uppercase tracking-wider">
                 {t('notification_sound')}
               </span>
-              <button
-                onClick={() => setSoundEnabled(!soundEnabled)}
-                className={`relative h-6 w-11 rounded-full transition-colors outline-none focus:ring-2 focus:ring-primary/20 ${
-                  soundEnabled ? 'bg-primary' : 'bg-muted'
-                }`}
-              >
-                <div
-                  className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-300 ${
-                    soundEnabled ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
+              <Toggle
+                enabled={adminSoundEnabled}
+                onChange={setAdminSoundEnabled}
+              />
             </div>
 
             <div
-              className={`space-y-4 transition-all duration-300 ${soundEnabled ? 'opacity-100' : 'opacity-30 grayscale pointer-events-none'}`}
+              className={`space-y-4 transition-all duration-300 ${adminSoundEnabled ? 'opacity-100' : 'opacity-30 grayscale pointer-events-none'}`}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-foreground uppercase tracking-wider">
-                  {t('notification_volume')}
-                </span>
-                <span className="text-[10px] font-black text-muted-foreground bg-muted p-1 rounded min-w-[32px] text-center">
-                  {volume}%
-                </span>
-              </div>
-              <div className="flex items-center gap-4">
-                <Volume2 className="h-4 w-4 text-muted-foreground" />
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={volume}
-                  onChange={(e) => setVolume(Number(e.target.value))}
-                  className="h-1.5 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary"
-                />
-              </div>
-
+              <VolumeRow
+                label={t('notification_volume')}
+                volume={adminVolume}
+                onChange={setAdminVolume}
+              />
               <button
-                onClick={handleTestSound}
+                onClick={handleTestAdminSound}
                 className="group flex items-center gap-2 rounded-xl border border-border bg-muted/30 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-foreground transition hover:bg-muted/50 active:scale-95"
               >
                 <Play className="h-3 w-3 transition-transform group-hover:scale-125" />
@@ -225,205 +270,15 @@ export function SettingsTab() {
           </div>
         </div>
 
-        {/* Display Mode Section */}
-        <div className="flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-blue-500/20">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10">
-              <Sun className="h-5 w-5 text-blue-500" />
-            </div>
-            <div>
-              <h3 className="font-display text-sm uppercase tracking-widest text-foreground">
-                {t('display_preferences')}
-              </h3>
-              <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-0.5">
-                {t('manage_background')}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              {t('light_mode')} / {t('dark_mode')}
-            </label>
-            <div className="flex gap-2">
-              {[
-                { id: 'light', icon: Sun },
-                { id: 'dark', icon: Moon },
-                { id: 'system', icon: Globe },
-              ].map((m) => {
-                const Icon = m.icon
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => setTheme(m.id as any)}
-                    className={`flex flex-1 flex-col items-center gap-2 rounded-xl border p-3 transition-all ${
-                      theme === m.id
-                        ? 'border-primary bg-primary/10 text-primary'
-                        : 'border-border bg-muted/5 text-muted-foreground hover:bg-muted/10'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex flex-col gap-3">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                {t('layout_density')}
-              </label>
-              <div className="flex gap-2">
-                {['Compact', 'Comfortable'].map((d) => (
-                  <button
-                    key={d}
-                    onClick={() => setDensity(d)}
-                    className={`flex-1 rounded-xl border px-3 py-2 text-[10px] font-bold uppercase transition-all ${
-                      density === d
-                        ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                        : 'border-border bg-muted/5 text-muted-foreground hover:bg-muted/10'
-                    }`}
-                  >
-                    {d === 'Compact' ? t('compact') : t('comfortable')}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-sm font-bold text-foreground uppercase tracking-wider">
-                {t('show_descriptions')}
-              </span>
-              <button
-                onClick={() => setShowDescriptions(!showDescriptions)}
-                className={`relative h-6 w-11 rounded-full transition-colors outline-none focus:ring-2 focus:ring-primary/20 ${
-                  showDescriptions ? 'bg-primary' : 'bg-muted'
-                }`}
-              >
-                <div
-                  className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-300 ${
-                    showDescriptions ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Console Reliability Section */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-emerald-500/20">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10">
-              <RefreshCw className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div>
-              <h3 className="font-display text-sm uppercase tracking-widest text-foreground">
-                {t('console_reliability')}
-              </h3>
-              <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-0.5">
-                {t('manage_background')}
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col gap-3">
-            <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              {t('auto_refresh')}
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { id: 'Live', label: t('live_realtime') },
-                { id: '1m', label: t('one_minute') },
-                { id: '5m', label: t('five_minutes') },
-                { id: 'Off', label: t('clear_for_now') },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  onClick={() => setRefreshInterval(opt.id)}
-                  className={`rounded-xl border px-3 py-2 text-[10px] font-bold uppercase transition-all ${
-                    refreshInterval === opt.id
-                      ? 'border-primary bg-primary/10 text-primary shadow-sm'
-                      : 'border-border bg-muted/5 text-muted-foreground hover:bg-muted/10'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* QR Code Preferences Section */}
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-violet-500/20">
-          <div className="mb-6 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
-              <QrCode className="h-5 w-5 text-violet-500" />
-            </div>
-            <div>
-              <h3 className="font-display text-sm uppercase tracking-widest text-foreground">
-                {t('scan_qr_title')}
-              </h3>
-              <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-0.5">
-                {t('tables_desc')}
-              </p>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            <div className="flex flex-col gap-3">
-              <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                {t('title_download_qr')}
-              </label>
-              <div className="flex gap-2">
-                {[
-                  { id: 'Small', label: '300px' },
-                  { id: 'Medium', label: '500px' },
-                  { id: 'Large', label: '800px' },
-                ].map((s) => (
-                  <button
-                    key={s.id}
-                    onClick={() => setQrSize(s.id)}
-                    className={`flex-1 rounded-xl border px-3 py-2 text-[10px] font-bold uppercase transition-all ${
-                      qrSize === s.id
-                        ? 'border-violet-500 bg-violet-500/10 text-violet-500 shadow-sm'
-                        : 'border-border bg-muted/5 text-muted-foreground hover:bg-muted/10'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-bold text-foreground uppercase tracking-wider">
-                {t('promo_banner_active')}
-              </span>
-              <button
-                onClick={() => setQrIncludeLogo(!qrIncludeLogo)}
-                className={`relative h-6 w-11 rounded-full transition-colors outline-none focus:ring-2 focus:ring-violet-500/20 ${
-                  qrIncludeLogo ? 'bg-violet-500' : 'bg-muted'
-                }`}
-              >
-                <div
-                  className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-300 ${
-                    qrIncludeLogo ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* KDS Control Section */}
+        {/* KDS Notification Settings */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-orange-500/20">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/10">
-              <LayoutDashboard className="h-5 w-5 text-orange-500" />
+              <ChefHat className="h-5 w-5 text-orange-500" />
             </div>
             <div>
               <h3 className="font-display text-sm uppercase tracking-widest text-foreground">
-                {t('kds_title')}
+                {t('kds_title')} Alerts
               </h3>
               <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-0.5">
                 {t('active_kds_desc')}
@@ -436,42 +291,104 @@ export function SettingsTab() {
               <span className="text-sm font-bold text-foreground uppercase tracking-wider">
                 {t('notification_sound')}
               </span>
-              <button
-                onClick={() => setKdsSound(!kdsSound)}
-                className={`relative h-6 w-11 rounded-full transition-colors outline-none focus:ring-2 focus:ring-orange-500/20 ${
-                  kdsSound ? 'bg-orange-500' : 'bg-muted'
-                }`}
-              >
-                <div
-                  className={`absolute left-1 top-1 h-4 w-4 rounded-full bg-white transition-transform duration-300 ${
-                    kdsSound ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-                />
-              </button>
+              <Toggle
+                enabled={kdsSoundEnabled}
+                onChange={setKdsSoundEnabled}
+                color="bg-orange-500"
+              />
             </div>
 
-            <div className="flex flex-col space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                {t('kds_auto_dismiss')}
-              </label>
-              <div className="flex gap-2">
-                {[5, 10, 15, 30].map((m) => (
-                  <button
-                    key={m}
-                    onClick={() =>
-                      localStorage.setItem('kds_dismiss_time', String(m))
-                    }
-                    className="flex-1 rounded-xl border border-border bg-muted/20 p-2 text-[10px] font-black hover:bg-muted/40 transition-all"
-                  >
-                    {m} {t('min_suffix')}
-                  </button>
-                ))}
-              </div>
+            <div
+              className={`space-y-4 transition-all duration-300 ${kdsSoundEnabled ? 'opacity-100' : 'opacity-30 grayscale pointer-events-none'}`}
+            >
+              <VolumeRow
+                label={t('notification_volume')}
+                volume={kdsVolume}
+                onChange={setKdsVolume}
+              />
             </div>
           </div>
         </div>
 
-        {/* System Dashboard Section */}
+        {/* Display Preferences */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-blue-500/20">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/10">
+              <Layout className="h-5 w-5 text-blue-500" />
+            </div>
+            <div>
+              <h3 className="font-display text-sm uppercase tracking-widest text-foreground">
+                {t('display_preferences')}
+              </h3>
+              <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-0.5">
+                Fine-tune the layout and content density
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            {/* Show Descriptions */}
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-sm font-bold text-foreground uppercase tracking-wider">
+                  {t('show_descriptions')}
+                </span>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Show item descriptions in the menu items list
+                </p>
+              </div>
+              <Toggle
+                enabled={showDescriptions}
+                onChange={setShowDescriptions}
+                color="bg-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* QR Code Preferences */}
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-violet-500/20">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/10">
+              <QrCode className="h-5 w-5 text-violet-500" />
+            </div>
+            <div>
+              <h3 className="font-display text-sm uppercase tracking-widest text-foreground">
+                {t('scan_qr_title')}
+              </h3>
+              <p className="text-[10px] uppercase font-black tracking-widest text-muted-foreground mt-0.5">
+                Manage how your table QR codes are generated
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <label className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+              {t('title_download_qr')} Resolution
+            </label>
+            <div className="flex gap-2">
+              {[
+                { id: 'Small', label: '300px' },
+                { id: 'Medium', label: '500px' },
+                { id: 'Large', label: '800px' },
+              ].map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setQrSize(s.id)}
+                  className={`flex-1 rounded-xl border px-3 py-3 text-[10px] font-black uppercase transition-all tracking-widest ${
+                    qrSize === s.id
+                      ? 'border-violet-500 bg-violet-500/10 text-violet-500 shadow-sm'
+                      : 'border-border bg-muted/5 text-muted-foreground hover:bg-muted/10'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* System */}
         <div className="rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:border-primary/20">
           <div className="mb-6 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
@@ -520,7 +437,7 @@ export function SettingsTab() {
                 localStorage.clear()
                 window.location.reload()
               }}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 py-3 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 transition-all mt-2"
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 py-3 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 transition-all"
             >
               <HardDrive className="h-3 w-3" />
               {t('clear_cache')}

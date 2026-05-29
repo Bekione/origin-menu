@@ -53,9 +53,14 @@ export const Route = createFileRoute('/staff')({
 
 // ── Notification sound ─────────────────────────────────────────────────────────
 function playKDSAlert() {
+  // Respect admin-configured KDS sound settings
+  if (localStorage.getItem('admin_kds_sound_enabled') === 'false') return
+  const volumePct = Number(localStorage.getItem('admin_kds_volume') || '32')
+  const masterVolume = volumePct / 100
+
   const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
   const masterGain = ctx.createGain()
-  masterGain.gain.value = 0.32
+  masterGain.gain.value = masterVolume
   masterGain.connect(ctx.destination)
   const now = ctx.currentTime
   function createTone(
