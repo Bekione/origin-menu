@@ -313,19 +313,30 @@ export const placeOrder = createServerFn({ method: 'POST' })
     return { ok: true }
   })
 
-/** Admin — get all orders */
-export const getTableOrders = createServerFn({ method: 'GET' }).handler(
-  async () => {
+/** Admin — get all orders (Paginated) */
+export const getTableOrders = createServerFn({ method: 'GET' })
+  .inputValidator((d) =>
+    z
+      .object({
+        offset: z.number().int().min(0).default(0),
+        limit: z.number().int().min(1).max(100).default(20),
+      })
+      .optional()
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
     await checkAuth()
+    const { offset = 0, limit = 20 } = data ?? {}
+
     const { data: orders, error } = await supabaseAdmin
       .from('table_orders')
       .select('*')
       .order('created_at', { ascending: false })
-      .limit(100)
+      .range(offset, offset + limit - 1)
+
     if (error) throw new Error(error.message)
     return (orders ?? []) as TableOrder[]
-  },
-)
+  })
 
 /** Admin/Staff — update order status (with guard against double-processing) */
 export const updateOrderStatus = createServerFn({ method: 'POST' })
