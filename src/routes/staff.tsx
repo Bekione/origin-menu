@@ -108,18 +108,45 @@ function StaffPage() {
   const [rejId, setRejId] = useState<string | null>(null)
   const [eightyOpen, setEightyOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
-  const [doneLimit, setDoneLimit] = useState(20)
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [hasMore, setHasMore] = useState(true)
+  const [offset, setOffset] = useState(0)
+  const LIMIT = 20
 
-  // Initial fetch
+  const handleFetchOrders = async (isLoadMore = false) => {
+    if (isLoadMore) setIsFetchingMore(true)
+    // else we don't set ordersLoading(true) if it's already loaded to avoid flicker
+
+    try {
+      const currentOffset = isLoadMore ? offset + LIMIT : 0
+      const data = await getTableOrders({
+        data: { offset: currentOffset, limit: LIMIT },
+      })
+      const newOrders = (data as TableOrder[]) || []
+
+      if (isLoadMore) {
+        setOrders((prev) => [...prev, ...newOrders])
+        setOffset(currentOffset)
+      } else {
+        setOrders(newOrders)
+        setOffset(0)
+      }
+
+      if (newOrders.length < LIMIT) setHasMore(false)
+      else setHasMore(true)
+    } finally {
+      if (isLoadMore) setIsFetchingMore(false)
+      setOrdersLoading(false)
+    }
+  }
+
   useEffect(() => {
     authClient.getSession().then(({ data }) => {
       if (data?.session?.id) setCurrentSessionId(data.session.id)
     })
-    Promise.all([
-      getTableOrders().then((d) => setOrders((d as TableOrder[]) || [])),
-      getWaiterCalls().then((d) => setCalls((d as WaiterCall[]) || [])),
-    ]).finally(() => setOrdersLoading(false))
+
+    handleFetchOrders()
+    getWaiterCalls().then((d) => setCalls((d as WaiterCall[]) || []))
   }, [])
 
   // Realtime
@@ -389,7 +416,7 @@ function StaffPage() {
                           </span>
                         </h2>
                         <div className="columns-1 gap-3 opacity-50 sm:columns-2 lg:columns-3">
-                          {done.slice(0, doneLimit).map((o) => (
+                          {done.map((o) => (
                             <KDSOrderCard
                               key={o.id}
                               order={o}
@@ -398,21 +425,17 @@ function StaffPage() {
                             />
                           ))}
                         </div>
-                        {done.length > doneLimit && (
+                        {hasMore && (
                           <div className="mt-4 flex justify-center pb-4">
                             <button
                               disabled={isFetchingMore}
-                              onClick={async () => {
-                                setIsFetchingMore(true)
-                                setDoneLimit((prev) => prev + 20)
-                                setTimeout(() => setIsFetchingMore(false), 400)
-                              }}
+                              onClick={() => handleFetchOrders(true)}
                               className="group flex w-full max-w-xs items-center justify-center gap-3 rounded-2xl border border-dashed border-border bg-card/40 py-4 text-sm font-black uppercase tracking-[0.2em] text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary active:scale-[0.98] disabled:opacity-50"
                             >
                               {isFetchingMore ? (
                                 <>
                                   <RefreshCw className="h-4 w-4 animate-spin" />
-                                  {t('loading_dots')}
+                                  {t('loading')}
                                 </>
                               ) : (
                                 <>
@@ -421,6 +444,14 @@ function StaffPage() {
                                 </>
                               )}
                             </button>
+                          </div>
+                        )}
+                        {!hasMore && done.length > 0 && (
+                          <div className="mt-8 flex flex-col items-center justify-center gap-2 opacity-30 pb-4">
+                            <div className="h-px w-24 bg-border" />
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+                              {t('no_more_orders')}
+                            </p>
                           </div>
                         )}
                       </section>

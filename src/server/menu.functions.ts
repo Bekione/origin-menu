@@ -219,6 +219,10 @@ const InfoSchema = z.object({
   phone: z.string().max(60).nullable().optional(),
   instagram_url: z.string().max(200).nullable().optional().or(z.literal('')),
   tiktok_url: z.string().max(200).nullable().optional().or(z.literal('')),
+  facebook_url: z.string().max(200).nullable().optional().or(z.literal('')),
+  telegram_url: z.string().max(200).nullable().optional().or(z.literal('')),
+  whatsapp_url: z.string().max(200).nullable().optional().or(z.literal('')),
+  youtube_url: z.string().max(200).nullable().optional().or(z.literal('')),
   map_url: z.string().max(500).nullable().optional().or(z.literal('')),
   map_embed_url: z.string().max(2000).nullable().optional().or(z.literal('')),
   max_tables: z.number().int().min(1).max(9999).optional().nullable(),
@@ -247,6 +251,10 @@ export const updateRestaurantInfo = createServerFn({ method: 'POST' })
       ...payload,
       instagram_url: payload.instagram_url || null,
       tiktok_url: payload.tiktok_url || null,
+      facebook_url: (payload as any).facebook_url || null,
+      telegram_url: (payload as any).telegram_url || null,
+      whatsapp_url: (payload as any).whatsapp_url || null,
+      youtube_url: (payload as any).youtube_url || null,
       map_url: payload.map_url || null,
       map_embed_url: payload.map_embed_url || null,
       updated_at: new Date().toISOString(),
@@ -254,13 +262,13 @@ export const updateRestaurantInfo = createServerFn({ method: 'POST' })
     if (existing) {
       const { error } = await supabaseAdmin
         .from('restaurant_info')
-        .update(cleaned)
+        .update(cleaned as any)
         .eq('id', existing.id)
       if (error) throw new Error(error.message)
     } else {
       const { error } = await supabaseAdmin
         .from('restaurant_info')
-        .insert(cleaned)
+        .insert(cleaned as any)
       if (error) throw new Error(error.message)
     }
     return { ok: true }

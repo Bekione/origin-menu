@@ -92,13 +92,30 @@ export const verifyStaffPin = createServerFn({ method: 'POST' })
 
     const request = getRequest()
 
-    const response = await auth.api.signInEmail({
-      body: { email: staffEmail, password: staffPassword },
-      headers: request.headers,
-    })
+    try {
+      const response = await auth.api.signInEmail({
+        body: { email: staffEmail, password: staffPassword },
+        headers: request.headers,
+      })
 
-    if (!response || !(response as any).token) {
-      throw new Error('Failed to create staff session')
+      if (!response || !(response as any).token) {
+        console.error(
+          '[verifyStaffPin] Better Auth response missing token:',
+          response,
+        )
+        throw new Error(
+          'Failed to create staff session. Account may be inactive.',
+        )
+      }
+    } catch (e: any) {
+      console.error('[verifyStaffPin] Better Auth sign-in error:', e)
+      // Check if it's a specific "Invalid password" from Better Auth
+      if (e.message?.toLowerCase().includes('invalid password')) {
+        throw new Error(
+          'Staff account authentication failed (Better Auth invalid password). Check STAFF_ACCOUNT_PASSWORD env var.',
+        )
+      }
+      throw new Error(e.message || 'Staff account authentication failed.')
     }
 
     return { ok: true }

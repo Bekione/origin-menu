@@ -15,19 +15,41 @@ export function OrdersTab() {
   const [orders, setOrders] = useState<TableOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
-  const [doneLimit, setDoneLimit] = useState(20)
   const [doneLoadingMore, setDoneLoadingMore] = useState(false)
   const [refreshInterval, setRefreshInterval] = useState(() => {
     if (typeof window === 'undefined') return 'Live'
     return localStorage.getItem('admin_refresh_interval') || 'Live'
   })
+  const [hasMore, setHasMore] = useState(true)
+  const [offset, setOffset] = useState(0)
+  const LIMIT = 20
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (isLoadMore = false) => {
+    if (isLoadMore) setDoneLoadingMore(true)
+    else setLoading(true)
+
     try {
-      const data = await getTableOrders()
-      setOrders((data as TableOrder[]) || [])
+      const currentOffset = isLoadMore ? offset + LIMIT : 0
+      const data = await getTableOrders({
+        data: { offset: currentOffset, limit: LIMIT },
+      })
+      const newOrders = (data as TableOrder[]) || []
+
+      if (isLoadMore) {
+        setOrders((prev) => [...prev, ...newOrders])
+        setOffset(currentOffset)
+      } else {
+        setOrders(newOrders)
+        setOffset(0)
+      }
+
+      if (newOrders.length < LIMIT) setHasMore(false)
+      else setHasMore(true)
+    } catch (err: any) {
+      toast.error(err.message)
     } finally {
       setLoading(false)
+      setDoneLoadingMore(false)
     }
   }
 
@@ -269,35 +291,33 @@ export function OrdersTab() {
             {t('completed_rejected_title')}
           </h2>
           <div className="columns-1 sm:columns-2 gap-3 opacity-70">
-            {done.slice(0, doneLimit).map((o) => (
+            {done.map((o) => (
               <OrderCard key={o.id} order={o} />
             ))}
           </div>
-          {doneLimit < done.length && (
+          {hasMore && (
             <button
-              onClick={() => {
-                setDoneLoadingMore(true)
-                setTimeout(() => {
-                  setDoneLimit((l) => l + 20)
-                  setDoneLoadingMore(false)
-                }, 300)
-              }}
+              onClick={() => fetchOrders(true)}
               disabled={doneLoadingMore}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2.5 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-60"
+              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border py-2.5 text-sm font-bold uppercase tracking-widest text-muted-foreground hover:border-primary hover:text-primary transition-colors disabled:opacity-60"
             >
               {doneLoadingMore ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  {t('loading_dots')}
+                  {t('loading')}
                 </>
               ) : (
-                <>
-                  {t('load_more_with_count', {
-                    count: done.length - doneLimit,
-                  })}
-                </>
+                t('load_more')
               )}
             </button>
+          )}
+          {!hasMore && done.length > 0 && (
+            <div className="mt-8 flex flex-col items-center justify-center gap-2 opacity-30">
+              <div className="h-px w-24 bg-border" />
+              <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+                {t('no_more_orders')}
+              </p>
+            </div>
           )}
         </section>
       )}
