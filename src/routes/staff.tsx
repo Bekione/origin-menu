@@ -38,6 +38,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 import { LiveTimeAgo } from '@/lib/date-utils'
+import { sendDesktopNotification } from '@/lib/desktop-utils'
 
 // ── Route guard ────────────────────────────────────────────────────────────────
 export const Route = createFileRoute('/staff')({
@@ -171,6 +172,12 @@ function StaffPage() {
             ),
             { duration: 10000 },
           )
+          sendDesktopNotification(
+            t('waiter_calling_toast').replace(
+              '{tableLabel}',
+              call.table_label ?? '',
+            ),
+          )
         },
       )
       .on(
@@ -200,6 +207,13 @@ function StaffPage() {
             (order as any).table_label ?? '',
           ),
           { duration: 10000 },
+        )
+        sendDesktopNotification(
+          t('new_order_toast').replace(
+            '{tableLabel}',
+            (order as any).table_label ?? '',
+          ),
+          `${t('total')}: ${order.total_amount ?? 0} ETB`,
         )
       })
       .on('broadcast', { event: 'order_status_updated' }, (p: any) => {

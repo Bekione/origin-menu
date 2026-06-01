@@ -4,6 +4,7 @@ import { useNavigate } from '@tanstack/react-router'
 import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 import { useTranslation } from '@/lib/i18n'
 import { playAdminAlert } from '@/lib/audio-utils'
+import { sendDesktopNotification } from '@/lib/desktop-utils'
 import { getPendingOrderCount } from '@/server/admin.functions'
 import type { WaiterCall } from '@/server/table.functions'
 
@@ -65,6 +66,14 @@ export function useAdminRealtime({
                 action: { label: t('view'), onClick: () => setCallsOpen(true) },
               },
             )
+
+            // Native Desktop Notification
+            sendDesktopNotification(
+              t('waiter_calling_admin_toast').replace(
+                '{tableLabel}',
+                newCall.table_label ?? '',
+              ),
+            )
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as WaiterCall
             setCalls((prev) =>
@@ -98,6 +107,12 @@ export function useAdminRealtime({
                 }),
             },
           },
+        )
+
+        // Native Desktop Notification
+        sendDesktopNotification(
+          t('new_order_toast').replace('{tableLabel}', order.table_label ?? ''),
+          order.total_amount ? `${t('total')}: ${order.total_amount} ETB` : '',
         )
       })
       .on('broadcast', { event: 'order_status_updated' }, (payload) => {
