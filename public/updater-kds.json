@@ -1,0 +1,11 @@
+{
+  "version": "1.0.1",
+  "notes": "✨ New desktop update experience with download progress and localization. 🛡️ Added live API health monitoring and improved reliability. 🔔 Native Windows notifications for realtime orders. 🎨 Enhanced branding, installers, and desktop experience.",
+  "pub_date": "2026-06-01T12:30:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTMGNBblJ4d1cxcm9vanBvMHZ1OFF2eDNpNk44cmJKTjczT0Y2VUl2eGc0bDF4UTZhMUZwaXBBR05UL1V0d0diVWNSMTB2RThBcXQ5OWhOanpQYTJ3aFRVT2o5MjY4OFFVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwMzExNTMyCWZpbGU6T3JpZ2luIEtEU18xLjAuMV94NjQtc2V0dXAuZXhlCmczQ2l6Q2VnWWlXZ2pubmVsZTk3YWhJeWM2RHBweEcwMTkvRXhzMk9aSnk0UEpTVGJ2dUlmcVlRRW84bThJeVhpWlNqSEhYK2g2a1g0aWwyMDZoNERRPT0K",
+      "url": "https://github.com/Bekione/origin-menu/releases/download/v1.0.1/Origin.KDS_1.0.1_x64-setup.exe"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "version": "1.0.1",
+  "notes": "✨ New desktop update experience with download progress and localization. 🛡️ Added live API health monitoring and improved reliability. 🔔 Native Windows notifications for realtime orders. 🎨 Enhanced branding, installers, and desktop experience.",
+  "pub_date": "2026-06-01T12:30:00Z",
+  "platforms": {
+    "windows-x86_64": {
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTMGNBblJ4d1cxcmxvUW9CNVQ5azQ5RHpCa2ZMU05sOWhPeE5YcUd1QmtEL2NudDBCeGtuazdYUFFJU0ZJNzk4Y25SUThWbFNrTjQ2WXNnc09RcFM3OXRhZ0lyWHZzaHdjPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwMzEwODA2CWZpbGU6T3JpZ2luIENvbnNvbGVfMS4wLjFfeDY0LXNldHVwLmV4ZQplR21OZTNnOEcrbXNyeE1PV3F5NzBIMjg3TVB1TkFHQzJDSUtnMUdEQy9hcEpRaldiMjczT21UZnFaQktnSlZFSThxVkpJdTU2S1hjckVSU0s1bThCdz09Cg==",
+      "url": "https://github.com/Bekione/origin-menu/releases/download/v1.0.1/Origin.Console_1.0.1_x64-setup.exe"
+    }
+  }
+}
