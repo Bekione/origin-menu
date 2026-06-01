@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Origin KDS</title>
+    <style>
+      body {
+        background-color: #0c0c0c;
+        color: #ffffff;
+        font-family:
+          'Inter',
+          -apple-system,
+          BlinkMacSystemFont,
+          sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        overflow: hidden;
+      }
+      .container {
+        text-align: center;
+        animation: fadeIn 1s ease-out;
+      }
+      .logo {
+        width: 120px;
+        height: 120px;
+        margin-bottom: 24px;
+        filter: drop-shadow(0 0 20px rgba(234, 88, 12, 0.3));
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 300;
+        letter-spacing: 2px;
+        margin: 0;
+        text-transform: uppercase;
+      }
+      .loader {
+        margin-top: 32px;
+        margin-inline: auto;
+        width: 40px;
+        height: 40px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+        border-top: 2px solid #ea580c;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+      .status {
+        margin-top: 16px;
+        font-size: 14px;
+        color: #666;
+        min-height: 20px;
+      }
+      .error-btn {
+        display: none;
+        margin-top: 24px;
+        background: #ea580c;
+        color: white;
+        border: none;
+        padding: 10px 24px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.2s;
+      }
+      .error-btn:hover {
+        background: #d9480f;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <img src="icon.png" class="logo" alt="Origin" />
+      <h1>Origin KDS</h1>
+      <div id="loader" class="loader"></div>
+      <div id="status" class="status">Initializing kitchen shell...</div>
+      <button id="retry" class="error-btn" onclick="checkConnection()">
+        Retry Connection
+      </button>
+    </div>
+
+    <script>
+      const VERCEL_URL = 'https://originrestaurant-menu.vercel.app/staff'
+      const STATUS = document.getElementById('status')
+      const LOADER = document.getElementById('loader')
+      const RETRY = document.getElementById('retry')
+
+      async function checkConnection() {
+        STATUS.innerText = 'Checking connection...'
+        LOADER.style.display = 'block'
+        RETRY.style.display = 'none'
+
+        try {
+          // Try to reach the Vercel app
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), 6000)
+
+          await fetch('https://originrestaurant-menu.vercel.app/', {
+            mode: 'no-cors',
+            cache: 'no-store',
+            signal: controller.signal,
+          })
+
+          clearTimeout(timeoutId)
+          STATUS.innerText = 'Connecting to Kitchen Cloud...'
+          setTimeout(() => {
+            window.location.replace(VERCEL_URL)
+          }, 500)
+        } catch (err) {
+          LOADER.style.display = 'none'
+          RETRY.style.display = 'inline-block'
+          STATUS.innerText =
+            'Kitchen Cloud is unreachable. Check your internet.'
+        }
+      }
+
+      // Initial check after a short splash delay
+      setTimeout(checkConnection, 1500)
+    </script>
+  </body>
+</html>

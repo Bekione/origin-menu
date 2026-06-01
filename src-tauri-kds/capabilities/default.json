@@ -10,6 +10,6 @@
     "shell:default"
   ],
   "remote": {
-    "urls": ["https://originrestaurant-menu.vercel.app"]
+    "urls": ["https://originrestaurant-menu.vercel.app/**"]
   }
 }

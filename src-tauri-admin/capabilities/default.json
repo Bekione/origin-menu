@@ -8,5 +8,8 @@
     "notification:default",
     "updater:default",
     "shell:default"
-  ]
+  ],
+  "remote": {
+    "urls": ["https://originrestaurant-menu.vercel.app/**"]
+  }
 }

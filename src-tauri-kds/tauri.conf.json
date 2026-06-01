@@ -6,8 +6,8 @@
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
-    "frontendDist": "../.output",
-    "devUrl": "https://originrestaurant-menu.vercel.app/staff"
+    "frontendDist": "ui",
+    "devUrl": "http://localhost:1420"
   },
   "app": {
     "withGlobalTauri": true,
@@ -15,7 +15,7 @@
       {
         "label": "main",
         "title": "Origin KDS",
-        "url": "https://originrestaurant-menu.vercel.app/staff",
+        "url": "index.html",
         "width": 1024,
         "height": 768,
         "minWidth": 800,
@@ -45,6 +45,7 @@
       "timestampUrl": "",
       "nsis": {
         "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico",
         "headerImage": "assets/banner.bmp",
         "sidebarImage": "assets/dialog.bmp"
       }
