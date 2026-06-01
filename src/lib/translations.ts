@@ -243,6 +243,7 @@ export const translations = {
     show_descriptions: 'Show Item Descriptions',
     api_health: 'API Health',
     optimal_status: 'Optimal',
+    unstable_connection: 'Unstable Connection',
     load_more: 'Load More',
     show_item_descriptions: 'Show Descriptions',
 
@@ -322,6 +323,21 @@ export const translations = {
     seven_days: '7 Days',
     thirty_days: '30 Days',
     range_label: 'Range',
+    software_update: 'SOFTWARE UPDATE',
+    version_available: 'Version {version} available',
+    release_notes: 'Release Notes',
+    default_release_notes:
+      'This update contains stability improvements and bug fixes.',
+    later: 'Later',
+    update_now: 'Update Now',
+    update_ready: 'Update Ready',
+    downloading_update: 'Downloading Update...',
+    restarting_in_a_moment: 'Restarting in a moment',
+    progress_complete: '{progress}% Complete',
+    download_failed: 'Download Failed',
+    download_failed_desc:
+      'Something went wrong while fetching the update. Please check your connection and try again.',
+    close: 'Close',
   },
   am: {
     // Common
@@ -512,6 +528,7 @@ export const translations = {
     show_descriptions: 'የምግብ መግለጫዎችን አሳይ',
     api_health: 'የAPI ጤና',
     optimal_status: 'ጥሩ',
+    unstable_connection: 'ግንኙነት ተቋርጧል',
     load_more: 'ተጨማሪ ጫን',
     show_item_descriptions: 'መግለጫዎችን አሳይ',
 
@@ -630,6 +647,20 @@ export const translations = {
     seven_days: '7 ቀን',
     thirty_days: '30 ቀን',
     range_label: 'የጊዜ ገደብ',
+    software_update: 'የሶፍትዌር ዝመና',
+    version_available: 'ስሪት {version} ተገኝቷል',
+    release_notes: 'የዝመናው መግለጫ',
+    default_release_notes: 'ይህ ዝመና መተግበሪያውን የበለጠ ፈጣን እና ቀልጣፋ ያደርገዋል።',
+    later: 'ቆይ',
+    update_now: 'አሁን ጫን',
+    update_ready: 'ዝመናው ዝግጁ ነው',
+    downloading_update: 'በመጫን ላይ...',
+    restarting_in_a_moment: 'መተግበሪያው አሁን ይከፈታል',
+    progress_complete: '{progress}% ተጠናቋል',
+    download_failed: 'መጫን አልተቻለም',
+    download_failed_desc:
+      'ዝመናውን በሚያወርድበት ጊዜ ችግር ተፈጥሯል። እባክዎ ኢንተርኔትዎን አረጋግጠው እንደገና ይሞክሩ።',
+    close: 'ዝጋ',
   },
 } as const
 

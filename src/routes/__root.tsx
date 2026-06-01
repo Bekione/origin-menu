@@ -7,12 +7,15 @@ import {
   HeadContent,
   Scripts,
 } from '@tanstack/react-router'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Toaster, toast } from 'sonner'
 import { ThemeProvider, useTheme } from '@/components/ThemeProvider'
 
 import { LanguageProvider, useTranslation } from '@/lib/i18n'
 import { translations } from '@/lib/translations'
+import { UpdaterModal, type UpdateInfo } from '@/components/UpdaterModal'
+import { check } from '@tauri-apps/plugin-updater'
+import { relaunch } from '@tauri-apps/plugin-process'
 
 import appCss from '../styles.css?url'
 
@@ -224,6 +227,43 @@ function RootInner() {
   const { theme } = useTheme()
   const { t } = useTranslation()
 
+  // Update State
+  const [updateModalOpen, setUpdateModalOpen] = useState(false)
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
+  const [updateStatus, setUpdateStatus] = useState<
+    'idle' | 'downloading' | 'complete' | 'error'
+  >('idle')
+  const [updateProgress, setUpdateProgress] = useState(0)
+  const [updateInstance, setUpdateInstance] = useState<any>(null)
+
+  const handleApplyUpdate = async () => {
+    if (!updateInstance) return
+    setUpdateStatus('downloading')
+    try {
+      await updateInstance.downloadAndInstall((event: any) => {
+        if (event.event === 'Started') {
+          setUpdateProgress(10)
+        } else if (event.event === 'Progress') {
+          const p = Math.floor(
+            (event.data.chunkLength / (event.data.contentLength || 1000000)) *
+              100,
+          )
+          setUpdateProgress(Math.min(95, 10 + p))
+        } else if (event.event === 'Finished') {
+          setUpdateProgress(100)
+        }
+      })
+
+      setUpdateStatus('complete')
+      setTimeout(async () => {
+        await relaunch()
+      }, 1500)
+    } catch (err) {
+      console.error('Update install failed:', err)
+      setUpdateStatus('error')
+    }
+  }
+
   useEffect(() => {
     const handleOffline = () => {
       toast.error(t('connection_lost'), {
@@ -245,6 +285,28 @@ function RootInner() {
     window.addEventListener('offline', handleOffline)
     window.addEventListener('online', handleOnline)
 
+    // Tauri Update Check
+    if (typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__) {
+      const checkUpdate = async () => {
+        try {
+          const update = await check()
+          if (update?.available) {
+            setUpdateInfo({
+              version: update.version,
+              notes:
+                (update as any).body ||
+                'Bug fixes and performance improvements.',
+            })
+            setUpdateInstance(update)
+            setUpdateModalOpen(true)
+          }
+        } catch (err) {
+          console.error('Update check failed:', err)
+        }
+      }
+      checkUpdate()
+    }
+
     return () => {
       window.removeEventListener('offline', handleOffline)
       window.removeEventListener('online', handleOnline)
@@ -254,6 +316,17 @@ function RootInner() {
   return (
     <>
       <Outlet />
+
+      {/* Premium Updater Modal */}
+      <UpdaterModal
+        open={updateModalOpen}
+        info={updateInfo}
+        status={updateStatus}
+        progress={updateProgress}
+        onUpdate={handleApplyUpdate}
+        onCancel={() => setUpdateModalOpen(false)}
+      />
+
       <Toaster
         position="bottom-right"
         theme={theme}
