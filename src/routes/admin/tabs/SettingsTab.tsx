@@ -13,7 +13,7 @@ import {
   Layout,
   QrCode,
 } from 'lucide-react'
-import pkg from '../../../../package.json'
+import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 
 import { useTranslation } from '@/lib/i18n'
 import { useTheme } from '@/components/ThemeProvider'
@@ -95,6 +95,25 @@ export function SettingsTab() {
   // Display & Layout
   const [showDescriptions, setShowDescriptions] = useState(true)
   const [qrSize, setQrSize] = useState('Medium')
+  const [isApiHealthy, setIsApiHealthy] = useState(true)
+
+  // Real API Health Check
+  useEffect(() => {
+    const checkHealth = async () => {
+      try {
+        const { error } = await supabaseBrowser
+          .from('menu_items')
+          .select('count', { count: 'exact', head: true })
+        setIsApiHealthy(!error)
+      } catch {
+        setIsApiHealthy(false)
+      }
+    }
+
+    checkHealth()
+    const interval = setInterval(checkHealth, 30000) // Check every 30s
+    return () => clearInterval(interval)
+  }, [])
 
   // Load from localStorage after mount (avoids SSR/hydration mismatch)
   useEffect(() => {
@@ -414,7 +433,10 @@ export function SettingsTab() {
                 </span>
               </div>
               <span className="text-[10px] font-black text-muted-foreground uppercase">
-                v{pkg.version}
+                v
+                {typeof __APP_VERSION__ !== 'undefined'
+                  ? __APP_VERSION__
+                  : '1.0.0'}
               </span>
             </div>
 
@@ -426,9 +448,13 @@ export function SettingsTab() {
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">
-                  {t('optimal_status')}
+                <div
+                  className={`h-1.5 w-1.5 rounded-full animate-pulse ${isApiHealthy ? 'bg-emerald-500' : 'bg-destructive'}`}
+                />
+                <span
+                  className={`text-[10px] font-black uppercase tracking-widest ${isApiHealthy ? 'text-emerald-500' : 'text-destructive'}`}
+                >
+                  {isApiHealthy ? t('optimal_status') : t('unstable_connection')}
                 </span>
               </div>
             </div>
