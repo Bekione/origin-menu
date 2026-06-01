@@ -16,7 +16,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 import ScrollFade from '#/components/ScrollFade'
 import { useTranslation } from '@/lib/i18n'
 import { TabButton } from './TabButton'
-import logo from '@/assets/origin-logo.jpg'
+import logo from '@/assets/origin-logo-admin.png'
 
 interface AdminHeaderProps {
   tab: string
@@ -44,11 +44,9 @@ export function AdminHeader({
     <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-y-4 px-4 py-4">
         <div className="flex items-center gap-3">
-          <img
-            src={logo}
-            alt=""
-            className="h-9 w-9 rounded-full bg-white p-1"
-          />
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm border border-white/10">
+            <img src={logo} alt="Origin" className="h-8 w-8 object-contain" />
+          </div>
           <div>
             <h1 className="font-display text-xl sm:text-2xl text-primary leading-none">
               CONSOLE

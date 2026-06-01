@@ -11,16 +11,12 @@ import {
   type TableOrder,
   type WaiterCall,
 } from '@/server/table.functions'
-import {
-  getMenuData,
-  toggleAvailability,
-  type MenuItem,
-} from '@/server/menu.functions'
+
 import { authClient } from '#/lib/auth-client'
 import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { Skeleton } from '@/components/ui/skeleton'
-import logo from '@/assets/origin-logo.jpg'
+import logo from '@/assets/origin-logo-kds.png'
 import grayLogo from '@/assets/origin-logo-gray.png'
 import ScrollFade from '@/components/ScrollFade'
 import { EightyBoard } from '#/components/EightyBoard'
@@ -304,11 +300,9 @@ function StaffPage() {
       <header className="relative z-10 shrink-0 border-b border-border bg-card/60 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img
-              src={logo}
-              alt="Origin"
-              className="h-8 w-8 rounded-full bg-white p-0.5"
-            />
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-sm border border-white/10">
+              <img src={logo} alt="Origin" className="h-8 w-8 object-contain" />
+            </div>
             <div>
               <span className="font-display text-lg text-primary">ORIGIN</span>
               <span className="ml-2 text-[10px] uppercase tracking-widest text-muted-foreground">
@@ -462,7 +456,13 @@ function StaffPage() {
                         )}
                         {!hasMore && done.length > 0 && (
                           <div className="mt-8 flex flex-col items-center justify-center gap-2 opacity-30 pb-4">
-                            <div className="h-px w-24 bg-border" />
+                            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-xl ring-4 ring-white/5 border border-white/10">
+                              <img
+                                src={logo}
+                                alt="Origin"
+                                className="h-14 w-14 object-contain"
+                              />
+                            </div>
                             <p className="text-[10px] font-black uppercase tracking-[0.2em]">
                               {t('no_more_orders')}
                             </p>

@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState } from 'react'
 import { authClient } from '#/lib/auth-client'
 import { getAuthSession } from '@/server/auth-helpers'
-import logo from '@/assets/origin-logo.jpg'
+import logo from '@/assets/origin-logo-admin.png'
 
 export const Route = createFileRoute('/login')({
   // If already logged in, redirect by role
@@ -60,16 +60,15 @@ function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="mb-8 flex flex-col items-center gap-3">
-          <img
-            src={logo}
-            alt="Origin Restaurant"
-            className="h-16 w-16 rounded-full bg-white p-1.5"
-          />
+        <div className="mb-8 flex flex-col items-center gap-4">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-xl ring-4 ring-white/5 border border-white/10">
+            <img src={logo} alt="Origin" className="h-14 w-14 object-contain" />
+          </div>
           <div className="text-center">
-            <h1 className="font-display text-3xl text-primary">ORIGIN</h1>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">
+            <h1 className="font-display text-3xl text-primary leading-tight">
+              ORIGIN
+            </h1>
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
               Admin Console
             </p>
           </div>

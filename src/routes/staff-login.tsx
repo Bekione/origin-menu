@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { getAuthSession } from '@/server/auth-helpers'
 import { verifyStaffPin } from '@/server/staff.functions'
-import logo from '@/assets/origin-logo.jpg'
+import logo from '@/assets/origin-logo-kds.png'
 import { Delete } from 'lucide-react'
 
 const smoothBounceKeyframes = `
@@ -88,17 +88,16 @@ function StaffLoginPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
-      {/* Logo */}
-      <div className="mb-10 flex flex-col items-center gap-3">
-        <img
-          src={logo}
-          alt="Origin"
-          className="h-16 w-16 rounded-full bg-white p-1.5"
-        />
+      <div className="mb-10 flex flex-col items-center gap-4">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-xl ring-4 ring-white/5 border border-white/10">
+          <img src={logo} alt="Origin" className="h-14 w-14 object-contain" />
+        </div>
         <div className="text-center">
-          <h1 className="font-display text-3xl text-primary">ORIGIN</h1>
-          <p className="text-xs uppercase tracking-widest text-muted-foreground">
-            Staff Console
+          <h1 className="font-display text-4xl text-primary leading-tight">
+            ORIGIN
+          </h1>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            Kitchen System
           </p>
         </div>
       </div>
