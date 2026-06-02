@@ -109,21 +109,32 @@
         RETRY.style.display = 'none'
 
         try {
-          // Try to reach the Vercel app
-          const controller = new AbortController()
-          const timeoutId = setTimeout(() => controller.abort(), 6000)
+          const isLocal =
+            window.location.hostname === 'localhost' ||
+            window.location.hostname === '127.0.0.1'
+          const targetUrl = isLocal
+            ? 'http://localhost:3000/staff-login'
+            : VERCEL_URL
 
-          await fetch('https://originrestaurant-menu.vercel.app/', {
-            mode: 'no-cors',
-            cache: 'no-store',
-            signal: controller.signal,
-          })
+          if (!isLocal) {
+            const controller = new AbortController()
+            const timeoutId = setTimeout(() => controller.abort(), 6000)
+            await fetch('https://originrestaurant-menu.vercel.app/', {
+              mode: 'no-cors',
+              cache: 'no-store',
+              signal: controller.signal,
+            })
+            clearTimeout(timeoutId)
+          }
 
-          clearTimeout(timeoutId)
-          STATUS.innerText = 'Connecting to Kitchen Cloud...'
+          STATUS.innerText = isLocal
+            ? 'Connecting to local kitchen...'
+            : 'Connecting to Kitchen Cloud...'
+          // Cache success so ALL future launches skip the splash
+          localStorage.setItem('origin_ready', '1')
           setTimeout(() => {
-            window.location.replace(VERCEL_URL)
-          }, 500)
+            window.location.replace(targetUrl)
+          }, 300)
         } catch (err) {
           LOADER.style.display = 'none'
           RETRY.style.display = 'inline-block'
@@ -132,8 +143,18 @@
         }
       }
 
-      // Initial check after a short splash delay
-      setTimeout(checkConnection, 1500)
+      // Skip splash if we already connected successfully in the past
+      if (localStorage.getItem('origin_ready')) {
+        const isLocal =
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1'
+        window.location.replace(
+          isLocal ? 'http://localhost:3000/staff-login' : VERCEL_URL,
+        )
+      } else {
+        // First launch — short branded splash then connect
+        setTimeout(checkConnection, 300)
+      }
     </script>
   </body>
 </html>
