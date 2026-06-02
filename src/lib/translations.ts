@@ -336,7 +336,11 @@ export const translations = {
     progress_complete: '{progress}% Complete',
     download_failed: 'Download Failed',
     download_failed_desc:
-      'Something went wrong while fetching the update. Please check your connection and try again.',
+      'An error occurred while downloading the update. Please check your internet connection and try again.',
+    installing_update: 'Installing update...',
+    restarting_app: 'Restarting application...',
+    please_wait: 'Please wait',
+    downloading: 'Downloading...',
     close: 'Close',
   },
   am: {
@@ -659,7 +663,11 @@ export const translations = {
     progress_complete: '{progress}% ተጠናቋል',
     download_failed: 'መጫን አልተቻለም',
     download_failed_desc:
-      'ዝመናውን በሚያወርድበት ጊዜ ችግር ተፈጥሯል። እባክዎ ኢንተርኔትዎን አረጋግጠው እንደገና ይሞክሩ።',
+      'ማውረድ አልተቻለም። እባክዎ የበይነመረብ ግንኙነትዎን ያረጋግጡና እንደገና ይሞክሩ።',
+    installing_update: 'የሶፍትዌር ጭነት ላይ...',
+    restarting_app: 'እንደገና በመጀመር ላይ...',
+    please_wait: 'እባክዎ ይጠብቁ',
+    downloading: 'በማውረድ ላይ...',
     close: 'ዝጋ',
   },
 } as const

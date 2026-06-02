@@ -6,28 +6,45 @@ export interface UpdateInfo {
   notes?: string
 }
 
+export type UpdateStatus =
+  | 'idle'
+  | 'downloading'
+  | 'installing'
+  | 'restarting'
+  | 'error'
+
 export function UpdaterModal({
   open,
   info,
   progress,
   status,
+  downloadedBytes = 0,
+  totalSizeBytes = 0,
   onUpdate,
   onCancel,
 }: {
   open: boolean
   info: UpdateInfo | null
   progress: number
-  status: 'idle' | 'downloading' | 'complete' | 'error'
+  status: UpdateStatus
+  downloadedBytes?: number
+  totalSizeBytes?: number
   onUpdate: () => void
   onCancel: () => void
 }) {
   const { t } = useTranslation()
   if (!open || !info) return null
 
+  const formatMB = (bytes: number) => {
+    if (!bytes) return '0.0 MB'
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+  }
+
+  const isIndeterminate = status === 'downloading' && totalSizeBytes === 0
+
   return (
     <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 p-4 backdrop-blur-md animate-in fade-in duration-300">
       <div className="w-full max-w-md overflow-hidden rounded-3xl border border-white/10 bg-card shadow-2xl shadow-black/50">
-        {/* Header Image/Background Segment */}
         <div className="relative h-32 bg-linear-to-br from-primary/20 to-primary/5 p-6 flex items-end">
           <div className="absolute right-6 top-6 opacity-10">
             <Download className="h-20 w-20" />
@@ -70,10 +87,10 @@ export function UpdaterModal({
             </div>
           )}
 
-          {(status === 'downloading' || status === 'complete') && (
+          {status !== 'idle' && status !== 'error' && (
             <div className="space-y-6 py-4 text-center">
               <div className="flex justify-center">
-                {status === 'complete' ? (
+                {status === 'restarting' ? (
                   <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
                     <CheckCircle2 className="h-10 w-10 animate-in zoom-in duration-500" />
                   </div>
@@ -86,23 +103,44 @@ export function UpdaterModal({
 
               <div className="space-y-2">
                 <h4 className="font-display text-lg">
-                  {status === 'complete'
-                    ? t('update_ready')
-                    : t('downloading_update')}
+                  {status === 'downloading' && t('downloading_update')}
+                  {status === 'installing' && t('installing_update')}
+                  {status === 'restarting' && t('restarting_app')}
                 </h4>
+
                 <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
                   <div
-                    className="absolute inset-y-0 left-0 bg-primary transition-all duration-500"
-                    style={{ width: `${progress}%` }}
+                    className={`absolute inset-y-0 left-0 bg-primary transition-all duration-500 ${
+                      isIndeterminate ? 'w-1/3 animate-pulse' : ''
+                    }`}
+                    style={{
+                      width: isIndeterminate ? undefined : `${progress}%`,
+                    }}
                   />
                 </div>
-                <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                  {status === 'complete'
-                    ? t('restarting_in_a_moment')
-                    : t('progress_complete', {
+
+                <div className="flex justify-between items-center text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  <span>
+                    {status === 'downloading' &&
+                      !isIndeterminate &&
+                      t('progress_complete', {
                         progress: Math.round(progress),
                       })}
-                </span>
+                    {status === 'downloading' &&
+                      isIndeterminate &&
+                      t('downloading')}
+                    {status === 'installing' && t('please_wait')}
+                    {status === 'restarting' && t('restarting_in_a_moment')}
+                  </span>
+                  {status === 'downloading' && (
+                    <span>
+                      {formatMB(downloadedBytes)}{' '}
+                      {totalSizeBytes > 0
+                        ? `/ ${formatMB(totalSizeBytes)}`
+                        : ''}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           )}

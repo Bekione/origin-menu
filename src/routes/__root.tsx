@@ -231,35 +231,56 @@ function RootInner() {
   const [updateModalOpen, setUpdateModalOpen] = useState(false)
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null)
   const [updateStatus, setUpdateStatus] = useState<
-    'idle' | 'downloading' | 'complete' | 'error'
+    'idle' | 'downloading' | 'installing' | 'restarting' | 'complete' | 'error'
   >('idle')
   const [updateProgress, setUpdateProgress] = useState(0)
+  const [totalSize, setTotalSize] = useState<number | null>(null)
+  const [downloadedBytes, setDownloadedBytes] = useState(0)
   const [updateInstance, setUpdateInstance] = useState<any>(null)
 
   const handleApplyUpdate = async () => {
     if (!updateInstance) return
     setUpdateStatus('downloading')
+    setUpdateProgress(0)
+    setDownloadedBytes(0)
+
     try {
+      let currentDownloaded = 0
+      let currentTotal = 0
+
       await updateInstance.downloadAndInstall((event: any) => {
+        console.log('UPDATE_EVENT:', event)
         if (event.event === 'Started') {
-          setUpdateProgress(10)
+          const len = event.data.contentLength || 0
+          console.log('UPDATE_TOTAL_SIZE:', len)
+          currentTotal = len
+          setTotalSize(len)
+          setUpdateProgress(0)
         } else if (event.event === 'Progress') {
-          const p = Math.floor(
-            (event.data.chunkLength / (event.data.contentLength || 1000000)) *
-              100,
-          )
-          setUpdateProgress(Math.min(95, 10 + p))
+          currentDownloaded += event.data.chunkLength
+          setDownloadedBytes(currentDownloaded)
+
+          if (currentTotal > 0) {
+            const pct = Math.floor((currentDownloaded / currentTotal) * 100)
+            console.log(
+              `UPDATE_PROGRESS: ${currentDownloaded}/${currentTotal} (${pct}%)`,
+            )
+            setUpdateProgress(Math.min(99, pct))
+          }
         } else if (event.event === 'Finished') {
+          console.log('UPDATE_DOWNLOAD_FINISHED')
           setUpdateProgress(100)
+          setUpdateStatus('installing')
         }
       })
 
-      setUpdateStatus('complete')
+      setUpdateStatus('restarting')
+      // Short delay to show the "Restarting" state before the app actually closes
       setTimeout(async () => {
         await relaunch()
-      }, 1500)
+      }, 2000)
     } catch (err) {
-      console.error('Update install failed:', err)
+      console.error('Update lifecycle failed:', err)
       setUpdateStatus('error')
     }
   }
@@ -285,7 +306,7 @@ function RootInner() {
     window.addEventListener('offline', handleOffline)
     window.addEventListener('online', handleOnline)
 
-    // Tauri Update Check
+    // Tauri Update Check — delayed so user can log in first
     if (typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__) {
       const checkUpdate = async () => {
         try {
@@ -304,12 +325,13 @@ function RootInner() {
           console.error('Update check failed:', err)
         }
       }
-      checkUpdate()
-    }
-
-    return () => {
-      window.removeEventListener('offline', handleOffline)
-      window.removeEventListener('online', handleOnline)
+      // Wait 10s after mount so the user has plenty of time to type credentials
+      const updateTimer = setTimeout(checkUpdate, 10000)
+      return () => {
+        clearTimeout(updateTimer)
+        window.removeEventListener('offline', handleOffline)
+        window.removeEventListener('online', handleOnline)
+      }
     }
   }, [])
 
@@ -318,14 +340,18 @@ function RootInner() {
       <Outlet />
 
       {/* Premium Updater Modal */}
-      <UpdaterModal
-        open={updateModalOpen}
-        info={updateInfo}
-        status={updateStatus}
-        progress={updateProgress}
-        onUpdate={handleApplyUpdate}
-        onCancel={() => setUpdateModalOpen(false)}
-      />
+      {updateModalOpen && (
+        <UpdaterModal
+          open={updateModalOpen}
+          info={updateInfo}
+          progress={updateProgress}
+          status={updateStatus as any}
+          downloadedBytes={downloadedBytes}
+          totalSizeBytes={totalSize || 0}
+          onUpdate={handleApplyUpdate}
+          onCancel={() => setUpdateModalOpen(false)}
+        />
+      )}
 
       <Toaster
         position="bottom-right"
