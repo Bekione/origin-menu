@@ -65,7 +65,7 @@
         "https://originrestaurant-menu.vercel.app/updater-kds.json"
       ],
       "windows": {
-        "installMode": "passive"
+        "installMode": "quiet"
       }
     }
   }

@@ -67,7 +67,7 @@
         "https://originrestaurant-menu.vercel.app/updater-admin.json"
       ],
       "windows": {
-        "installMode": "passive"
+        "installMode": "quiet"
       }
     }
   }
