@@ -110,11 +110,12 @@ export function UpdaterModal({
 
                 <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
                   <div
-                    className={`absolute inset-y-0 left-0 bg-primary transition-all duration-500 ${
-                      isIndeterminate ? 'w-1/3 animate-pulse' : ''
+                    className={`absolute inset-y-0 left-0 bg-primary transition-all duration-1000 ${
+                      isIndeterminate ? 'animate-pulse' : ''
                     }`}
                     style={{
-                      width: isIndeterminate ? undefined : `${progress}%`,
+                      width: isIndeterminate ? '100%' : `${progress}%`,
+                      opacity: isIndeterminate ? 0.3 : 1,
                     }}
                   />
                 </div>

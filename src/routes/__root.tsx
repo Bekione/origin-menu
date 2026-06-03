@@ -249,10 +249,8 @@ function RootInner() {
       let currentTotal = 0
 
       await updateInstance.downloadAndInstall((event: any) => {
-        console.log('UPDATE_EVENT:', event)
         if (event.event === 'Started') {
           const len = event.data.contentLength || 0
-          console.log('UPDATE_TOTAL_SIZE:', len)
           currentTotal = len
           setTotalSize(len)
           setUpdateProgress(0)
@@ -262,13 +260,9 @@ function RootInner() {
 
           if (currentTotal > 0) {
             const pct = Math.floor((currentDownloaded / currentTotal) * 100)
-            console.log(
-              `UPDATE_PROGRESS: ${currentDownloaded}/${currentTotal} (${pct}%)`,
-            )
             setUpdateProgress(Math.min(99, pct))
           }
         } else if (event.event === 'Finished') {
-          console.log('UPDATE_DOWNLOAD_FINISHED')
           setUpdateProgress(100)
           setUpdateStatus('installing')
         }
