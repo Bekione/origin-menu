@@ -1,5 +1,6 @@
 import { Loader2, Download, CheckCircle2, AlertCircle } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
+import ScrollFade from './ScrollFade'
 
 export interface UpdateInfo {
   version: string
@@ -11,6 +12,7 @@ export type UpdateStatus =
   | 'downloading'
   | 'installing'
   | 'restarting'
+  | 'complete'
   | 'error'
 
 export function UpdaterModal({
@@ -59,17 +61,24 @@ export function UpdaterModal({
           </div>
         </div>
 
-        <div className="p-6">
+        <div className={status === 'restarting' ? 'p-6' : 'p-6 space-y-4'}>
           {status === 'idle' && (
             <div className="space-y-4">
-              <div className="rounded-2xl bg-muted/30 p-4">
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-                  {t('release_notes')}
-                </span>
-                <p className="mt-2 text-sm text-foreground/80 leading-relaxed font-medium">
-                  {info.notes || t('default_release_notes')}
-                </p>
-              </div>
+              <ScrollFade
+                direction="vertical"
+                fadeSize={30}
+                className="rounded-2xl bg-muted/30"
+              >
+                <div className="p-4 max-h-[200px] overflow-y-auto scrollbar-none">
+                  <span className="sticky top-0 block bg-transparent text-[10px] font-black uppercase tracking-widest text-muted-foreground pb-2">
+                    {t('release_notes')}
+                  </span>
+                  <p className="whitespace-pre-wrap text-sm text-foreground/80 leading-relaxed font-medium">
+                    {info.notes || t('default_release_notes')}
+                  </p>
+                </div>
+              </ScrollFade>
+
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={onCancel}
@@ -79,7 +88,7 @@ export function UpdaterModal({
                 </button>
                 <button
                   onClick={onUpdate}
-                  className="flex-2 rounded-xl bg-primary py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                  className="flex-2 rounded-xl bg-primary py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-nowrap"
                 >
                   {t('update_now')}
                 </button>
@@ -109,19 +118,23 @@ export function UpdaterModal({
                 </h4>
 
                 <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={`absolute inset-y-0 left-0 bg-primary transition-all duration-1000 ${
-                      isIndeterminate ? 'animate-pulse' : ''
-                    }`}
-                    style={{
-                      width: isIndeterminate ? '100%' : `${progress}%`,
-                      opacity: isIndeterminate ? 0.3 : 1,
-                    }}
-                  />
+                  {isIndeterminate ? (
+                    <div className="absolute inset-0 bg-primary/20 animate-pulse">
+                      <div
+                        className="absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-transparent via-primary to-transparent animate-[shimmer_1.5s_infinite]"
+                        style={{ transform: 'skewX(-20deg)' }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="absolute inset-y-0 left-0 bg-primary transition-all duration-1000 ease-out"
+                      style={{ width: `${progress}%` }}
+                    />
+                  )}
                 </div>
 
                 <div className="flex justify-between items-center text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                  <span>
+                  <span className="truncate max-w-[60%]">
                     {status === 'downloading' &&
                       !isIndeterminate &&
                       t('progress_complete', {
@@ -134,7 +147,7 @@ export function UpdaterModal({
                     {status === 'restarting' && t('restarting_in_a_moment')}
                   </span>
                   {status === 'downloading' && (
-                    <span>
+                    <span className="text-nowrap ml-2">
                       {formatMB(downloadedBytes)}{' '}
                       {totalSizeBytes > 0
                         ? `/ ${formatMB(totalSizeBytes)}`
@@ -143,6 +156,47 @@ export function UpdaterModal({
                   )}
                 </div>
               </div>
+            </div>
+          )}
+
+          {status === 'complete' && (
+            <div className="space-y-6 py-4 text-center">
+              <div className="flex justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
+                  <CheckCircle2 className="h-10 w-10 animate-in zoom-in duration-500" />
+                </div>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-display text-xl">
+                    {t('update_success')}
+                  </h4>
+                  <p className="text-xs text-muted-foreground uppercase tracking-widest font-black mt-1">
+                    v{info.version}
+                  </p>
+                </div>
+
+                <ScrollFade
+                  direction="vertical"
+                  fadeSize={30}
+                  className="rounded-2xl bg-muted/30 text-left"
+                >
+                  <div className="p-4 max-h-[160px] overflow-y-auto scrollbar-none">
+                    <span className="sticky top-0 block bg-transparent text-[10px] font-black uppercase tracking-widest text-muted-foreground pb-2">
+                      {t('release_notes')}
+                    </span>
+                    <p className="whitespace-pre-wrap text-sm text-foreground/80 leading-relaxed font-medium">
+                      {info.notes}
+                    </p>
+                  </div>
+                </ScrollFade>
+              </div>
+              <button
+                onClick={onCancel}
+                className="w-full rounded-xl bg-primary py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+              >
+                {t('close')}
+              </button>
             </div>
           )}
 
