@@ -342,6 +342,7 @@ export const translations = {
     please_wait: 'Please wait',
     downloading: 'Downloading...',
     close: 'Close',
+    update_success: 'Update Successful!',
   },
   am: {
     // Common
@@ -669,6 +670,7 @@ export const translations = {
     please_wait: 'እባክዎ ይጠብቁ',
     downloading: 'በማውረድ ላይ...',
     close: 'ዝጋ',
+    update_success: 'ዝመናው ተሳክቷል!',
   },
 } as const
 
