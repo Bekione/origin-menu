@@ -300,17 +300,37 @@ function RootInner() {
     window.addEventListener('offline', handleOffline)
     window.addEventListener('online', handleOnline)
 
+    // Post-Update Welcome Logic
+    const currentVersion = __APP_VERSION__
+    const lastSeenVersion = localStorage.getItem('origin_app_last_version')
+    if (lastSeenVersion && lastSeenVersion !== currentVersion) {
+      const cachedNotes = localStorage.getItem('origin_app_pending_notes')
+      toast.success(`Welcome to Origin v${currentVersion}`, {
+        description: t('update_ready'),
+        duration: 8000,
+        action: cachedNotes ? {
+          label: 'What\'s New',
+          onClick: () => {
+             setUpdateInfo({ version: currentVersion, notes: cachedNotes })
+             setUpdateStatus('complete')
+             setUpdateModalOpen(true)
+          }
+        } : undefined
+      })
+    }
+    localStorage.setItem('origin_app_last_version', currentVersion)
+
     // Tauri Update Check — delayed so user can log in first
     if (typeof window !== 'undefined' && (window as any).__TAURI_INTERNALS__) {
       const checkUpdate = async () => {
         try {
           const update = await check()
           if (update?.available) {
+            const body = (update as any).body || 'Bug fixes and performance improvements.'
+            localStorage.setItem('origin_app_pending_notes', body)
             setUpdateInfo({
               version: update.version,
-              notes:
-                (update as any).body ||
-                'Bug fixes and performance improvements.',
+              notes: body,
             })
             setUpdateInstance(update)
             setUpdateModalOpen(true)
