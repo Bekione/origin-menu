@@ -301,21 +301,24 @@ function RootInner() {
     window.addEventListener('online', handleOnline)
 
     // Post-Update Welcome Logic
-    const currentVersion = __APP_VERSION__
+    const currentVersion =
+      typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.1'
     const lastSeenVersion = localStorage.getItem('origin_app_last_version')
     if (lastSeenVersion && lastSeenVersion !== currentVersion) {
       const cachedNotes = localStorage.getItem('origin_app_pending_notes')
       toast.success(`Welcome to Origin v${currentVersion}`, {
         description: t('update_ready'),
         duration: 8000,
-        action: cachedNotes ? {
-          label: 'What\'s New',
-          onClick: () => {
-             setUpdateInfo({ version: currentVersion, notes: cachedNotes })
-             setUpdateStatus('complete')
-             setUpdateModalOpen(true)
-          }
-        } : undefined
+        action: cachedNotes
+          ? {
+              label: "What's New",
+              onClick: () => {
+                setUpdateInfo({ version: currentVersion, notes: cachedNotes })
+                setUpdateStatus('complete')
+                setUpdateModalOpen(true)
+              },
+            }
+          : undefined,
       })
     }
     localStorage.setItem('origin_app_last_version', currentVersion)
@@ -326,7 +329,8 @@ function RootInner() {
         try {
           const update = await check()
           if (update?.available) {
-            const body = (update as any).body || 'Bug fixes and performance improvements.'
+            const body =
+              (update as any).body || 'Bug fixes and performance improvements.'
             localStorage.setItem('origin_app_pending_notes', body)
             setUpdateInfo({
               version: update.version,
@@ -346,6 +350,10 @@ function RootInner() {
         window.removeEventListener('offline', handleOffline)
         window.removeEventListener('online', handleOnline)
       }
+    }
+    return () => {
+      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('online', handleOnline)
     }
   }, [])
 

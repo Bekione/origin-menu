@@ -324,7 +324,6 @@ export const translations = {
     thirty_days: '30 Days',
     range_label: 'Range',
     software_update: 'SOFTWARE UPDATE',
-    version_available: 'Version {version} available',
     release_notes: 'Release Notes',
     default_release_notes:
       'This update contains stability improvements and bug fixes.',
@@ -338,11 +337,14 @@ export const translations = {
     download_failed_desc:
       'An error occurred while downloading the update. Please check your internet connection and try again.',
     installing_update: 'Installing update...',
+    installing: 'Installing...',
     restarting_app: 'Restarting application...',
     please_wait: 'Please wait',
     downloading: 'Downloading...',
     close: 'Close',
     update_success: 'Update Successful!',
+    version_available: 'VERSION {version} AVAILABLE',
+    version_installed: 'VERSION {version} INSTALLED',
   },
   am: {
     // Common
@@ -654,6 +656,7 @@ export const translations = {
     range_label: 'የጊዜ ገደብ',
     software_update: 'የሶፍትዌር ዝመና',
     version_available: 'ስሪት {version} ተገኝቷል',
+    version_installed: 'ስሪት {version} ተጭኗል',
     release_notes: 'የዝመናው መግለጫ',
     default_release_notes: 'ይህ ዝመና መተግበሪያውን የበለጠ ፈጣን እና ቀልጣፋ ያደርገዋል።',
     later: 'ቆይ',
@@ -666,6 +669,7 @@ export const translations = {
     download_failed_desc:
       'ማውረድ አልተቻለም። እባክዎ የበይነመረብ ግንኙነትዎን ያረጋግጡና እንደገና ይሞክሩ።',
     installing_update: 'የሶፍትዌር ጭነት ላይ...',
+    installing: 'የሶፍትዌር ጭነት ላይ...',
     restarting_app: 'እንደገና በመጀመር ላይ...',
     please_wait: 'እባክዎ ይጠብቁ',
     downloading: 'በማውረድ ላይ...',

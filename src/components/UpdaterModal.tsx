@@ -38,7 +38,7 @@ export function UpdaterModal({
   if (!open || !info) return null
 
   const formatMB = (bytes: number) => {
-    if (!bytes) return '0.0 MB'
+    if (!bytes || bytes <= 0) return '0.0 MB'
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
   }
 
@@ -56,39 +56,44 @@ export function UpdaterModal({
               {t('software_update')}
             </h3>
             <p className="mt-1.5 text-[10px] font-black uppercase tracking-widest text-primary">
-              {t('version_available', { version: info.version })}
+              {status === 'complete'
+                ? t('version_installed', { version: info.version })
+                : t('version_available', { version: info.version })}
             </p>
           </div>
         </div>
 
-        <div className={status === 'restarting' ? 'p-6' : 'p-6 space-y-4'}>
+        <div className="p-6 space-y-4">
+          {/* 1. IDLE STATE: Offer the update */}
           {status === 'idle' && (
             <div className="space-y-4">
-              <ScrollFade
-                direction="vertical"
-                fadeSize={30}
-                className="rounded-2xl bg-muted/30"
-              >
-                <div className="p-4 max-h-[200px] overflow-y-auto scrollbar-none">
-                  <span className="sticky top-0 block bg-transparent text-[10px] font-black uppercase tracking-widest text-muted-foreground pb-2">
-                    {t('release_notes')}
-                  </span>
-                  <p className="whitespace-pre-wrap text-sm text-foreground/80 leading-relaxed font-medium">
-                    {info.notes || t('default_release_notes')}
-                  </p>
-                </div>
-              </ScrollFade>
+              <div className="space-y-2 text-left">
+                <span className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 px-1">
+                  {t('release_notes')}
+                </span>
+                <ScrollFade
+                  direction="vertical"
+                  fadeSize={30}
+                  className="rounded-2xl bg-muted/30"
+                >
+                  <div className="p-4 max-h-[200px] overflow-y-auto scrollbar-none">
+                    <p className="whitespace-pre-wrap text-sm text-foreground/80 leading-relaxed font-medium">
+                      {info.notes || t('default_release_notes')}
+                    </p>
+                  </div>
+                </ScrollFade>
+              </div>
 
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={onCancel}
-                  className="flex-1 rounded-xl border border-border bg-background py-3 text-sm font-bold uppercase tracking-widest text-muted-foreground hover:bg-muted transition-colors"
+                  className="flex-1 rounded-xl bg-muted py-3 text-sm font-bold uppercase tracking-widest text-muted-foreground transition-all hover:bg-muted/80 active:scale-95"
                 >
                   {t('later')}
                 </button>
                 <button
                   onClick={onUpdate}
-                  className="flex-2 rounded-xl bg-primary py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-nowrap"
+                  className="flex-3 rounded-xl bg-primary py-3 text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] active:scale-95"
                 >
                   {t('update_now')}
                 </button>
@@ -96,35 +101,30 @@ export function UpdaterModal({
             </div>
           )}
 
-          {status !== 'idle' && status !== 'error' && (
-            <div className="space-y-6 py-4 text-center">
-              <div className="flex justify-center">
-                {status === 'restarting' ? (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500">
-                    <CheckCircle2 className="h-10 w-10 animate-in zoom-in duration-500" />
-                  </div>
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <Loader2 className="h-10 w-10 animate-spin" />
-                  </div>
-                )}
-              </div>
-
+          {/* 2. PROGRESS STATES: Download & Install */}
+          {(status === 'downloading' || status === 'installing') && (
+            <div className="space-y-6 py-2">
               <div className="space-y-2">
-                <h4 className="font-display text-lg">
-                  {status === 'downloading' && t('downloading_update')}
-                  {status === 'installing' && t('installing_update')}
-                  {status === 'restarting' && t('restarting_app')}
-                </h4>
-
-                <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+                  <span>
+                    {status === 'downloading'
+                      ? t('downloading_update')
+                      : t('installing_update')}
+                  </span>
+                  {!isIndeterminate && (
+                    <span>
+                      {t('progress_complete', {
+                        progress: Math.round(progress),
+                      })}
+                    </span>
+                  )}
+                </div>
+                <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted/50">
                   {isIndeterminate ? (
-                    <div className="absolute inset-0 bg-primary/20 animate-pulse">
-                      <div
-                        className="absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-transparent via-primary to-transparent animate-[shimmer_1.5s_infinite]"
-                        style={{ transform: 'skewX(-20deg)' }}
-                      />
-                    </div>
+                    <div
+                      className="absolute inset-y-0 left-0 w-1/3 bg-linear-to-r from-transparent via-primary to-transparent animate-[shimmer_1.5s_infinite]"
+                      style={{ transform: 'skewX(-20deg)' }}
+                    />
                   ) : (
                     <div
                       className="absolute inset-y-0 left-0 bg-primary transition-all duration-1000 ease-out"
@@ -132,33 +132,44 @@ export function UpdaterModal({
                     />
                   )}
                 </div>
+              </div>
 
-                <div className="flex justify-between items-center text-[10px] font-black text-muted-foreground uppercase tracking-widest">
-                  <span className="truncate max-w-[60%]">
-                    {status === 'downloading' &&
-                      !isIndeterminate &&
-                      t('progress_complete', {
-                        progress: Math.round(progress),
-                      })}
-                    {status === 'downloading' &&
-                      isIndeterminate &&
-                      t('downloading')}
-                    {status === 'installing' && t('please_wait')}
-                    {status === 'restarting' && t('restarting_in_a_moment')}
+              <div className="flex justify-between items-center text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                <span className="truncate max-w-[60%] animate-pulse">
+                  {status === 'downloading'
+                    ? t('please_wait')
+                    : t('installing')}
+                </span>
+                {status === 'downloading' && downloadedBytes > 0 && (
+                  <span className="text-nowrap ml-2">
+                    {formatMB(downloadedBytes)}{' '}
+                    {totalSizeBytes > 0 ? `/ ${formatMB(totalSizeBytes)}` : ''}
                   </span>
-                  {status === 'downloading' && (
-                    <span className="text-nowrap ml-2">
-                      {formatMB(downloadedBytes)}{' '}
-                      {totalSizeBytes > 0
-                        ? `/ ${formatMB(totalSizeBytes)}`
-                        : ''}
-                    </span>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           )}
 
+          {/* 3. RESTARTING STATE: Post-install transition */}
+          {status === 'restarting' && (
+            <div className="space-y-6 py-4 text-center">
+              <div className="flex justify-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Loader2 className="h-10 w-10 animate-spin" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h4 className="font-display text-lg tracking-wide animate-pulse">
+                  {t('restarting_app')}
+                </h4>
+                <p className="text-xs text-muted-foreground">
+                  {t('restarting_in_a_moment')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* 4. COMPLETE STATE: Success message & What's New */}
           {status === 'complete' && (
             <div className="space-y-6 py-4 text-center">
               <div className="flex justify-center">
@@ -175,21 +186,24 @@ export function UpdaterModal({
                     v{info.version}
                   </p>
                 </div>
-
-                <ScrollFade
-                  direction="vertical"
-                  fadeSize={30}
-                  className="rounded-2xl bg-muted/30 text-left"
-                >
-                  <div className="p-4 max-h-[160px] overflow-y-auto scrollbar-none">
-                    <span className="sticky top-0 block bg-transparent text-[10px] font-black uppercase tracking-widest text-muted-foreground pb-2">
+                {info.notes && (
+                  <div className="space-y-2 text-left">
+                    <span className="block text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 px-1">
                       {t('release_notes')}
                     </span>
-                    <p className="whitespace-pre-wrap text-sm text-foreground/80 leading-relaxed font-medium">
-                      {info.notes}
-                    </p>
+                    <ScrollFade
+                      direction="vertical"
+                      fadeSize={30}
+                      className="rounded-2xl bg-muted/30"
+                    >
+                      <div className="p-4 max-h-[160px] overflow-y-auto scrollbar-none">
+                        <p className="whitespace-pre-wrap text-sm text-foreground/80 leading-relaxed font-medium">
+                          {info.notes}
+                        </p>
+                      </div>
+                    </ScrollFade>
                   </div>
-                </ScrollFade>
+                )}
               </div>
               <button
                 onClick={onCancel}
@@ -200,6 +214,7 @@ export function UpdaterModal({
             </div>
           )}
 
+          {/* 5. ERROR STATE: Troubleshooting */}
           {status === 'error' && (
             <div className="space-y-6 py-4 text-center">
               <div className="flex justify-center">

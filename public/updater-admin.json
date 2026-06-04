@@ -1,5 +1,5 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.1",
   "notes": "✨ New desktop update experience with download progress and localization. 🛡️ Added live API health monitoring and improved reliability. 🔔 Native Windows notifications for realtime orders. 🎨 Enhanced branding, installers, and desktop experience.",
   "pub_date": "2026-06-02T13:00:00Z",
   "platforms": {
