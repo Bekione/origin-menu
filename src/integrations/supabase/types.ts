@@ -255,6 +255,30 @@ export type Database = {
           },
         ]
       }
+      qr_scans: {
+        Row: {
+          id: string
+          table_id: string | null
+          table_label: string | null
+          device_id: string
+          scanned_at: string
+        }
+        Insert: {
+          id?: string
+          table_id?: string | null
+          table_label?: string | null
+          device_id: string
+          scanned_at?: string
+        }
+        Update: {
+          id?: string
+          table_id?: string | null
+          table_label?: string | null
+          device_id?: string
+          scanned_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -143,6 +143,40 @@ export const verifyTableToken = createServerFn({ method: 'POST' })
     return { id: table.id, label: table.label }
   })
 
+/** Public — record a QR scan event (fire-and-forget, no auth) */
+export const recordQrScan = createServerFn({ method: 'POST' })
+  .inputValidator((d) =>
+    z
+      .object({
+        table_id: z.string().uuid().optional(),
+        table_label: z.string().optional(),
+        device_id: z.string(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { error } = await supabaseAdmin.from('qr_scans').insert({
+      table_id: data.table_id ?? null,
+      table_label: data.table_label ?? null,
+      device_id: data.device_id,
+    } as any)
+
+    if (error) {
+      console.error('Supabase QR Scan Insert Error:', error)
+      throw new Error(error.message)
+    }
+
+    // Fallback/Proactive: also broadcast the scan to the dashboard channel
+    // This works even if postgres_changes is blocked by RLS or replication settings
+    await supabaseAdmin.channel('origin-qr-scans-live').send({
+      type: 'broadcast',
+      event: 'new_scan',
+      payload: { table_id: data.table_id, device_id: data.device_id },
+    })
+
+    return { ok: true }
+  })
+
 /** Admin — list all tables */
 export const getTables = createServerFn({ method: 'GET' }).handler(async () => {
   await checkAuth()

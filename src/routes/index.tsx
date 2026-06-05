@@ -44,6 +44,7 @@ import {
   callWaiter,
   verifyTableToken,
   placeOrder,
+  recordQrScan,
 } from '@/server/table.functions'
 import { CartProvider, useCart } from '@/components/CartProvider'
 import {
@@ -223,6 +224,19 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
           duration: 4000,
         })
         navigate({ search: (p) => ({ ...p, t: undefined }), replace: true })
+
+        // Fire-and-forget: record the QR scan for analytics
+        getDeviceId().then((did) => {
+          recordQrScan({
+            data: {
+              table_id: result.id,
+              table_label: result.label,
+              device_id: did,
+            },
+          }).catch(() => {
+            /* silently ignore in production */
+          })
+        })
       })
       .catch(() => {
         // Token invalid — clear any stale session
@@ -618,19 +632,18 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
               )}
               {info?.map_embed_url && (
                 <div className="overflow-hidden rounded-xl border border-border bg-muted/20">
-                <iframe
-                  src={info.map_embed_url}
-                  width="100%"
-                  height="200"
-                  style={{ border: 0 }}
-                  allowFullScreen
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  className="invert-0 grayscale-[0.5] contrast-[1.2] dark:invert dark:grayscale-[0.8]"
-                />
-              </div>
+                  <iframe
+                    src={info.map_embed_url}
+                    width="100%"
+                    height="200"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="invert-0 grayscale-[0.5] contrast-[1.2] dark:invert dark:grayscale-[0.8]"
+                  />
+                </div>
               )}
-              
             </div>
             <div>
               <h3 className="font-display text-lg text-primary">

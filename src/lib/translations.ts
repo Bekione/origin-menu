@@ -345,6 +345,14 @@ export const translations = {
     update_success: 'Update Successful!',
     version_available: 'VERSION {version} AVAILABLE',
     version_installed: 'VERSION {version} INSTALLED',
+
+    // QR Scans
+    qr_scans: 'QR Scans',
+    visits_plural: '{count} visits',
+    visits_single: '{count} visit',
+    devices_plural: '{count} devices',
+    devices_single: '{count} device',
+    from_devices: 'from {devices}',
   },
   am: {
     // Common
@@ -675,6 +683,14 @@ export const translations = {
     downloading: 'በማውረድ ላይ...',
     close: 'ዝጋ',
     update_success: 'ዝመናው ተሳክቷል!',
+
+    // QR Scans
+    qr_scans: 'የQR ፍተሻዎች',
+    visits_plural: '{count} ጉብኝቶች',
+    visits_single: '{count} ጉብኝት',
+    devices_plural: '{count} መሳሪያዎች',
+    devices_single: '{count} መሳሪያ',
+    from_devices: 'ከ{devices}',
   },
 } as const
 

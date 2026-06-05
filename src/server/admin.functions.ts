@@ -172,3 +172,34 @@ export const getPendingOrderCount = createServerFn({
   if (error) throw new Error(error.message)
   return count || 0
 })
+
+export type QrScanStats = {
+  totalScans: number
+  uniqueDevices: number
+  todayScans: number
+}
+
+/** 5. QR Scan Stats */
+export const getQrScanCount = createServerFn({ method: 'GET' }).handler(
+  async (): Promise<QrScanStats> => {
+    await checkAdminAuth()
+    const todayISO = new Date().toISOString().split('T')[0] + 'T00:00:00Z'
+
+    // Fetch all scans to compute unique devices client-side (Supabase free tier has no COUNT DISTINCT)
+    const { data: allScans, error } = await supabaseAdmin
+      .from('qr_scans')
+      .select('device_id, scanned_at')
+
+    if (error) throw new Error(error.message)
+
+    const scans = allScans ?? []
+    const uniqueDevices = new Set(scans.map((s: any) => s.device_id)).size
+    const todayScans = scans.filter((s: any) => s.scanned_at >= todayISO).length
+
+    return {
+      totalScans: scans.length,
+      uniqueDevices,
+      todayScans,
+    }
+  },
+)

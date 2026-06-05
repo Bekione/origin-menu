@@ -10,6 +10,7 @@ import {
   Activity,
   BarChart3,
   Layout,
+  QrCode,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -29,9 +30,11 @@ import {
   getDashboardTrends,
   getDashboardTopStats,
   getOutOfStockItems,
+  getQrScanCount,
   type DashboardKPIs,
   type DashboardTrends,
   type TopStats,
+  type QrScanStats,
 } from '@/server/admin.functions'
 import { Skeleton } from '@/components/ui/skeleton'
 import ScrollFade from '#/components/ScrollFade'
@@ -45,6 +48,7 @@ export function DashboardTab() {
   const [trends, setTrends] = useState<DashboardTrends | null>(null)
   const [topStats, setTopStats] = useState<TopStats | null>(null)
   const [outOfStock, setOutOfStock] = useState<OutOfStockItem[]>([])
+  const [qrScans, setQrScans] = useState<QrScanStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [range, setRange] = useState<'7' | '30'>('7')
 
@@ -60,6 +64,7 @@ export function DashboardTab() {
         getOutOfStockItems().then((os) =>
           setOutOfStock(os as OutOfStockItem[]),
         ),
+        getQrScanCount().then(setQrScans),
       ])
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -120,6 +125,21 @@ export function DashboardTab() {
       })
       .subscribe()
 
+    // Live QR scan updates — refetch stats on every new INSERT for 100% accuracy
+    const qrScansChannel = supabaseBrowser
+      .channel('origin-qr-scans-live')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'qr_scans' },
+        () => {
+          getQrScanCount().then((stats) => setQrScans(stats))
+        },
+      )
+      .on('broadcast', { event: 'new_scan' }, () => {
+        getQrScanCount().then((stats) => setQrScans(stats))
+      })
+      .subscribe()
+
     const notificationsChannel = supabaseBrowser
       .channel('origin-notifications')
       .on('broadcast', { event: 'reload-menu' }, () => handleReload())
@@ -131,6 +151,7 @@ export function DashboardTab() {
 
     return () => {
       supabaseBrowser.removeChannel(realtimeChannel)
+      supabaseBrowser.removeChannel(qrScansChannel)
       supabaseBrowser.removeChannel(notificationsChannel)
       window.removeEventListener('reload-orders', handleReload)
       window.removeEventListener('reload-menu', handleReload)
@@ -143,6 +164,7 @@ export function DashboardTab() {
       icon: ShoppingBag,
       label: t('today_orders'),
       value: kpis?.todayOrders ?? 0,
+      sub: null,
       color: 'text-blue-500',
       bg: 'bg-blue-500/10',
     },
@@ -150,6 +172,7 @@ export function DashboardTab() {
       icon: TrendingUp,
       label: t('today_revenue'),
       value: `${kpis?.todayRevenue.toLocaleString() ?? 0} ${t('currency')}`,
+      sub: null,
       color: 'text-emerald-500',
       bg: 'bg-emerald-500/10',
     },
@@ -157,6 +180,7 @@ export function DashboardTab() {
       icon: Users,
       label: t('today_customers'),
       value: kpis?.todayCustomers ?? 0,
+      sub: null,
       color: 'text-violet-500',
       bg: 'bg-violet-500/10',
     },
@@ -164,13 +188,30 @@ export function DashboardTab() {
       icon: Wallet,
       label: t('avg_order_value'),
       value: `${Math.round(kpis?.avgOrderValue ?? 0).toLocaleString()} ${t('currency')}`,
+      sub: null,
       color: 'text-amber-500',
       bg: 'bg-amber-500/10',
     },
+    {
+      icon: QrCode,
+      label: t('qr_scans'),
+      value: qrScans
+        ? t(qrScans.totalScans === 1 ? 'visits_single' : 'visits_plural', {
+            count: qrScans.totalScans.toLocaleString(),
+          })
+        : '—',
+      sub: qrScans
+        ? t('from_devices', {
+            devices: t(
+              qrScans.uniqueDevices === 1 ? 'devices_single' : 'devices_plural',
+              { count: qrScans.uniqueDevices.toLocaleString() },
+            ),
+          })
+        : null,
+      color: 'text-cyan-500',
+      bg: 'bg-cyan-500/10',
+    },
   ]
-
-  // Refine the background for the first KPI
-  kpiData[0].bg = 'bg-blue-500/10'
 
   return (
     <div className="space-y-8">
@@ -183,9 +224,9 @@ export function DashboardTab() {
         </p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {!kpis
-          ? [1, 2, 3, 4].map((i) => (
+          ? [1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
                 className="h-32 w-full animate-pulse rounded-2xl border border-border bg-card/40 backdrop-blur-xl p-6"
@@ -194,7 +235,7 @@ export function DashboardTab() {
                 <Skeleton className="h-8 w-32" />
               </div>
             ))
-          : kpiData.map(({ icon: Icon, label, value, color, bg }) => (
+          : kpiData.map(({ icon: Icon, label, value, sub, color, bg }) => (
               <div
                 key={label}
                 className="group relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md p-6 shadow-xl transition-all hover:border-white/10 hover:shadow-2xl"
@@ -207,16 +248,25 @@ export function DashboardTab() {
                 />
                 <div className="relative z-10 flex flex-col gap-4">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
+                    <div className="flex h-10 w-10 aspect-square items-center justify-center rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
                       <Icon className={`h-5 w-5 ${color}`} />
                     </div>
                     <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
                       {label}
                     </span>
                   </div>
-                  <p className="font-display text-2xl font-black tracking-tighter text-foreground">
-                    {value}
-                  </p>
+                  <div className="flex flex-col gap-0.5">
+                    <p className="font-display text-2xl font-black tracking-tighter text-foreground">
+                      {value}
+                    </p>
+                    {sub && (
+                      <p
+                        className={`text-[10px] font-bold uppercase tracking-widest ${color} opacity-80`}
+                      >
+                        {sub}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
