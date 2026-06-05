@@ -15,12 +15,12 @@ import {
   revokeStaffSession,
 } from '@/server/staff.functions'
 
-import { RestaurantProfileCard } from '../components/infotab/RestaurantProfileCard'
-import { StoreUtilitiesCard } from '../components/infotab/StoreUtilitiesCard'
-import { PaymentMethodsCard } from '../components/infotab/PaymentMethodsCard'
-import { StaffPinCard } from '../components/infotab/StaffPinCard'
-import { ActiveSessionsCard } from '../components/infotab/ActiveSessionsCard'
-import { ConfirmationModal } from '../components/ConfirmationModal'
+import { RestaurantProfileCard } from '../-components/infotab/RestaurantProfileCard'
+import { StoreUtilitiesCard } from '../-components/infotab/StoreUtilitiesCard'
+import { PaymentMethodsCard } from '../-components/infotab/PaymentMethodsCard'
+import { StaffPinCard } from '../-components/infotab/StaffPinCard'
+import { ActiveSessionsCard } from '../-components/infotab/ActiveSessionsCard'
+import { ConfirmationModal } from '../-components/ConfirmationModal'
 
 export function InfoTab({
   info,

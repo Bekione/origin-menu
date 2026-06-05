@@ -11,7 +11,7 @@ import {
   GripVertical,
 } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
-import { inputCls } from '../components/FormPrimitives'
+import { inputCls } from '../-components/FormPrimitives'
 import {
   upsertCategory,
   deleteCategory,

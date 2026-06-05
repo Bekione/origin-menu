@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslation } from '@/lib/i18n'
-import { ConfirmationModal } from '../components/ConfirmationModal'
+import { ConfirmationModal } from '../-components/ConfirmationModal'
 import {
   getTables,
   upsertTable,

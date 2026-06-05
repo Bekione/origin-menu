@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
-import { inputCls } from '@/routes/admin/components/FormPrimitives'
+import { inputCls } from '@/routes/admin/-components/FormPrimitives'
 import ScrollFade from '@/components/ScrollFade'
 
 interface Option {

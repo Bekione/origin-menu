@@ -11,18 +11,18 @@ import {
   type WaiterCall,
 } from '@/server/table.functions'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useAdminRealtime } from './hooks/useAdminRealtime'
-import { AdminHeader } from './components/AdminHeader'
-import { WaiterCallsPanel } from './components/WaiterCallsPanel'
+import { useAdminRealtime } from './-hooks/useAdminRealtime'
+import { AdminHeader } from './-components/AdminHeader'
+import { WaiterCallsPanel } from './-components/WaiterCallsPanel'
 
 // Tab imports
-import { ItemsTab } from './tabs/ItemsTab'
-import { CategoriesTab } from './tabs/CategoriesTab'
-import { InfoTab } from './tabs/InfoTab'
-import { TablesTab } from './tabs/TablesTab'
-import { OrdersTab } from './tabs/OrdersTab'
-import { DashboardTab } from './tabs/DashboardTab'
-import { SettingsTab } from './tabs/SettingsTab'
+import { ItemsTab } from './-tabs/ItemsTab'
+import { CategoriesTab } from './-tabs/CategoriesTab'
+import { InfoTab } from './-tabs/InfoTab'
+import { TablesTab } from './-tabs/TablesTab'
+import { OrdersTab } from './-tabs/OrdersTab'
+import { DashboardTab } from './-tabs/DashboardTab'
+import { SettingsTab } from './-tabs/SettingsTab'
 
 const MemoDashboardTab = memo(DashboardTab)
 const MemoItemsTab = memo(ItemsTab)

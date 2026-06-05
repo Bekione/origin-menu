@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 import { optimizeImage, compressImageFile } from '@/lib/image'
-import { Field, Toggle, inputCls } from '../components/FormPrimitives'
+import { Field, Toggle, inputCls } from '../-components/FormPrimitives'
 import { PremiumSelect } from '@/components/ui/PremiumSelect'
 import {
   upsertMenuItem,
