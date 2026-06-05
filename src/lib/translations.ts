@@ -353,6 +353,13 @@ export const translations = {
     devices_plural: '{count} devices',
     devices_single: '{count} device',
     from_devices: 'from {devices}',
+
+    // Media & Layout
+    media_label: 'Photo / Video / GIF',
+    media_size_error_video: 'Video must be under 50MB',
+    media_size_error_image: 'Image must be under 4MB',
+    layout_grid: 'Grid',
+    layout_list: 'List',
   },
   am: {
     // Common
@@ -691,6 +698,13 @@ export const translations = {
     devices_plural: '{count} መሳሪያዎች',
     devices_single: '{count} መሳሪያ',
     from_devices: 'ከ{devices}',
+
+    // Media & Layout
+    media_label: 'ፈቶ / ቪዲዮ / GIF',
+    media_size_error_video: 'ቪዲዮው ከ 50MB ተክሉ አይዜልም',
+    media_size_error_image: 'ፈቶው ከ 4MB ተክሉ አይዜልም',
+    layout_grid: 'ጥቅል ዕይታ',
+    layout_list: 'ዝርዝር ዕይታ',
   },
 } as const
 

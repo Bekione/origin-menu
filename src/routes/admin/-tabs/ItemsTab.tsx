@@ -14,6 +14,13 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 import { optimizeImage, compressImageFile } from '@/lib/image'
+import {
+  getMediaType,
+  shouldBypassCompression,
+  readFileAsBase64,
+  VIDEO_MAX_SIZE,
+  IMAGE_MAX_SIZE,
+} from '@/lib/media'
 import { Field, Toggle, inputCls } from '../-components/FormPrimitives'
 import { PremiumSelect } from '@/components/ui/PremiumSelect'
 import {
@@ -320,11 +327,22 @@ function ItemRow({
           <GripVertical className="h-3.5 w-3.5 cursor-grab text-muted-foreground/30 active:cursor-grabbing" />
           <div className="ml-2 overflow-hidden rounded-lg bg-muted border border-border shrink-0 transition-all h-14 w-14">
             {item.image_url ? (
-              <img
-                src={item.image_url}
-                className={`h-full w-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-                onLoad={() => setImgLoaded(true)}
-              />
+              getMediaType(item.image_url) === 'video' ? (
+                <video
+                  src={item.image_url}
+                  className="h-full w-full object-cover"
+                  muted
+                  autoPlay
+                  loop
+                  playsInline
+                />
+              ) : (
+                <img
+                  src={item.image_url}
+                  className={`h-full w-full object-cover transition-opacity duration-300 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+                  onLoad={() => setImgLoaded(true)}
+                />
+              )
             ) : (
               <div className="flex h-full w-full items-center justify-center opacity-20">
                 <ChefHat className="h-6 w-6" />
@@ -478,25 +496,41 @@ function ItemForm({
   const upload = useServerFn(uploadItemImage)
 
   const onFile = async (file: File) => {
-    if (file.size > 4 * 1024 * 1024) {
-      setError('Image must be under 4MB')
+    const isVideo = file.type.startsWith('video/')
+    const isGif = file.type === 'image/gif'
+    const maxSize = isVideo ? VIDEO_MAX_SIZE : IMAGE_MAX_SIZE
+    if (file.size > maxSize) {
+      setError(
+        isVideo ? t('media_size_error_video') : t('media_size_error_image'),
+      )
       return
     }
     setUploading(true)
     setError('')
     try {
-      const base64 = await compressImageFile(file, 800, 0.8)
+      let base64: string
+      let contentType: string
+      let filename: string
+
+      if (shouldBypassCompression(file)) {
+        // Upload videos and GIFs as-is — no canvas compression
+        base64 = await readFileAsBase64(file)
+        contentType = file.type
+        filename = file.name
+      } else {
+        // Compress still images to WebP
+        base64 = await compressImageFile(file, 800, 0.8)
+        contentType = 'image/webp'
+        filename = file.name.replace(/\.[^/.]+$/, '') + '.webp'
+      }
+
       const res = await upload({
-        data: {
-          filename: file.name.replace(/\.[^/.]+$/, '') + '.webp',
-          contentType: 'image/webp',
-          base64,
-        },
+        data: { filename, contentType, base64 },
       })
       setForm((f) => ({ ...f, image_url: res.url }))
     } catch (e: any) {
       setError(e?.message ?? 'Upload failed')
-      toast.error('Image upload failed', {
+      toast.error('Upload failed', {
         description: !navigator.onLine
           ? 'No internet connection'
           : (e?.message ?? 'Unexpected error'),
@@ -629,15 +663,26 @@ function ItemForm({
 
           <div className="mt-4">
             <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t('photo')}
+              {t('media_label')}
             </label>
             <div className="flex items-center gap-3">
               {form.image_url ? (
-                <img
-                  src={optimizeImage(form.image_url, 150)}
-                  alt=""
-                  className="h-16 w-16 rounded-lg object-cover"
-                />
+                getMediaType(form.image_url) === 'video' ? (
+                  <video
+                    src={form.image_url}
+                    className="h-16 w-16 rounded-lg object-cover bg-muted"
+                    muted
+                    autoPlay
+                    loop
+                    playsInline
+                  />
+                ) : (
+                  <img
+                    src={optimizeImage(form.image_url, 150)}
+                    alt=""
+                    className="h-16 w-16 rounded-lg object-cover"
+                  />
+                )
               ) : (
                 <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
                   <Upload className="h-5 w-5" />
@@ -651,7 +696,7 @@ function ItemForm({
                     : t('upload')}
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/mp4,video/webm,.gif"
                   hidden
                   onChange={(e) => {
                     const f = e.target.files?.[0]

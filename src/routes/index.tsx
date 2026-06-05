@@ -28,6 +28,8 @@ import {
   Send,
   Youtube,
   MessageCircle,
+  LayoutGrid,
+  LayoutList,
 } from 'lucide-react'
 import {
   getMenuData,
@@ -55,6 +57,7 @@ import {
 import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { Drawer } from 'vaul'
 import { optimizeImage } from '@/lib/image'
+import { getMediaType } from '@/lib/media'
 import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 
 type SearchOptions = {
@@ -160,6 +163,20 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
     url: string
     name: string
   } | null>(null)
+
+  // Layout toggle — 'list' (default) or 'grid'
+  const [layout, setLayout] = useState<'list' | 'grid'>('list')
+  useEffect(() => {
+    const saved = localStorage.getItem('menu_layout')
+    if (saved === 'grid' || saved === 'list') setLayout(saved)
+  }, [])
+  const toggleLayout = () => {
+    setLayout((prev) => {
+      const next = prev === 'list' ? 'grid' : 'list'
+      localStorage.setItem('menu_layout', next)
+      return next
+    })
+  }
 
   const handleCallWaiter = async () => {
     // Determine table number: prefer URL param, fall back to session label (parse digit)
@@ -481,15 +498,29 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
           </p>
         </section>
 
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('search_placeholder')}
-            className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm text-foreground outline-none transition focus:border-primary"
-          />
+        {/* Search + Layout Toggle */}
+        <div className="relative mb-4 flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t('search_placeholder')}
+              className="h-11 w-full rounded-xl border border-border bg-card pl-10 pr-3 text-sm text-foreground outline-none transition focus:border-primary"
+            />
+          </div>
+          <button
+            onClick={toggleLayout}
+            aria-label={layout === 'list' ? t('layout_grid') : t('layout_list')}
+            title={layout === 'list' ? t('layout_grid') : t('layout_list')}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card text-muted-foreground transition hover:border-primary hover:text-primary"
+          >
+            {layout === 'list' ? (
+              <LayoutGrid className="h-5 w-5" />
+            ) : (
+              <LayoutList className="h-5 w-5" />
+            )}
+          </button>
         </div>
 
         {/* Tag Filters */}
@@ -575,14 +606,25 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
               className="mb-8 scroll-mt-32"
             >
               <SectionTitle label={dt(cat, 'name')} />
-              <div className="mt-3 space-y-3">
+              <div
+                className={`mt-3 ${
+                  layout === 'grid'
+                    ? 'grid grid-cols-2 gap-3 sm:grid-cols-3'
+                    : 'space-y-3'
+                }`}
+              >
                 {list.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground col-span-full">
                     {t('no_items_in_cat')}
                   </p>
                 ) : (
                   list.map((i) => (
-                    <ItemCard key={i.id} item={i} onPreview={setPreviewImage} />
+                    <ItemCard
+                      key={i.id}
+                      item={i}
+                      onPreview={setPreviewImage}
+                      layout={layout}
+                    />
                   ))
                 )}
               </div>
@@ -890,7 +932,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
         lang={lang}
       />
 
-      {/* Image Previewer Modal */}
+      {/* Media Previewer Modal */}
       {previewImage && (
         <div
           className="fixed inset-0 z-200 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
@@ -900,11 +942,23 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
             className="animate-in zoom-in-95 duration-200 flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-card shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <img
-              src={previewImage.url}
-              alt={previewImage.name}
-              className="h-auto w-full object-cover"
-            />
+            {getMediaType(previewImage.url) === 'video' ? (
+              <video
+                src={previewImage.url}
+                className="h-auto w-full object-cover"
+                autoPlay
+                muted
+                loop
+                playsInline
+                controls
+              />
+            ) : (
+              <img
+                src={previewImage.url}
+                alt={previewImage.name}
+                className="h-auto w-full object-cover"
+              />
+            )}
             <div className="flex items-center justify-between px-5 py-4">
               <p className="font-display text-base text-foreground">
                 {previewImage.name}
@@ -944,9 +998,11 @@ function SectionTitle({
 function ItemCard({
   item,
   onPreview,
+  layout = 'list',
 }: {
   item: MenuItem
   onPreview: (p: { url: string; name: string }) => void
+  layout?: 'list' | 'grid'
 }) {
   const { t, dt } = useTranslation()
   const name = dt(item, 'name')
@@ -956,7 +1012,117 @@ function ItemCard({
   const { add, decrement, items: cartItems } = useCart()
   const cartItem = cartItems.find((i) => i.id === item.id)
   const qty = cartItem?.qty ?? 0
+  const mediaType = item.image_url ? getMediaType(item.image_url) : 'image'
 
+  // ---- Grid Layout ----
+  if (layout === 'grid') {
+    return (
+      <article
+        id={`item-${item.id}`}
+        className={`flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card transition-all duration-500 ${
+          unavailable ? 'opacity-50' : 'hover:border-primary/40'
+        }`}
+      >
+        {/* Media */}
+        <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
+          {item.image_url ? (
+            mediaType === 'video' ? (
+              <video
+                src={item.image_url}
+                className="h-full w-full object-cover"
+                autoPlay
+                muted
+                loop
+                playsInline
+                onClick={() => onPreview({ url: item.image_url!, name })}
+              />
+            ) : (
+              <>
+                {!imgLoaded && (
+                  <Skeleton className="absolute inset-0 h-full w-full rounded-none" />
+                )}
+                <img
+                  src={optimizeImage(item.image_url, 400)}
+                  alt={name}
+                  loading="lazy"
+                  onLoad={() => setImgLoaded(true)}
+                  onClick={() => onPreview({ url: item.image_url!, name })}
+                  className={`h-full w-full cursor-pointer object-cover transition-opacity duration-300 hover:opacity-80 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+                />
+              </>
+            )
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <span className="font-display text-3xl text-primary/30">
+                {name[0]?.toUpperCase()}
+              </span>
+            </div>
+          )}
+          {item.is_special && (
+            <span className="absolute left-2 top-2 flex items-center gap-1 rounded-full bg-yellow-400/90 px-2 py-0.5 text-[9px] font-black text-yellow-900 shadow">
+              <Star className="h-2.5 w-2.5 fill-current" />
+              {t('item_special_badge')}
+            </span>
+          )}
+        </div>
+        {/* Body */}
+        <div className="flex flex-1 flex-col justify-between p-2.5">
+          <div>
+            <h3 className="text-xs font-semibold leading-tight text-foreground line-clamp-2">
+              {name}
+            </h3>
+            <div className="mt-1 font-display text-sm text-primary">
+              {formatBirr(Number(item.price))}{' '}
+              <span className="text-[9px]">{t('currency')}</span>
+            </div>
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <div className="flex flex-wrap gap-1">
+              {item.is_vegetarian && (
+                <Tag tone="success">
+                  <Leaf className="h-2.5 w-2.5" />
+                </Tag>
+              )}
+              {item.is_fasting && <Tag tone="success">{t('fasting')}</Tag>}
+              {item.is_spicy && (
+                <Tag tone="primary">
+                  <Flame className="h-2.5 w-2.5" />
+                </Tag>
+              )}
+              {unavailable && <Tag tone="muted">{t('out_of_stock')}</Tag>}
+            </div>
+            {!unavailable && (
+              <div className="flex shrink-0 items-center gap-1">
+                {qty > 0 && (
+                  <>
+                    <button
+                      onClick={() => decrement(item.id)}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border border-border text-muted-foreground hover:border-primary hover:text-primary"
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </button>
+                    <span className="w-3.5 text-center text-xs font-bold">
+                      {qty}
+                    </span>
+                  </>
+                )}
+                <button
+                  onClick={() =>
+                    add({ id: item.id, name, price: Number(item.price) })
+                  }
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90 active:scale-95"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </article>
+    )
+  }
+
+  // ---- Default List Layout ----
   return (
     <article
       id={`item-${item.id}`}
@@ -966,17 +1132,31 @@ function ItemCard({
     >
       {item.image_url ? (
         <div className="relative h-20 w-20 shrink-0">
-          {!imgLoaded && (
-            <Skeleton className="absolute inset-0 h-20 w-20 rounded-lg" />
+          {mediaType === 'video' ? (
+            <video
+              src={item.image_url}
+              className="h-20 w-20 cursor-pointer rounded-lg object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+              onClick={() => onPreview({ url: item.image_url!, name })}
+            />
+          ) : (
+            <>
+              {!imgLoaded && (
+                <Skeleton className="absolute inset-0 h-20 w-20 rounded-lg" />
+              )}
+              <img
+                src={optimizeImage(item.image_url, 200)}
+                alt={name}
+                loading="lazy"
+                onLoad={() => setImgLoaded(true)}
+                onClick={() => onPreview({ url: item.image_url!, name })}
+                className={`h-20 w-20 cursor-pointer rounded-lg object-cover transition-opacity duration-300 hover:opacity-80 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+              />
+            </>
           )}
-          <img
-            src={optimizeImage(item.image_url, 200)}
-            alt={name}
-            loading="lazy"
-            onLoad={() => setImgLoaded(true)}
-            onClick={() => onPreview({ url: item.image_url!, name })}
-            className={`h-20 w-20 cursor-pointer rounded-lg object-cover transition-opacity duration-300 hover:opacity-80 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-          />
         </div>
       ) : (
         <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-lg bg-muted">
@@ -1094,16 +1274,29 @@ function FeaturedCard({ item }: { item: MenuItem }) {
       {/* Image area — long press/click opens preview, tap scrolls */}
       <button onClick={scrollToItem} className="w-full text-left">
         {item.image_url ? (
-          <div className="relative h-28 w-full">
-            {!imgLoaded && (
-              <Skeleton className="absolute inset-0 h-28 w-full rounded-none" />
+          <div className="relative h-28 w-full overflow-hidden">
+            {getMediaType(item.image_url) === 'video' ? (
+              <video
+                src={item.image_url}
+                className="h-28 w-full object-cover"
+                autoPlay
+                muted
+                loop
+                playsInline
+              />
+            ) : (
+              <>
+                {!imgLoaded && (
+                  <Skeleton className="absolute inset-0 h-28 w-full rounded-none" />
+                )}
+                <img
+                  src={optimizeImage(item.image_url, 300)}
+                  alt={name}
+                  onLoad={() => setImgLoaded(true)}
+                  className={`h-28 w-full object-cover transition-opacity duration-300 hover:opacity-80 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+                />
+              </>
             )}
-            <img
-              src={optimizeImage(item.image_url, 300)}
-              alt={name}
-              onLoad={() => setImgLoaded(true)}
-              className={`h-28 w-full object-cover transition-opacity duration-300 hover:opacity-80 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
-            />
           </div>
         ) : (
           <div className="flex h-28 items-center justify-center bg-muted">
