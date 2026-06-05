@@ -16,6 +16,7 @@ import { translations } from '@/lib/translations'
 import { UpdaterModal, type UpdateInfo } from '@/components/UpdaterModal'
 import { check } from '@tauri-apps/plugin-updater'
 import { relaunch } from '@tauri-apps/plugin-process'
+import { Analytics } from "@vercel/analytics/next"
 
 import appCss from '../styles.css?url'
 
@@ -189,6 +190,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <Analytics />
         <RootProviders>{children}</RootProviders>
         <Scripts />
       </body>
