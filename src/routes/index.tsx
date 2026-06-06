@@ -18,6 +18,7 @@ import {
   Trash2,
   ChevronUp,
   Wifi,
+  ChevronLeft,
   ChevronRight,
   Copy,
   Star,
@@ -35,6 +36,7 @@ import {
   getMenuData,
   type MenuData,
   type MenuItem,
+  type Category,
 } from '@/server/menu.functions'
 import logo from '@/assets/origin-logo.jpg'
 import logoGray from '@/assets/origin-logo-gray.png'
@@ -57,7 +59,9 @@ import {
 import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { Drawer } from 'vaul'
 import { optimizeImage } from '@/lib/image'
+import { MediaSlideshow } from '@/components/MediaSlideshow'
 import { getMediaType } from '@/lib/media'
+import { getServerData } from '@/server/i18n.functions'
 import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 
 type SearchOptions = {
@@ -67,7 +71,13 @@ type SearchOptions = {
 }
 
 export const Route = createFileRoute('/')({
-  loader: () => getMenuData(),
+  loader: async () => {
+    const [menuData, serverData] = await Promise.all([
+      getMenuData(),
+      getServerData(),
+    ])
+    return { ...menuData, ...serverData }
+  },
   validateSearch: (search: Record<string, unknown>): SearchOptions => ({
     table: search.table ? Number(search.table) : undefined,
     t: typeof search.t === 'string' ? search.t : undefined,
@@ -87,16 +97,36 @@ function formatBirr(n: number) {
 }
 
 function MenuPage() {
-  const { categories, items, info } = Route.useLoaderData() as MenuData
+  const {
+    categories,
+    items,
+    info,
+    layout: initialLayout,
+  } = Route.useLoaderData() as MenuData & { layout: 'list' | 'grid' }
 
   return (
     <CartProvider>
-      <MenuPageInner categories={categories} items={items} info={info} />
+      <MenuPageInner
+        categories={categories}
+        items={items}
+        info={info}
+        initialLayout={initialLayout}
+      />
     </CartProvider>
   )
 }
 
-function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
+function MenuPageInner({
+  categories,
+  items: initialItems,
+  info,
+  initialLayout,
+}: {
+  categories: Category[]
+  items: MenuItem[]
+  info: any
+  initialLayout: 'list' | 'grid'
+}) {
   const { lang, setLang, t, dt } = useTranslation()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -159,21 +189,21 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
   const [aiOpen, setAiOpen] = useState(false)
   const [isCalling, setIsCalling] = useState(false)
   const { count, total } = useCart()
-  const [previewImage, setPreviewImage] = useState<{
-    url: string
+  const [previewMedia, setPreviewMedia] = useState<{
+    items: string[]
     name: string
+    index: number
   } | null>(null)
 
   // Layout toggle — 'list' (default) or 'grid'
-  const [layout, setLayout] = useState<'list' | 'grid'>('list')
-  useEffect(() => {
-    const saved = localStorage.getItem('menu_layout')
-    if (saved === 'grid' || saved === 'list') setLayout(saved)
-  }, [])
+  const [layout, setLayout] = useState<'list' | 'grid'>(initialLayout)
+
   const toggleLayout = () => {
     setLayout((prev) => {
       const next = prev === 'list' ? 'grid' : 'list'
       localStorage.setItem('menu_layout', next)
+      // Set cookie for SSR (expires in 1 year)
+      document.cookie = `menu_layout=${next};path=/;max-age=${60 * 60 * 24 * 365}`
       return next
     })
   }
@@ -580,7 +610,11 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
             <ScrollFade direction="horizontal" className="-mx-4 mt-3">
               <div className="scrollbar-none flex gap-3 overflow-x-auto px-4">
                 {featured.map((i) => (
-                  <FeaturedCard key={i.id} item={i} />
+                  <FeaturedCard
+                    key={i.id}
+                    item={i}
+                    onPreview={setPreviewMedia}
+                  />
                 ))}
               </div>
             </ScrollFade>
@@ -622,7 +656,7 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
                     <ItemCard
                       key={i.id}
                       item={i}
-                      onPreview={setPreviewImage}
+                      onPreview={setPreviewMedia}
                       layout={layout}
                     />
                   ))
@@ -933,41 +967,93 @@ function MenuPageInner({ categories, items: initialItems, info }: MenuData) {
       />
 
       {/* Media Previewer Modal */}
-      {previewImage && (
+      {previewMedia && (
         <div
-          className="fixed inset-0 z-200 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
-          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 z-200 flex items-center justify-center bg-black/80 px-4 backdrop-blur-sm"
+          onClick={() => setPreviewMedia(null)}
         >
           <div
-            className="animate-in zoom-in-95 duration-200 flex w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-card shadow-2xl"
+            className="animate-in zoom-in-95 duration-200 flex w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-card shadow-2xl transition-all"
             onClick={(e) => e.stopPropagation()}
           >
-            {getMediaType(previewImage.url) === 'video' ? (
-              <video
-                src={previewImage.url}
-                className="h-auto w-full object-cover"
-                autoPlay
-                muted
-                loop
-                playsInline
-                controls
-              />
-            ) : (
-              <img
-                src={previewImage.url}
-                alt={previewImage.name}
-                className="h-auto w-full object-cover"
-              />
-            )}
-            <div className="flex items-center justify-between px-5 py-4">
-              <p className="font-display text-base text-foreground">
-                {previewImage.name}
-              </p>
+            <div className="relative flex items-center justify-center bg-black/5 max-h-[80vh] overflow-hidden group">
+              {getMediaType(previewMedia.items[previewMedia.index]) ===
+              'video' ? (
+                <video
+                  key={previewMedia.items[previewMedia.index]}
+                  src={previewMedia.items[previewMedia.index]}
+                  className="max-h-[80vh] w-full object-contain"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                  controls
+                />
+              ) : (
+                <img
+                  src={previewMedia.items[previewMedia.index]}
+                  alt={previewMedia.name}
+                  className="max-h-[80vh] w-full object-contain"
+                />
+              )}
+
+              {/* Navigation Arrows */}
+              {previewMedia.items.length > 1 && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setPreviewMedia((pm) =>
+                        pm
+                          ? {
+                              ...pm,
+                              index:
+                                (pm.index - 1 + pm.items.length) %
+                                pm.items.length,
+                            }
+                          : null,
+                      )
+                    }}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <ChevronLeft className="h-6 w-6" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setPreviewMedia((pm) =>
+                        pm
+                          ? {
+                              ...pm,
+                              index: (pm.index + 1) % pm.items.length,
+                            }
+                          : null,
+                      )
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <ChevronRight className="h-6 w-6" />
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between px-5 py-4 shrink-0 border-t border-border bg-card">
+              <div className="min-w-0">
+                <p className="font-display text-base text-foreground truncate">
+                  {previewMedia.name}
+                </p>
+                {previewMedia.items.length > 1 && (
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold">
+                    {previewMedia.index + 1} / {previewMedia.items.length}
+                  </p>
+                )}
+              </div>
               <button
-                onClick={() => setPreviewImage(null)}
-                className="rounded-full border border-border p-2 text-muted-foreground hover:text-foreground"
+                onClick={() => setPreviewMedia(null)}
+                className="ml-4 rounded-full bg-muted p-2 text-muted-foreground transition hover:bg-primary/10 hover:text-primary"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
           </div>
@@ -1001,7 +1087,7 @@ function ItemCard({
   layout = 'list',
 }: {
   item: MenuItem
-  onPreview: (p: { url: string; name: string }) => void
+  onPreview: (p: { items: string[]; name: string; index: number }) => void
   layout?: 'list' | 'grid'
 }) {
   const { t, dt } = useTranslation()
@@ -1025,7 +1111,19 @@ function ItemCard({
       >
         {/* Media */}
         <div className="relative aspect-4/3 w-full overflow-hidden bg-muted">
-          {item.image_url ? (
+          {Array.isArray(item.gallery) && item.gallery.length > 0 ? (
+            <MediaSlideshow
+              media={item.gallery as string[]}
+              aspectRatio="h-full w-full"
+              onMediaClick={(url: string) =>
+                onPreview({
+                  items: item.gallery as string[],
+                  name,
+                  index: (item.gallery as string[]).indexOf(url),
+                })
+              }
+            />
+          ) : item.image_url ? (
             mediaType === 'video' ? (
               <video
                 src={item.image_url}
@@ -1034,7 +1132,9 @@ function ItemCard({
                 muted
                 loop
                 playsInline
-                onClick={() => onPreview({ url: item.image_url!, name })}
+                onClick={() =>
+                  onPreview({ items: [item.image_url!], name, index: 0 })
+                }
               />
             ) : (
               <>
@@ -1046,7 +1146,9 @@ function ItemCard({
                   alt={name}
                   loading="lazy"
                   onLoad={() => setImgLoaded(true)}
-                  onClick={() => onPreview({ url: item.image_url!, name })}
+                  onClick={() =>
+                    onPreview({ items: [item.image_url!], name, index: 0 })
+                  }
                   className={`h-full w-full cursor-pointer object-cover transition-opacity duration-300 hover:opacity-80 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
                 />
               </>
@@ -1130,7 +1232,20 @@ function ItemCard({
         unavailable ? 'opacity-50' : 'hover:border-primary/40'
       }`}
     >
-      {item.image_url ? (
+      {Array.isArray(item.gallery) && item.gallery.length > 0 ? (
+        <MediaSlideshow
+          media={item.gallery as string[]}
+          aspectRatio="h-20 w-20 shrink-0"
+          className="rounded-lg"
+          onMediaClick={(url: string) =>
+            onPreview({
+              items: item.gallery as string[],
+              name,
+              index: (item.gallery as string[]).indexOf(url),
+            })
+          }
+        />
+      ) : item.image_url ? (
         <div className="relative h-20 w-20 shrink-0">
           {mediaType === 'video' ? (
             <video
@@ -1140,7 +1255,9 @@ function ItemCard({
               muted
               loop
               playsInline
-              onClick={() => onPreview({ url: item.image_url!, name })}
+              onClick={() =>
+                onPreview({ items: [item.image_url!], name, index: 0 })
+              }
             />
           ) : (
             <>
@@ -1152,7 +1269,9 @@ function ItemCard({
                 alt={name}
                 loading="lazy"
                 onLoad={() => setImgLoaded(true)}
-                onClick={() => onPreview({ url: item.image_url!, name })}
+                onClick={() =>
+                  onPreview({ items: [item.image_url!], name, index: 0 })
+                }
                 className={`h-20 w-20 cursor-pointer rounded-lg object-cover transition-opacity duration-300 hover:opacity-80 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
               />
             </>
@@ -1240,7 +1359,13 @@ function ItemCard({
   )
 }
 
-function FeaturedCard({ item }: { item: MenuItem }) {
+function FeaturedCard({
+  item,
+  onPreview,
+}: {
+  item: MenuItem
+  onPreview: (p: { items: string[]; name: string; index: number }) => void
+}) {
   const { dt, t } = useTranslation()
   const name = dt(item, 'name')
   const [imgLoaded, setImgLoaded] = useState(false)
@@ -1273,7 +1398,20 @@ function FeaturedCard({ item }: { item: MenuItem }) {
     <div className="relative w-44 shrink-0 overflow-hidden rounded-xl border border-border bg-card shadow-card transition hover:border-primary">
       {/* Image area — long press/click opens preview, tap scrolls */}
       <button onClick={scrollToItem} className="w-full text-left">
-        {item.image_url ? (
+        {Array.isArray(item.gallery) && item.gallery.length > 0 ? (
+          <MediaSlideshow
+            media={item.gallery as string[]}
+            aspectRatio="h-28 w-full"
+            autoPlayInterval={4000}
+            onMediaClick={(url: string) =>
+              onPreview({
+                items: item.gallery as string[],
+                name,
+                index: (item.gallery as string[]).indexOf(url),
+              })
+            }
+          />
+        ) : item.image_url ? (
           <div className="relative h-28 w-full overflow-hidden">
             {getMediaType(item.image_url) === 'video' ? (
               <video

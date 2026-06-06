@@ -74,6 +74,7 @@ const ItemSchema = z.object({
   is_featured: z.boolean(),
   is_special: z.boolean().optional().default(false),
   sort_order: z.number().int().min(0).max(10000),
+  gallery: z.array(z.string()).optional().nullable(),
 })
 
 export const upsertMenuItem = createServerFn({ method: 'POST' })
@@ -84,14 +85,21 @@ export const upsertMenuItem = createServerFn({ method: 'POST' })
     if (id) {
       const { error } = await supabaseAdmin
         .from('menu_items')
-        .update({ ...payload, updated_at: new Date().toISOString() })
+        .update({
+          ...payload,
+          gallery: payload.gallery as any,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', id)
       if (error) throw new Error(error.message)
       return { id }
     }
     const { data: inserted, error } = await supabaseAdmin
       .from('menu_items')
-      .insert(payload)
+      .insert({
+        ...payload,
+        gallery: payload.gallery as any,
+      })
       .select('id')
       .single()
     if (error) throw new Error(error.message)

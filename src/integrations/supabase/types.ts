@@ -78,6 +78,7 @@ export type Database = {
           price: number
           sort_order: number
           updated_at: string
+          gallery: Json | null
         }
         Insert: {
           category_id?: string | null
@@ -97,6 +98,7 @@ export type Database = {
           price?: number
           sort_order?: number
           updated_at?: string
+          gallery?: Json | null
         }
         Update: {
           category_id?: string | null
@@ -116,6 +118,7 @@ export type Database = {
           price?: number
           sort_order?: number
           updated_at?: string
+          gallery?: Json | null
         }
         Relationships: [
           {

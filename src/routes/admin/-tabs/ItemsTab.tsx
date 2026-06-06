@@ -488,6 +488,7 @@ function ItemForm({
     is_featured: item?.is_featured ?? false,
     is_special: item?.is_special ?? false,
     sort_order: item?.sort_order ?? 0,
+    gallery: (item?.gallery as string[]) || [],
   })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -495,45 +496,53 @@ function ItemForm({
   const upsert = useServerFn(upsertMenuItem)
   const upload = useServerFn(uploadItemImage)
 
-  const onFile = async (file: File) => {
-    const isVideo = file.type.startsWith('video/')
-    const isGif = file.type === 'image/gif'
-    const maxSize = isVideo ? VIDEO_MAX_SIZE : IMAGE_MAX_SIZE
-    if (file.size > maxSize) {
-      setError(
-        isVideo ? t('media_size_error_video') : t('media_size_error_image'),
-      )
-      return
-    }
+  const onFiles = async (files: File[]) => {
     setUploading(true)
     setError('')
     try {
-      let base64: string
-      let contentType: string
-      let filename: string
+      const uploadPromises = files.map(async (file) => {
+        const isVideo = file.type.startsWith('video/')
+        const isGif = file.type === 'image/gif'
+        const maxSize = isVideo ? VIDEO_MAX_SIZE : IMAGE_MAX_SIZE
 
-      if (shouldBypassCompression(file)) {
-        // Upload videos and GIFs as-is — no canvas compression
-        base64 = await readFileAsBase64(file)
-        contentType = file.type
-        filename = file.name
-      } else {
-        // Compress still images to WebP
-        base64 = await compressImageFile(file, 800, 0.8)
-        contentType = 'image/webp'
-        filename = file.name.replace(/\.[^/.]+$/, '') + '.webp'
-      }
+        if (file.size > maxSize) {
+          throw new Error(
+            `${file.name}: ${isVideo ? t('media_size_error_video') : t('media_size_error_image')}`,
+          )
+        }
 
-      const res = await upload({
-        data: { filename, contentType, base64 },
+        let base64: string
+        let contentType: string
+        let filename: string
+
+        if (shouldBypassCompression(file)) {
+          base64 = await readFileAsBase64(file)
+          contentType = file.type
+          filename = file.name
+        } else {
+          base64 = await compressImageFile(file, 800, 0.8)
+          contentType = 'image/webp'
+          filename = file.name.replace(/\.[^/.]+$/, '') + '.webp'
+        }
+
+        const res = await upload({ data: { filename, contentType, base64 } })
+        return res.url
       })
-      setForm((f) => ({ ...f, image_url: res.url }))
+
+      const urls = await Promise.all(uploadPromises)
+
+      setForm((f) => {
+        const newGallery = [...f.gallery, ...urls]
+        return {
+          ...f,
+          image_url: f.image_url || urls[0],
+          gallery: newGallery,
+        }
+      })
     } catch (e: any) {
       setError(e?.message ?? 'Upload failed')
       toast.error('Upload failed', {
-        description: !navigator.onLine
-          ? 'No internet connection'
-          : (e?.message ?? 'Unexpected error'),
+        description: e?.message ?? 'Unexpected error',
       })
     } finally {
       setUploading(false)
@@ -562,6 +571,7 @@ function ItemForm({
           is_featured: form.is_featured,
           is_special: form.is_special,
           sort_order: form.sort_order,
+          gallery: form.gallery,
         },
       })
       onSaved()
@@ -696,24 +706,71 @@ function ItemForm({
                     : t('upload')}
                 <input
                   type="file"
+                  multiple
                   accept="image/*,video/mp4,video/webm,.gif"
                   hidden
                   onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) onFile(f)
+                    const files = Array.from(e.target.files || [])
+                    if (files.length > 0) onFiles(files)
                   }}
                 />
               </label>
               {form.image_url && (
                 <button
                   type="button"
-                  onClick={() => setForm({ ...form, image_url: '' })}
+                  onClick={() =>
+                    setForm({ ...form, image_url: '', gallery: [] })
+                  }
                   className="text-xs text-muted-foreground hover:text-destructive"
                 >
                   {t('remove')}
                 </button>
               )}
             </div>
+
+            {/* Gallery Preview */}
+            {form.gallery.length > 0 && (
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                {form.gallery.map((url, idx) => (
+                  <div
+                    key={idx}
+                    className="relative group aspect-square rounded-md overflow-hidden bg-muted border border-border"
+                  >
+                    {getMediaType(url) === 'video' ? (
+                      <video
+                        src={url}
+                        className="h-full w-full object-cover"
+                        muted
+                      />
+                    ) : (
+                      <img
+                        src={optimizeImage(url, 150)}
+                        className="h-full w-full object-cover"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newGallery = form.gallery.filter(
+                          (_, i) => i !== idx,
+                        )
+                        setForm({
+                          ...form,
+                          gallery: newGallery,
+                          image_url:
+                            form.image_url === url
+                              ? newGallery[0] || ''
+                              : form.image_url,
+                        })
+                      }}
+                      className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="mt-4 flex flex-wrap gap-3">
