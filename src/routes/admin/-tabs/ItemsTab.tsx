@@ -488,7 +488,8 @@ function ItemForm({
     is_featured: item?.is_featured ?? false,
     is_special: item?.is_special ?? false,
     sort_order: item?.sort_order ?? 0,
-    gallery: (item?.gallery as string[]) || [],
+    gallery:
+      (item?.gallery as string[]) || (item?.image_url ? [item.image_url] : []),
   })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -532,7 +533,13 @@ function ItemForm({
       const urls = await Promise.all(uploadPromises)
 
       setForm((f) => {
-        const newGallery = [...f.gallery, ...urls]
+        // Ensure the current image_url is in the gallery if it exists
+        const currentGallery = [...f.gallery]
+        if (f.image_url && !currentGallery.includes(f.image_url)) {
+          currentGallery.unshift(f.image_url)
+        }
+
+        const newGallery = [...currentGallery, ...urls]
         return {
           ...f,
           image_url: f.image_url || urls[0],
@@ -571,7 +578,13 @@ function ItemForm({
           is_featured: form.is_featured,
           is_special: form.is_special,
           sort_order: form.sort_order,
-          gallery: form.gallery,
+          // Guarantee gallery is an array and contains the primary image_url at [0]
+          gallery:
+            form.gallery.length > 0
+              ? form.gallery
+              : form.image_url
+                ? [form.image_url]
+                : [],
         },
       })
       onSaved()
@@ -701,8 +714,8 @@ function ItemForm({
               <label className="cursor-pointer rounded-md border border-border px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary">
                 {uploading
                   ? t('uploading')
-                  : form.image_url
-                    ? t('replace')
+                  : form.gallery.length > 0 || form.image_url
+                    ? t('add_media')
                     : t('upload')}
                 <input
                   type="file"
@@ -715,7 +728,7 @@ function ItemForm({
                   }}
                 />
               </label>
-              {form.image_url && (
+              {form.gallery.length > 0 && (
                 <button
                   type="button"
                   onClick={() =>
@@ -723,7 +736,7 @@ function ItemForm({
                   }
                   className="text-xs text-muted-foreground hover:text-destructive"
                 >
-                  {t('remove')}
+                  {t('remove_all')}
                 </button>
               )}
             </div>
