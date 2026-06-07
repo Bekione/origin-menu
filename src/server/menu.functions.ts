@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import type { Tables } from '@/integrations/supabase/types'
 import { getRequest } from '@tanstack/react-start/server'
 import { auth } from '#/lib/auth'
+import { createOpenAI } from '@ai-sdk/openai'
+import { generateText } from 'ai'
 
 export type Category = Tables<'categories'>
 export type MenuItem = Tables<'menu_items'>
@@ -88,10 +90,10 @@ export const upsertMenuItem = createServerFn({ method: 'POST' })
         .from('menu_items')
         .update({
           ...payload,
-          gallery: payload.gallery as any,
-          dietary: payload.dietary as any,
+          gallery: payload.gallery,
+          dietary: payload.dietary,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq('id', id)
       if (error) throw new Error(error.message)
       return { id }
@@ -100,9 +102,9 @@ export const upsertMenuItem = createServerFn({ method: 'POST' })
       .from('menu_items')
       .insert({
         ...payload,
-        gallery: payload.gallery as any,
-        dietary: payload.dietary as any,
-      })
+        gallery: payload.gallery,
+        dietary: payload.dietary,
+      } as any)
       .select('id')
       .single()
     if (error) throw new Error(error.message)
@@ -318,4 +320,55 @@ export const uploadItemImage = createServerFn({ method: 'POST' })
       .from('menu-images')
       .getPublicUrl(path)
     return { url: pub.publicUrl }
+  })
+
+export const generateItemDescription = createServerFn({ method: 'POST' })
+  .inputValidator((d) =>
+    z
+      .object({
+        name: z.string().min(1).max(120),
+        name_am: z.string().max(120).optional(),
+        price: z.number().optional(),
+        is_vegetarian: z.boolean().optional(),
+        is_spicy: z.boolean().optional(),
+        is_fasting: z.boolean().optional(),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data }) => {
+    await checkAuth()
+    const openai = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    const flags = [
+      data.is_vegetarian ? 'vegetarian' : '',
+      data.is_fasting ? 'fasting-friendly' : '',
+      data.is_spicy ? 'spicy' : '',
+    ]
+      .filter(Boolean)
+      .join(', ')
+
+    const prompt = `You are a creative food copywriter for "Origin Restaurant" in Addis Ababa, Ethiopia.
+Write a short, appetizing menu description for the dish below. Be sensory and evocative. Max 2 sentences per language.
+
+Dish: ${data.name}${data.name_am ? ` (${data.name_am})` : ''}
+Price: ${data.price ?? ''}  ETB
+Attributes: ${flags || 'none'}
+
+Respond ONLY with a JSON object in this exact format (no extra text):
+{"description": "...", "description_am": "..."}
+
+For description_am, write in Amharic script. Keep both descriptions concise and appetizing.`
+
+    const { text } = await generateText({
+      model: openai('gpt-4o-mini'),
+      prompt,
+      temperature: 0.8,
+    })
+
+    // Strip possible markdown code fences
+    const cleaned = text.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(cleaned)
+    return {
+      description: parsed.description ?? '',
+      description_am: parsed.description_am ?? '',
+    }
   })

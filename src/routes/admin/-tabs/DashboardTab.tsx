@@ -11,6 +11,7 @@ import {
   BarChart3,
   Layout,
   QrCode,
+  Star,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -36,6 +37,7 @@ import {
   type TopStats,
   type QrScanStats,
 } from '@/server/admin.functions'
+import { getFeedbackSummary } from '@/server/feedback.functions'
 import { Skeleton } from '@/components/ui/skeleton'
 import ScrollFade from '#/components/ScrollFade'
 
@@ -49,6 +51,10 @@ export function DashboardTab() {
   const [topStats, setTopStats] = useState<TopStats | null>(null)
   const [outOfStock, setOutOfStock] = useState<OutOfStockItem[]>([])
   const [qrScans, setQrScans] = useState<QrScanStats | null>(null)
+  const [feedbackSummary, setFeedbackSummary] = useState<{
+    avg_all: number | null
+    count_all: number
+  } | null>(null)
   const [loading, setLoading] = useState(true)
   const [range, setRange] = useState<'7' | '30'>('7')
 
@@ -65,6 +71,7 @@ export function DashboardTab() {
           setOutOfStock(os as OutOfStockItem[]),
         ),
         getQrScanCount().then(setQrScans),
+        getFeedbackSummary().then(setFeedbackSummary),
       ])
     } catch (error) {
       console.error('Error fetching dashboard data:', error)
@@ -211,6 +218,18 @@ export function DashboardTab() {
       color: 'text-cyan-500',
       bg: 'bg-cyan-500/10',
     },
+    {
+      icon: Star,
+      label: t('avg_rating'),
+      value: feedbackSummary?.avg_all ? `${feedbackSummary.avg_all}/5` : '—',
+      sub: feedbackSummary
+        ? t('visits_plural', {
+            count: feedbackSummary.count_all.toLocaleString(),
+          }).replace('ጉብኝት', 'አስተያየት') // Simple replace for feedback count in AM if needed, or just count
+        : null,
+      color: 'text-yellow-500',
+      bg: 'bg-yellow-500/10',
+    },
   ]
 
   return (
@@ -224,52 +243,101 @@ export function DashboardTab() {
         </p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {!kpis
-          ? [1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="h-32 w-full animate-pulse rounded-2xl border border-border bg-card/40 backdrop-blur-xl p-6"
-              >
-                <Skeleton className="h-4 w-24 mb-4" />
-                <Skeleton className="h-8 w-32" />
-              </div>
-            ))
-          : kpiData.map(({ icon: Icon, label, value, sub, color, bg }) => (
-              <div
-                key={label}
-                className="group relative overflow-hidden rounded-2xl border border-white/5 bg-card/40 backdrop-blur-md p-6 shadow-xl transition-all hover:border-white/10 hover:shadow-2xl"
-              >
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Primary KPIs (Large) */}
+        {!kpis ? (
+          <div className="lg:col-span-4 space-y-6">
+            {[1, 2].map((i) => (
+              <Skeleton key={i} className="h-[160px] w-full rounded-3xl" />
+            ))}
+          </div>
+        ) : (
+          <div className="lg:col-span-5 space-y-6">
+            {kpiData
+              .slice(0, 2)
+              .map(({ icon: Icon, label, value, sub, color, bg }) => (
                 <div
-                  className={`absolute -right-12 -top-12 h-48 w-36 rounded-full ${bg} opacity-20 blur-3xl transition-all duration-700 group-hover:scale-150 group-hover:opacity-40`}
-                />
-                <div
-                  className={`absolute -right-8 -top-8 h-32 w-32 rounded-full ${bg} opacity-10 blur-2xl transition-all duration-500 group-hover:translate-x-4`}
-                />
-                <div className="relative z-10 flex flex-col gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 aspect-square items-center justify-center rounded-xl bg-white/5 backdrop-blur-sm border border-white/10">
-                      <Icon className={`h-5 w-5 ${color}`} />
+                  key={label}
+                  className="group relative h-[160px] overflow-hidden rounded-3xl border border-white/5 bg-card/40 backdrop-blur-md p-8 shadow-xl transition-all hover:border-white/10 hover:shadow-2xl hover:shadow-primary/5"
+                >
+                  <div
+                    className={`absolute -right-16 -top-16 h-64 w-64 rounded-full ${bg} opacity-20 blur-3xl transition-all duration-700 group-hover:scale-125 group-hover:opacity-30`}
+                  />
+                  <div
+                    className={`absolute inset-0 bg-linear-to-br from-${color.split('-')[1]}-500/5 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100`}
+                  />
+                  <div className="relative z-10 flex h-full flex-col justify-between">
+                    <div className="flex items-center justify-between">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/5 border border-white/10 shadow-inner group-hover:border-white/20 transition-colors">
+                        <Icon className={`h-6 w-6 ${color}`} />
+                      </div>
+                      <span className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground/60 transition-colors group-hover:text-muted-foreground">
+                        {label}
+                      </span>
                     </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80">
-                      {label}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <p className="font-display text-2xl font-black tracking-tighter text-foreground">
-                      {value}
-                    </p>
-                    {sub && (
-                      <p
-                        className={`text-[10px] font-bold uppercase tracking-widest ${color} opacity-80`}
-                      >
-                        {sub}
+                    <div>
+                      <p className="font-display text-4xl font-black tracking-tighter text-foreground group-hover:text-primary transition-colors">
+                        {value}
                       </p>
-                    )}
+                      {sub && (
+                        <p
+                          className={`mt-1 text-[11px] font-bold uppercase tracking-widest ${color} opacity-80`}
+                        >
+                          {sub}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ))}
+          </div>
+        )}
+
+        {/* Secondary KPIs (2x2 Grid) */}
+        {!kpis ? (
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map((i) => (
+              <Skeleton key={i} className="h-[160px] w-full rounded-3xl" />
             ))}
+          </div>
+        ) : (
+          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
+            {kpiData
+              .slice(2)
+              .map(({ icon: Icon, label, value, sub, color, bg }) => (
+                <div
+                  key={label}
+                  className="group relative overflow-hidden rounded-3xl border border-white/5 bg-card/40 backdrop-blur-md p-6 shadow-xl transition-all hover:border-white/10 hover:shadow-2xl"
+                >
+                  <div
+                    className={`absolute -right-10 -top-10 h-40 w-40 rounded-full ${bg} opacity-15 blur-2xl transition-all duration-700 group-hover:scale-110 group-hover:opacity-25`}
+                  />
+                  <div className="relative z-10 flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 border border-white/10 group-hover:border-white/20 transition-colors">
+                        <Icon className={`h-5 w-5 ${color}`} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/80 transition-colors group-hover:text-muted-foreground">
+                        {label}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <p className="font-display text-2xl font-black tracking-tight text-foreground group-hover:text-primary transition-colors">
+                        {value}
+                      </p>
+                      {sub && (
+                        <p
+                          className={`text-[10px] font-bold uppercase tracking-widest ${color} opacity-80`}
+                        >
+                          {sub}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
       </div>
 
       {/* Sales Trend Chart Section */}

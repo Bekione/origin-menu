@@ -23,6 +23,7 @@ import { TablesTab } from './-tabs/TablesTab'
 import { OrdersTab } from './-tabs/OrdersTab'
 import { DashboardTab } from './-tabs/DashboardTab'
 import { SettingsTab } from './-tabs/SettingsTab'
+import { FeedbackTab } from './-tabs/FeedbackTab'
 
 const MemoDashboardTab = memo(DashboardTab)
 const MemoItemsTab = memo(ItemsTab)
@@ -31,6 +32,7 @@ const MemoInfoTab = memo(InfoTab)
 const MemoSettingsTab = memo(SettingsTab)
 const MemoTablesTab = memo(TablesTab)
 const MemoOrdersTab = memo(OrdersTab)
+const MemoFeedbackTab = memo(FeedbackTab)
 
 // ─── Route types ──────────────────────────────────────────────────────────────
 
@@ -42,6 +44,7 @@ type TabValue =
   | 'tables'
   | 'orders'
   | 'settings'
+  | 'feedback'
 
 type AdminSearch = { tab?: TabValue }
 
@@ -59,6 +62,7 @@ export const Route = createFileRoute('/admin/')({
         'tables',
         'orders',
         'settings',
+        'feedback',
       ].includes(t)
         ? (t as TabValue)
         : undefined,
@@ -208,6 +212,9 @@ function AdminPage() {
         </div>
         <div className={tab === 'settings' ? undefined : 'hidden'}>
           <MemoSettingsTab />
+        </div>
+        <div className={tab === 'feedback' ? undefined : 'hidden'}>
+          <MemoFeedbackTab />
         </div>
       </main>
     </div>

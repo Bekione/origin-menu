@@ -79,6 +79,7 @@ export type Database = {
           sort_order: number
           updated_at: string
           gallery: Json | null
+          dietary: Json | null
         }
         Insert: {
           category_id?: string | null
@@ -99,6 +100,7 @@ export type Database = {
           sort_order?: number
           updated_at?: string
           gallery?: Json | null
+          dietary?: Json | null
         }
         Update: {
           category_id?: string | null
@@ -119,6 +121,7 @@ export type Database = {
           sort_order?: number
           updated_at?: string
           gallery?: Json | null
+          dietary?: Json | null
         }
         Relationships: [
           {
@@ -150,6 +153,7 @@ export type Database = {
           tiktok_url: string | null
           updated_at: string
           wifi_password: string | null
+          dietary_tags: Json | null
         }
         Insert: {
           address?: string | null
@@ -170,6 +174,7 @@ export type Database = {
           tiktok_url?: string | null
           updated_at?: string
           wifi_password?: string | null
+          dietary_tags?: Json | null
         }
         Update: {
           address?: string | null
@@ -190,6 +195,7 @@ export type Database = {
           tiktok_url?: string | null
           updated_at?: string
           wifi_password?: string | null
+          dietary_tags?: Json | null
         }
         Relationships: []
       }
@@ -281,6 +287,44 @@ export type Database = {
           scanned_at?: string
         }
         Relationships: []
+      }
+      feedback: {
+        Row: {
+          comment: string | null
+          created_at: string
+          device_id: string | null
+          id: string
+          rating: number
+          table_id: string | null
+          table_label: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          rating: number
+          table_id?: string | null
+          table_label?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          device_id?: string | null
+          id?: string
+          rating?: number
+          table_id?: string | null
+          table_label?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'feedback_table_id_fkey'
+            columns: ['table_id']
+            isOneToOne: false
+            referencedRelation: 'restaurant_tables'
+            referencedColumns: ['id']
+          },
+        ]
       }
     }
     Views: {

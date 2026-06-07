@@ -11,6 +11,7 @@ import {
   X,
   GripVertical,
   ChefHat,
+  Sparkles,
 } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 import { optimizeImage, compressImageFile } from '@/lib/image'
@@ -29,6 +30,7 @@ import {
   toggleAvailability,
   uploadItemImage,
   reorderMenuItems,
+  generateItemDescription,
   type Category,
   type MenuItem,
   type MenuData,
@@ -497,9 +499,11 @@ function ItemForm({
   })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
   const upsert = useServerFn(upsertMenuItem)
   const upload = useServerFn(uploadItemImage)
+  const generate = useServerFn(generateItemDescription)
 
   const onFiles = async (files: File[]) => {
     setUploading(true)
@@ -557,6 +561,36 @@ function ItemForm({
       })
     } finally {
       setUploading(false)
+    }
+  }
+
+  const handleGenerate = async () => {
+    if (!form.name) {
+      toast.error('Add a name first before generating a description.')
+      return
+    }
+    setGenerating(true)
+    try {
+      const result = await generate({
+        data: {
+          name: form.name,
+          name_am: form.name_am || undefined,
+          price: Number(form.price) || undefined,
+          is_vegetarian: form.is_vegetarian,
+          is_spicy: form.is_spicy,
+          is_fasting: form.is_fasting,
+        },
+      })
+      setForm((f) => ({
+        ...f,
+        description: result.description,
+        description_am: result.description_am,
+      }))
+      toast.success('Descriptions generated!')
+    } catch (e: any) {
+      toast.error('AI generation failed', { description: e?.message })
+    } finally {
+      setGenerating(false)
     }
   }
 
@@ -651,25 +685,48 @@ function ItemForm({
                   className={inputCls}
                 />
               </Field>
-              <Field label={t('description_en')}>
-                <input
-                  value={form.description}
-                  onChange={(e) =>
-                    setForm({ ...form, description: e.target.value })
-                  }
-                  className={inputCls}
-                  placeholder={t('ingredients_placeholder')}
-                />
-              </Field>
-              <Field label={t('description_am')}>
-                <input
-                  value={form.description_am}
-                  onChange={(e) =>
-                    setForm({ ...form, description_am: e.target.value })
-                  }
-                  className={inputCls}
-                />
-              </Field>
+              {/* Description fields — full width with AI generate button */}
+              <div className="sm:col-span-2">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {t('description_en')} &amp; {t('description_am')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleGenerate}
+                    disabled={generating || saving || uploading}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-linear-to-r from-primary/80 to-primary px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-primary-foreground shadow hover:opacity-90 disabled:opacity-50 transition"
+                  >
+                    {generating ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    {generating ? 'Generating...' : t('generate_description')}
+                  </button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="relative">
+                    <input
+                      value={form.description}
+                      onChange={(e) =>
+                        setForm({ ...form, description: e.target.value })
+                      }
+                      className={inputCls}
+                      placeholder={t('ingredients_placeholder')}
+                    />
+                  </div>
+                  <div className="relative">
+                    <input
+                      value={form.description_am}
+                      onChange={(e) =>
+                        setForm({ ...form, description_am: e.target.value })
+                      }
+                      className={inputCls}
+                    />
+                  </div>
+                </div>
+              </div>
               <PremiumSelect
                 label={t('category')}
                 value={form.category_id ?? ''}

@@ -60,6 +60,8 @@ import {
   isRateLimitedLocally,
   recordWaiterCall,
 } from '@/lib/device-fingerprint'
+import { submitFeedback } from '@/server/feedback.functions'
+import { getMyOrders, type TableOrder } from '@/server/table.functions'
 import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { Drawer } from 'vaul'
 import { optimizeImage } from '@/lib/image'
@@ -100,6 +102,9 @@ function formatBirr(n: number) {
   return new Intl.NumberFormat('en-US').format(n)
 }
 
+const FEEDBACK_DONE_KEY = 'origin_feedback_submitted_date'
+const SESSION_KEY = 'origin_table_session'
+
 function MenuPage() {
   const {
     categories,
@@ -137,10 +142,30 @@ function MenuPageInner({
   const table = search.table
   const qrToken = search.t
   type TableSession = { token: string; tableId: string; tableLabel: string }
-  const SESSION_KEY = 'origin_table_session'
-
   // Live items state — updated in real-time from Supabase
   const [liveItems, setLiveItems] = useState<MenuItem[]>(initialItems)
+
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [submittingFeedback, setSubmittingFeedback] = useState(false)
+
+  const FEEDBACK_SKIP_KEY = 'origin_feedback_skips'
+  const MAX_DAILY_SKIPS = 2
+
+  const handleFeedbackSkip = () => {
+    const today = new Date().toDateString()
+    try {
+      const raw = localStorage.getItem(FEEDBACK_SKIP_KEY)
+      const stored = raw ? JSON.parse(raw) : {}
+      const todayCount = stored.date === today ? (stored.count ?? 0) : 0
+      localStorage.setItem(
+        FEEDBACK_SKIP_KEY,
+        JSON.stringify({ date: today, count: todayCount + 1 }),
+      )
+    } catch {
+      // ignore
+    }
+    setFeedbackOpen(false)
+  }
 
   // Real-time subscription to menu_items availability changes
   useEffect(() => {
@@ -165,10 +190,70 @@ function MenuPageInner({
         }
       })
       .subscribe()
+
+    // Real-time listener for order status changes (to trigger feedback)
+    const orderChannel = supabaseBrowser
+      .channel('origin-realtime')
+      .on(
+        'broadcast',
+        { event: 'order_status_updated' },
+        async ({ payload }) => {
+          const order = payload as TableOrder
+          const did = await getDeviceId()
+          if (order.device_id === did && order.status === 'completed') {
+            // Only show if not already submitted today AND hasn't been skipped enough times
+            const today = new Date().toDateString()
+            const lastDone = localStorage.getItem(FEEDBACK_DONE_KEY)
+            if (lastDone === today) return
+            try {
+              const skipRaw = localStorage.getItem(FEEDBACK_SKIP_KEY)
+              const skips = skipRaw ? JSON.parse(skipRaw) : {}
+              if (skips.date === today && (skips.count ?? 0) >= MAX_DAILY_SKIPS)
+                return
+            } catch {
+              /* ignore */
+            }
+            setFeedbackOpen(true)
+          }
+        },
+      )
+      .subscribe()
+
     return () => {
       supabaseBrowser.removeChannel(channel)
+      supabaseBrowser.removeChannel(orderChannel)
     }
-  }, [])
+  }, [FEEDBACK_DONE_KEY]) // Added FEEDBACK_DONE_KEY to deps although it's constant
+
+  // Check for completed orders on mount (in case status changed while offline/reloading)
+  useEffect(() => {
+    const check = async () => {
+      const today = new Date().toDateString()
+      const lastDone = localStorage.getItem(FEEDBACK_DONE_KEY)
+      if (lastDone === today) return
+      // Also skip if already skipped too many times today
+      try {
+        const skipRaw = localStorage.getItem(FEEDBACK_SKIP_KEY)
+        const skips = skipRaw ? JSON.parse(skipRaw) : {}
+        if (skips.date === today && (skips.count ?? 0) >= MAX_DAILY_SKIPS)
+          return
+      } catch {
+        /* ignore */
+      }
+
+      try {
+        const did = await getDeviceId()
+        const myOrders = await getMyOrders({ data: { device_id: did } })
+        const hasCompleted = myOrders.some((o) => o.status === 'completed')
+        if (hasCompleted) {
+          setFeedbackOpen(true)
+        }
+      } catch (err) {
+        console.error('Failed to check orders for feedback:', err)
+      }
+    }
+    check()
+  }, [FEEDBACK_DONE_KEY])
 
   // Table session state (from QR scan) — intentionally starts null to avoid SSR/client hydration mismatch
   const [tableSession, setTableSession] = useState<TableSession | null>(null)
@@ -198,7 +283,6 @@ function MenuPageInner({
     name: string
     index: number
   } | null>(null)
-
   // Layout toggle — 'list' (default) or 'grid'
   const [layout, setLayout] = useState<'list' | 'grid'>(initialLayout)
 
@@ -1097,6 +1181,44 @@ function MenuPageInner({
           </div>
         </div>
       )}
+      {/* Feedback Modal */}
+      <FeedbackModal
+        open={feedbackOpen}
+        onClose={handleFeedbackSkip}
+        onSubmit={async (rating, comment) => {
+          setSubmittingFeedback(true)
+          try {
+            const did = await getDeviceId()
+            await submitFeedback({
+              data: {
+                rating,
+                comment,
+                device_id: did,
+                table_id: tableSession?.tableId || null,
+                table_label: tableSession?.tableLabel || null,
+              },
+            })
+            localStorage.setItem(FEEDBACK_DONE_KEY, new Date().toDateString())
+            setFeedbackOpen(false)
+            toast.success(t('feedback_thanks'))
+          } catch (err: any) {
+            const msg = err.message || ''
+            if (msg.includes('invalid_type')) {
+              toast.error(
+                t('feedback_error_invalid') || 'Please check your rating.',
+              )
+            } else {
+              toast.error(
+                t('feedback_error') ||
+                  'Failed to submit feedback. Please try again.',
+              )
+            }
+          } finally {
+            setSubmittingFeedback(false)
+          }
+        }}
+        loading={submittingFeedback}
+      />
     </div>
   )
 }
@@ -1802,6 +1924,139 @@ function BillDrawer({
         </Drawer.Portal>
       </Drawer.Root>
     </>
+  )
+}
+
+function FeedbackModal({
+  open,
+  onClose,
+  onSubmit,
+  loading,
+}: {
+  open: boolean
+  onClose: () => void
+  onSubmit: (rating: number, comment: string) => Promise<void>
+  loading: boolean
+}) {
+  const { t } = useTranslation()
+  const [rating, setRating] = useState(0) // supports .5 increments
+  const [comment, setComment] = useState('')
+  const [hovered, setHovered] = useState(0) // supports .5 increments
+
+  if (!open) return null
+
+  const handleStarClick = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    star: number,
+  ) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const isHalf = x < rect.width / 2
+    setRating(isHalf ? star - 0.5 : star)
+  }
+
+  const handleStarHover = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    star: number,
+  ) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const isHalf = x < rect.width / 2
+    setHovered(isHalf ? star - 0.5 : star)
+  }
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className="w-full max-w-sm rounded-[24px] border border-white/10 bg-card p-8 shadow-2xl animate-in zoom-in-95 duration-300">
+        <div className="text-center">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+            <Star className="h-8 w-8 fill-primary/20" />
+          </div>
+          <h2 className="font-display text-2xl tracking-tight text-foreground">
+            {t('rate_experience')}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {t('feedback_desc') || 'We value your input to serve you better.'}
+          </p>
+        </div>
+
+        {/* Stars — onMouseLeave on container so gaps don't lose hover state */}
+        <div
+          className="my-8 flex justify-center gap-2"
+          onMouseLeave={() => setHovered(0)}
+        >
+          {[1, 2, 3, 4, 5].map((s) => {
+            const active = hovered || rating
+            const isFull = active >= s
+            const isHalf = !isFull && active >= s - 0.5 && active > 0
+            return (
+              <button
+                key={s}
+                onMouseMove={(e) => handleStarHover(e, s)}
+                onClick={(e) => handleStarClick(e, s)}
+                className="group relative transition-transform active:scale-90"
+                style={{ cursor: 'pointer' }}
+              >
+                {/* Base empty star */}
+                <Star className="h-10 w-10 text-muted-foreground/20 transition-colors duration-150" />
+                {/* Half fill */}
+                {isHalf && (
+                  <div className="pointer-events-none absolute inset-0 overflow-hidden w-1/2">
+                    <Star className="h-10 w-10 fill-amber-400 text-amber-500" />
+                  </div>
+                )}
+                {/* Full fill */}
+                {isFull && (
+                  <div className="pointer-events-none absolute inset-0">
+                    <Star className="h-10 w-10 fill-amber-400 text-amber-500 transition-colors duration-150" />
+                  </div>
+                )}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Rating label — always occupies height so layout never shifts */}
+        <div className="h-5 -mt-4 mb-4 flex items-center justify-center">
+          {(hovered || rating) > 0 && (
+            <p className="text-xs font-semibold text-primary tracking-wider">
+              {(hovered || rating).toFixed(1)} / 5.0
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder={t('leave_comment')}
+            rows={3}
+            className="w-full min-h-[80px] max-h-[160px] resize-y rounded-xl border border-border bg-muted/30 p-3 text-sm outline-none transition focus:border-primary/50"
+          />
+
+          <div className="flex gap-3 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-border py-3 text-xs font-bold uppercase tracking-widest text-muted-foreground transition hover:bg-muted/50"
+            >
+              {t('skip')}
+            </button>
+            <button
+              onClick={() => rating > 0 && onSubmit(rating, comment)}
+              disabled={rating === 0 || loading}
+              className="flex-1 relative flex items-center justify-center gap-2 rounded-xl bg-primary py-3 px-2 text-xs font-bold uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition hover:opacity-90 disabled:opacity-50"
+            >
+              {loading ? (
+                <Loader2 className="h-5 w-5 animate-spin shrink-0" />
+              ) : (
+                <Send className="h-5 w-5 shrink-0" />
+              )}
+              {t('submit_feedback')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 

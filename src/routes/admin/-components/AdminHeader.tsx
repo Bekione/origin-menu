@@ -11,6 +11,7 @@ import {
   ClipboardList,
   BarChart3,
   Settings,
+  MessageSquare,
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import ScrollFade from '#/components/ScrollFade'
@@ -149,6 +150,13 @@ export function AdminHeader({
             icon={<QrCode className="h-4" />}
           >
             {t('admin_info')}
+          </TabButton>
+          <TabButton
+            active={tab === 'feedback'}
+            onClick={() => setTab('feedback')}
+            icon={<MessageSquare className="h-4" />}
+          >
+            {t('feedback')}
           </TabButton>
           <TabButton
             active={tab === 'settings'}

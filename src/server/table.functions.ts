@@ -372,6 +372,21 @@ export const getTableOrders = createServerFn({ method: 'GET' })
     return (orders ?? []) as TableOrder[]
   })
 
+/** Public — get orders for a specific device (no auth needed) */
+export const getMyOrders = createServerFn({ method: 'GET' })
+  .inputValidator((d) => z.object({ device_id: z.string() }).parse(d))
+  .handler(async ({ data }) => {
+    const { data: orders, error } = await supabaseAdmin
+      .from('table_orders')
+      .select('*')
+      .eq('device_id', data.device_id)
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (error) throw new Error(error.message)
+    return (orders ?? []) as TableOrder[]
+  })
+
 /** Admin/Staff — update order status (with guard against double-processing) */
 export const updateOrderStatus = createServerFn({ method: 'POST' })
   .inputValidator((d) =>

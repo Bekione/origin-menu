@@ -113,6 +113,7 @@ export const translations = {
     label_am: 'Label (AM)',
     add_tag: 'Add New Tag',
     no_tags_desc: 'No custom dietary tags defined yet. Add them in Settings.',
+    generate_description: 'Generate',
     available: 'Available',
     featured: 'Featured',
     save: 'Save',
@@ -367,6 +368,21 @@ export const translations = {
     media_size_error_image: 'Image must be under 4MB',
     layout_grid: 'Grid',
     layout_list: 'List',
+
+    // Feedback
+    feedback: 'Feedback',
+    rate_experience: 'How was your experience?',
+    feedback_thanks: 'Thank you for your feedback! 🙏',
+    feedback_desc: 'We value your input to serve you better.',
+    leave_comment: 'Leave a comment (optional)...',
+    skip: 'Skip',
+    submit_feedback: 'Submit Feedback',
+    avg_rating: 'Avg. Rating',
+    total_items: 'Total Items',
+    no_feedback_yet: 'No feedback received yet.',
+    feedback_from_table: 'from {table}',
+    feedback_error_invalid: 'Please check your rating (1-5).',
+    feedback_error: 'Failed to submit feedback. Please try again.',
   },
   am: {
     // Common
@@ -637,6 +653,7 @@ export const translations = {
     save: 'አስቀምጥ',
     add: 'ጨምር',
     cancel: 'ተው',
+    generate_description: 'ፍጠር',
     delete_item_title: 'ምግብ ሰርዝ',
     delete_confirm_desc: 'እርግጠኛ ነዎት "{name}" መሰረዝ ይፈልጋሉ? ይህ ሊመለስ አይችልም።',
     order: 'ቅደም ተከተል',
@@ -715,6 +732,21 @@ export const translations = {
     media_size_error_image: 'ፈቶው ከ 4MB ተክሉ አይዜልም',
     layout_grid: 'ጥቅል ዕይታ',
     layout_list: 'ዝርዝር ዕይታ',
+
+    // Feedback
+    feedback: 'አስተያየት',
+    rate_experience: 'ልምድዎ እንዴት ነበር?',
+    feedback_thanks: 'ለአስተያየትዎ እናመሰግናለን! 🙏',
+    feedback_desc: 'የተሻለ አገልግሎት ለመስጠት የእርስዎ አስተያየት ይረዳናል።',
+    leave_comment: 'አስተያየት ይተዉ (ከተፈለገ)...',
+    skip: 'ዝለል',
+    submit_feedback: 'አስተያየት ይላኩ',
+    avg_rating: 'አማካይ ደረጃ',
+    total_items: 'ጠቅላላ ብዛት',
+    no_feedback_yet: 'እእስካሁን ምንም አስተያየት አልተቀበለም።',
+    feedback_from_table: 'ከጠረጴዛ {table}',
+    feedback_error_invalid: 'እባክዎ ትክክለኛ ደረጃ (ከ1-5) ይምረጡ።',
+    feedback_error: 'አስተያየት መላክ አልተቻለም። እባክዎ እንደገና ይሞክሩ።',
   },
 } as const
 
