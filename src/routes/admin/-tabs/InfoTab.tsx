@@ -20,6 +20,7 @@ import { StoreUtilitiesCard } from '../-components/infotab/StoreUtilitiesCard'
 import { PaymentMethodsCard } from '../-components/infotab/PaymentMethodsCard'
 import { StaffPinCard } from '../-components/infotab/StaffPinCard'
 import { ActiveSessionsCard } from '../-components/infotab/ActiveSessionsCard'
+import { DietaryTagsCard } from '../-components/infotab/DietaryTagsCard'
 import { ConfirmationModal } from '../-components/ConfirmationModal'
 
 export function InfoTab({
@@ -51,6 +52,9 @@ export function InfoTab({
     hours: Array.isArray(info?.hours)
       ? (info!.hours as any[])
       : [{ day: 'Mon–Fri', hours: '10:00 – 22:00' }],
+    dietary_tags: Array.isArray((info as any)?.dietary_tags)
+      ? ((info as any)!.dietary_tags as any[])
+      : [],
   })
 
   // Sync form if info data is refreshed from server
@@ -77,6 +81,9 @@ export function InfoTab({
         hours: Array.isArray(info.hours)
           ? (info.hours as any[])
           : [{ day: 'Mon–Fri', hours: '10:00 – 22:00' }],
+        dietary_tags: Array.isArray((info as any).dietary_tags)
+          ? ((info as any).dietary_tags as any[])
+          : [],
       })
     }
   }, [info])
@@ -237,6 +244,9 @@ export function InfoTab({
       hours: Array.isArray(info?.hours)
         ? (info!.hours as any[])
         : [{ day: 'Mon–Fri', hours: '10:00 – 22:00' }],
+      dietary_tags: Array.isArray((info as any)?.dietary_tags)
+        ? ((info as any)!.dietary_tags as any[])
+        : [],
     })
 
   const submit = async (e: React.FormEvent) => {
@@ -264,6 +274,8 @@ export function InfoTab({
       className="mx-auto max-w-4xl space-y-12 pb-32 animate-in fade-in duration-700"
     >
       <RestaurantProfileCard form={form} setForm={setForm} />
+
+      <DietaryTagsCard form={form} setForm={setForm} />
 
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="space-y-8">

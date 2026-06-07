@@ -161,6 +161,7 @@ export function ItemsTab({
         <ItemForm
           item={editing}
           categories={data.categories}
+          info={data.info}
           onClose={() => setShowForm(false)}
           onSaved={() => {
             setShowForm(false)
@@ -464,11 +465,13 @@ function ItemRow({
 function ItemForm({
   item,
   categories,
+  info,
   onClose,
   onSaved,
 }: {
   item: MenuItem | null
   categories: Category[]
+  info: any
   onClose: () => void
   onSaved: () => void
 }) {
@@ -490,6 +493,7 @@ function ItemForm({
     sort_order: item?.sort_order ?? 0,
     gallery:
       (item?.gallery as string[]) || (item?.image_url ? [item.image_url] : []),
+    dietary: ((item as any)?.dietary as string[]) || [],
   })
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
@@ -585,6 +589,7 @@ function ItemForm({
               : form.image_url
                 ? [form.image_url]
                 : [],
+          dietary: form.dietary,
         },
       })
       onSaved()
@@ -612,9 +617,9 @@ function ItemForm({
       >
         <form
           onSubmit={submit}
-          className="rounded-xl border border-primary/40 bg-card p-5 shadow-2xl"
+          className="flex flex-col max-h-[90vh] rounded-xl border border-primary/40 bg-card shadow-2xl"
         >
-          <div className="mb-4 flex items-center justify-between">
+          <div className="p-5 pb-2 flex items-center justify-between border-b border-border/50">
             <h3 className="font-display text-lg uppercase tracking-wider text-primary">
               {item ? t('edit_item') : t('add_new_item')}
             </h3>
@@ -627,201 +632,242 @@ function ItemForm({
             </button>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={t('name_en')}>
-              <input
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-            <Field label={t('name_am')}>
-              <input
-                value={form.name_am}
-                onChange={(e) => setForm({ ...form, name_am: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-            <Field label={t('description_en')}>
-              <input
-                value={form.description}
-                onChange={(e) =>
-                  setForm({ ...form, description: e.target.value })
-                }
-                className={inputCls}
-                placeholder={t('ingredients_placeholder')}
-              />
-            </Field>
-            <Field label={t('description_am')}>
-              <input
-                value={form.description_am}
-                onChange={(e) =>
-                  setForm({ ...form, description_am: e.target.value })
-                }
-                className={inputCls}
-              />
-            </Field>
-            <PremiumSelect
-              label={t('category')}
-              value={form.category_id ?? ''}
-              onChange={(val) => setForm({ ...form, category_id: val })}
-              options={categories.map((c) => ({
-                id: c.id,
-                label: dt(c, 'name'),
-              }))}
-            />
-            <Field label={t('price_label')}>
-              <input
-                required
-                type="number"
-                min="0"
-                step="1"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-          </div>
-
-          <div className="mt-4">
-            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              {t('media_label')}
-            </label>
-            <div className="flex items-center gap-3">
-              {form.image_url ? (
-                getMediaType(form.image_url) === 'video' ? (
-                  <video
-                    src={form.image_url}
-                    className="h-16 w-16 rounded-lg object-cover bg-muted"
-                    muted
-                    autoPlay
-                    loop
-                    playsInline
-                  />
-                ) : (
-                  <img
-                    src={optimizeImage(form.image_url, 150)}
-                    alt=""
-                    className="h-16 w-16 rounded-lg object-cover"
-                  />
-                )
-              ) : (
-                <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
-                  <Upload className="h-5 w-5" />
-                </div>
-              )}
-              <label className="cursor-pointer rounded-md border border-border px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary">
-                {uploading
-                  ? t('uploading')
-                  : form.gallery.length > 0 || form.image_url
-                    ? t('add_media')
-                    : t('upload')}
+          <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label={t('name_en')}>
                 <input
-                  type="file"
-                  multiple
-                  accept="image/*,video/mp4,video/webm,.gif"
-                  hidden
-                  onChange={(e) => {
-                    const files = Array.from(e.target.files || [])
-                    if (files.length > 0) onFiles(files)
-                  }}
+                  required
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  className={inputCls}
                 />
-              </label>
-              {form.gallery.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setForm({ ...form, image_url: '', gallery: [] })
+              </Field>
+              <Field label={t('name_am')}>
+                <input
+                  value={form.name_am}
+                  onChange={(e) =>
+                    setForm({ ...form, name_am: e.target.value })
                   }
-                  className="text-xs text-muted-foreground hover:text-destructive"
-                >
-                  {t('remove_all')}
-                </button>
+                  className={inputCls}
+                />
+              </Field>
+              <Field label={t('description_en')}>
+                <input
+                  value={form.description}
+                  onChange={(e) =>
+                    setForm({ ...form, description: e.target.value })
+                  }
+                  className={inputCls}
+                  placeholder={t('ingredients_placeholder')}
+                />
+              </Field>
+              <Field label={t('description_am')}>
+                <input
+                  value={form.description_am}
+                  onChange={(e) =>
+                    setForm({ ...form, description_am: e.target.value })
+                  }
+                  className={inputCls}
+                />
+              </Field>
+              <PremiumSelect
+                label={t('category')}
+                value={form.category_id ?? ''}
+                onChange={(val) => setForm({ ...form, category_id: val })}
+                options={categories.map((c) => ({
+                  id: c.id,
+                  label: dt(c, 'name'),
+                }))}
+              />
+              <Field label={t('price_label')}>
+                <input
+                  required
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+            </div>
+
+            <div className="mt-4">
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {t('media_label')}
+              </label>
+              <div className="flex items-center gap-3">
+                {form.image_url ? (
+                  getMediaType(form.image_url) === 'video' ? (
+                    <video
+                      src={form.image_url}
+                      className="h-16 w-16 rounded-lg object-cover bg-muted"
+                      muted
+                      autoPlay
+                      loop
+                      playsInline
+                    />
+                  ) : (
+                    <img
+                      src={optimizeImage(form.image_url, 150)}
+                      alt=""
+                      className="h-16 w-16 rounded-lg object-cover"
+                    />
+                  )
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground">
+                    <Upload className="h-5 w-5" />
+                  </div>
+                )}
+                <label className="cursor-pointer rounded-md border border-border px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:border-primary hover:text-primary">
+                  {uploading
+                    ? t('uploading')
+                    : form.gallery.length > 0 || form.image_url
+                      ? t('add_media')
+                      : t('upload')}
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*,video/mp4,video/webm,.gif"
+                    hidden
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files || [])
+                      if (files.length > 0) onFiles(files)
+                    }}
+                  />
+                </label>
+                {form.gallery.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setForm({ ...form, image_url: '', gallery: [] })
+                    }
+                    className="text-xs text-muted-foreground hover:text-destructive"
+                  >
+                    {t('remove_all')}
+                  </button>
+                )}
+              </div>
+
+              {/* Gallery Preview */}
+              {form.gallery.length > 0 && (
+                <div className="mt-3 grid grid-cols-4 gap-2">
+                  {form.gallery.map((url, idx) => (
+                    <div
+                      key={idx}
+                      className="relative group aspect-square rounded-md overflow-hidden bg-muted border border-border"
+                    >
+                      {getMediaType(url) === 'video' ? (
+                        <video
+                          src={url}
+                          className="h-full w-full object-cover"
+                          muted
+                        />
+                      ) : (
+                        <img
+                          src={optimizeImage(url, 150)}
+                          className="h-full w-full object-cover"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newGallery = form.gallery.filter(
+                            (_, i) => i !== idx,
+                          )
+                          setForm({
+                            ...form,
+                            gallery: newGallery,
+                            image_url:
+                              form.image_url === url
+                                ? newGallery[0] || ''
+                                : form.image_url,
+                          })
+                        }}
+                        className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
 
-            {/* Gallery Preview */}
-            {form.gallery.length > 0 && (
-              <div className="mt-3 grid grid-cols-4 gap-2">
-                {form.gallery.map((url, idx) => (
-                  <div
-                    key={idx}
-                    className="relative group aspect-square rounded-md overflow-hidden bg-muted border border-border"
-                  >
-                    {getMediaType(url) === 'video' ? (
-                      <video
-                        src={url}
-                        className="h-full w-full object-cover"
-                        muted
-                      />
-                    ) : (
-                      <img
-                        src={optimizeImage(url, 150)}
-                        className="h-full w-full object-cover"
-                      />
-                    )}
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Toggle
+                label={t('available')}
+                value={form.is_available}
+                onChange={(v) => setForm({ ...form, is_available: v })}
+              />
+              <Toggle
+                label={t('featured')}
+                value={form.is_featured}
+                onChange={(v) => setForm({ ...form, is_featured: v })}
+              />
+              <Toggle
+                label={t('item_special_badge')}
+                value={form.is_special}
+                onChange={(v) => setForm({ ...form, is_special: v })}
+              />
+              <Toggle
+                label={t('veg')}
+                value={form.is_vegetarian}
+                onChange={(v) => setForm({ ...form, is_vegetarian: v })}
+              />
+              <Toggle
+                label={t('spicy')}
+                value={form.is_spicy}
+                onChange={(v) => setForm({ ...form, is_spicy: v })}
+              />
+              <Toggle
+                label={t('fasting')}
+                value={form.is_fasting}
+                onChange={(v) => setForm({ ...form, is_fasting: v })}
+              />
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-border/50">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                {t('dietary_allergens')}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {(info?.dietary_tags as any[])?.map((tag) => {
+                  const active = form.dietary.includes(tag.id)
+                  return (
                     <button
+                      key={tag.id}
                       type="button"
                       onClick={() => {
-                        const newGallery = form.gallery.filter(
-                          (_, i) => i !== idx,
-                        )
-                        setForm({
-                          ...form,
-                          gallery: newGallery,
-                          image_url:
-                            form.image_url === url
-                              ? newGallery[0] || ''
-                              : form.image_url,
-                        })
+                        const next = active
+                          ? form.dietary.filter((t: string) => t !== tag.id)
+                          : [...form.dietary, tag.id]
+                        setForm({ ...form, dietary: next })
                       }}
-                      className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all ${
+                        active
+                          ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
                     >
-                      <X className="h-3 w-3" />
+                      {active && (
+                        <div className="h-1 w-1 rounded-full bg-current" />
+                      )}
+                      {dt(tag, 'label')}
                     </button>
-                  </div>
-                ))}
+                  )
+                })}
+                {(!info?.dietary_tags || info.dietary_tags.length === 0) && (
+                  <p className="text-[10px] text-muted-foreground italic">
+                    {t('no_tags_desc')}
+                  </p>
+                )}
               </div>
-            )}
+            </div>
+
+            {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
           </div>
-
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Toggle
-              label={t('available')}
-              value={form.is_available}
-              onChange={(v) => setForm({ ...form, is_available: v })}
-            />
-            <Toggle
-              label={t('featured')}
-              value={form.is_featured}
-              onChange={(v) => setForm({ ...form, is_featured: v })}
-            />
-            <Toggle
-              label={t('item_special_badge')}
-              value={form.is_special}
-              onChange={(v) => setForm({ ...form, is_special: v })}
-            />
-            <Toggle
-              label={t('veg')}
-              value={form.is_vegetarian}
-              onChange={(v) => setForm({ ...form, is_vegetarian: v })}
-            />
-            <Toggle
-              label={t('spicy')}
-              value={form.is_spicy}
-              onChange={(v) => setForm({ ...form, is_spicy: v })}
-            />
-            <Toggle
-              label={t('fasting')}
-              value={form.is_fasting}
-              onChange={(v) => setForm({ ...form, is_fasting: v })}
-            />
-          </div>
-
-          {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
-
-          <div className="mt-5 flex justify-end gap-2">
+          <div className="p-5 pt-3 border-t border-border/50 flex justify-end gap-2 bg-muted/30">
             <button
               type="button"
               onClick={onClose}

@@ -75,6 +75,7 @@ const ItemSchema = z.object({
   is_special: z.boolean().optional().default(false),
   sort_order: z.number().int().min(0).max(10000),
   gallery: z.array(z.string()).optional().nullable(),
+  dietary: z.array(z.string()).optional().nullable(),
 })
 
 export const upsertMenuItem = createServerFn({ method: 'POST' })
@@ -88,6 +89,7 @@ export const upsertMenuItem = createServerFn({ method: 'POST' })
         .update({
           ...payload,
           gallery: payload.gallery as any,
+          dietary: payload.dietary as any,
           updated_at: new Date().toISOString(),
         })
         .eq('id', id)
@@ -99,6 +101,7 @@ export const upsertMenuItem = createServerFn({ method: 'POST' })
       .insert({
         ...payload,
         gallery: payload.gallery as any,
+        dietary: payload.dietary as any,
       })
       .select('id')
       .single()
@@ -243,6 +246,16 @@ const InfoSchema = z.object({
   promo_banner_text: z.string().max(300).nullable().optional(),
   promo_banner_url: z.string().max(500).nullable().optional(),
   payment_methods: z.any().nullable().optional(),
+  dietary_tags: z
+    .array(
+      z.object({
+        id: z.string(),
+        label: z.string(),
+        label_am: z.string().optional(),
+      }),
+    )
+    .optional()
+    .nullable(),
 })
 
 export const updateRestaurantInfo = createServerFn({ method: 'POST' })

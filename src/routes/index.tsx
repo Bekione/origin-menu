@@ -31,6 +31,10 @@ import {
   MessageCircle,
   LayoutGrid,
   LayoutList,
+  Salad,
+  Wheat,
+  MilkOff,
+  Bean,
 } from 'lucide-react'
 import {
   getMenuData,
@@ -90,7 +94,7 @@ export const Route = createFileRoute('/')({
 
 import { useTranslation } from '@/lib/i18n'
 
-type FilterTag = 'special' | 'veg' | 'fasting' | 'spicy'
+type FilterTag = string
 
 function formatBirr(n: number) {
   return new Intl.NumberFormat('en-US').format(n)
@@ -318,10 +322,20 @@ function MenuPageInner({
       items: liveItems.filter((i) => {
         if (i.category_id !== c.id) return false
         if (activeFilters.size > 0) {
-          if (activeFilters.has('special') && !i.is_special) return false
-          if (activeFilters.has('veg') && !i.is_vegetarian) return false
-          if (activeFilters.has('fasting') && !i.is_fasting) return false
-          if (activeFilters.has('spicy') && !i.is_spicy) return false
+          const isMatch = Array.from(activeFilters).every((f) => {
+            if (f === 'special') return i.is_special || i.is_featured
+            if (f === 'veg') return i.is_vegetarian
+            if (f === 'fasting') return i.is_fasting
+            if (f === 'spicy') return i.is_spicy
+
+            // Dynamic Dietary Tags mapping label -> id
+            const tags = ((i as any).dietary as string[]) || []
+            const tagObj = ((info as any)?.dietary_tags as any[])?.find(
+              (t) => t.label === f,
+            )
+            return tagObj && tags.includes(tagObj.id)
+          })
+          if (!isMatch) return false
         }
         return (
           q === '' ||
@@ -331,16 +345,26 @@ function MenuPageInner({
         )
       }),
     }))
-  }, [categories, liveItems, query, activeFilters])
+  }, [categories, liveItems, query, activeFilters, info])
 
   const featured = liveItems
     .filter((i) => {
       if (!i.is_featured || !i.is_available) return false
       if (activeFilters.size > 0) {
-        if (activeFilters.has('special') && !i.is_special) return false
-        if (activeFilters.has('veg') && !i.is_vegetarian) return false
-        if (activeFilters.has('fasting') && !i.is_fasting) return false
-        if (activeFilters.has('spicy') && !i.is_spicy) return false
+        const isMatch = Array.from(activeFilters).every((f) => {
+          if (f === 'special') return i.is_special || i.is_featured
+          if (f === 'veg') return i.is_vegetarian
+          if (f === 'fasting') return i.is_fasting
+          if (f === 'spicy') return i.is_spicy
+
+          // Dynamic Dietary Tags mapping label -> id
+          const tags = ((i as any).dietary as string[]) || []
+          const tagObj = ((info as any)?.dietary_tags as any[])?.find(
+            (t) => t.label === f,
+          )
+          return tagObj && tags.includes(tagObj.id)
+        })
+        if (!isMatch) return false
       }
       return true
     })
@@ -598,6 +622,19 @@ function MenuPageInner({
           >
             <Flame className="h-3.5 w-3.5" /> {t('spicy')}
           </button>
+          {((info as any)?.dietary_tags as any[])?.map((tag) => (
+            <button
+              key={tag.id}
+              onClick={() => toggleFilter(tag.label)}
+              className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition ${
+                activeFilters.has(tag.label)
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-card text-muted-foreground hover:border-primary hover:text-primary'
+              }`}
+            >
+              {dt(tag, 'label')}
+            </button>
+          ))}
         </div>
 
         {/* Featured */}
@@ -656,6 +693,7 @@ function MenuPageInner({
                     <ItemCard
                       key={i.id}
                       item={i}
+                      restaurantInfo={info}
                       onPreview={setPreviewMedia}
                       layout={layout}
                     />
@@ -1083,10 +1121,12 @@ function SectionTitle({
 
 function ItemCard({
   item,
+  restaurantInfo,
   onPreview,
   layout = 'list',
 }: {
   item: MenuItem
+  restaurantInfo: any
   onPreview: (p: { items: string[]; name: string; index: number }) => void
   layout?: 'list' | 'grid'
 }) {
@@ -1191,6 +1231,21 @@ function ItemCard({
                   <Flame className="h-2.5 w-2.5" />
                 </Tag>
               )}
+              {/* Dietary Tags */}
+              {Array.isArray((item as any).dietary) &&
+                ((item as any).dietary as string[]).map((tagId) => {
+                  const tag = (
+                    (restaurantInfo as any)?.dietary_tags as any[]
+                  )?.find((t) => t.id === tagId)
+                  if (!tag) return null
+
+                  // Simple circle badge for grid
+                  return (
+                    <Tag key={tagId} tone="primary">
+                      <div className="h-1.5 w-1.5 rounded-full bg-current" />
+                    </Tag>
+                  )
+                })}
               {unavailable && <Tag tone="muted">{t('out_of_stock')}</Tag>}
             </div>
             {!unavailable && (
@@ -1323,6 +1378,19 @@ function ItemCard({
                 <Flame className="h-2.5 w-2.5" /> {t('spicy')}
               </Tag>
             )}
+            {/* Dietary Tags */}
+            {Array.isArray((item as any).dietary) &&
+              ((item as any).dietary as string[]).map((tagId) => {
+                const tag = (
+                  (restaurantInfo as any)?.dietary_tags as any[]
+                )?.find((t) => t.id === tagId)
+                if (!tag) return null
+                return (
+                  <Tag key={tagId} tone="primary">
+                    {dt(tag, 'label')}
+                  </Tag>
+                )
+              })}
           </div>
           {!unavailable && (
             <div className="flex shrink-0 items-center gap-1">
