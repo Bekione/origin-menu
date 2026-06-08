@@ -12,6 +12,7 @@ import {
   BarChart3,
   Settings,
   MessageSquare,
+  Ticket,
 } from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import ScrollFade from '#/components/ScrollFade'
@@ -102,71 +103,80 @@ export function AdminHeader({
           </button>
         </div>
       </div>
-      <ScrollFade direction="horizontal">
-        <div className="mx-auto flex max-w-5xl gap-1 px-4 overflow-x-auto scrollbar-none snap-x snap-mandatory">
-          <TabButton
-            active={tab === 'dashboard'}
-            onClick={() => setTab('dashboard')}
-            icon={<BarChart3 className="h-4" />}
-          >
-            Dashboard
-          </TabButton>
-          <TabButton
-            active={tab === 'orders'}
-            onClick={() => setTab('orders')}
-            icon={<ClipboardList className="h-4" />}
-          >
-            {t('admin_orders')}
-            {pendingOrderCount > 0 && (
-              <span className="ml-1.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white shadow-sm">
-                {pendingOrderCount > 9 ? '9+' : pendingOrderCount}
-              </span>
-            )}
-          </TabButton>
-          <TabButton
-            active={tab === 'items'}
-            onClick={() => setTab('items')}
-            icon={<UtensilsCrossed className="h-4" />}
-          >
-            {t('admin_menu')}
-          </TabButton>
-          <TabButton
-            active={tab === 'categories'}
-            onClick={() => setTab('categories')}
-            icon={<Layers className="h-4" />}
-          >
-            {t('admin_categories')}
-          </TabButton>
-          <TabButton
-            active={tab === 'tables'}
-            onClick={() => setTab('tables')}
-            icon={<Store className="h-4" />}
-          >
-            {t('admin_tables')}
-          </TabButton>
-          <TabButton
-            active={tab === 'info'}
-            onClick={() => setTab('info')}
-            icon={<QrCode className="h-4" />}
-          >
-            {t('admin_info')}
-          </TabButton>
-          <TabButton
-            active={tab === 'feedback'}
-            onClick={() => setTab('feedback')}
-            icon={<MessageSquare className="h-4" />}
-          >
-            {t('feedback')}
-          </TabButton>
-          <TabButton
-            active={tab === 'settings'}
-            onClick={() => setTab('settings')}
-            icon={<Settings className="h-4" />}
-          >
-            Settings
-          </TabButton>
-        </div>
-      </ScrollFade>
+      <div className="mx-auto max-w-5xl">
+        <ScrollFade direction="horizontal">
+          <div className="flex gap-1 px-4 overflow-x-auto overflow-y-hidden scrollbar-none snap-x snap-mandatory">
+            <TabButton
+              active={tab === 'dashboard'}
+              onClick={() => setTab('dashboard')}
+              icon={<BarChart3 className="h-4" />}
+            >
+              {t('admin_dashboard')}
+            </TabButton>
+            <TabButton
+              active={tab === 'orders'}
+              onClick={() => setTab('orders')}
+              icon={<ClipboardList className="h-4" />}
+            >
+              {t('admin_orders')}
+              {pendingOrderCount > 0 && (
+                <span className="ml-1.5 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-white shadow-sm">
+                  {pendingOrderCount > 9 ? '9+' : pendingOrderCount}
+                </span>
+              )}
+            </TabButton>
+            <TabButton
+              active={tab === 'items'}
+              onClick={() => setTab('items')}
+              icon={<UtensilsCrossed className="h-4" />}
+            >
+              {t('admin_menu')}
+            </TabButton>
+            <TabButton
+              active={tab === 'categories'}
+              onClick={() => setTab('categories')}
+              icon={<Layers className="h-4" />}
+            >
+              {t('admin_categories')}
+            </TabButton>
+            <TabButton
+              active={tab === 'tables'}
+              onClick={() => setTab('tables')}
+              icon={<Store className="h-4" />}
+            >
+              {t('admin_tables')}
+            </TabButton>
+            <TabButton
+              active={tab === 'info'}
+              onClick={() => setTab('info')}
+              icon={<QrCode className="h-4" />}
+            >
+              {t('admin_info')}
+            </TabButton>
+            <TabButton
+              active={tab === 'feedback'}
+              onClick={() => setTab('feedback')}
+              icon={<MessageSquare className="h-4" />}
+            >
+              {t('admin_feedback')}
+            </TabButton>
+            <TabButton
+              active={tab === 'loyalty'}
+              onClick={() => setTab('loyalty')}
+              icon={<Ticket className="h-4" />}
+            >
+              {t('admin_loyalty')}
+            </TabButton>
+            <TabButton
+              active={tab === 'settings'}
+              onClick={() => setTab('settings')}
+              icon={<Settings className="h-4" />}
+            >
+              {t('admin_settings')}
+            </TabButton>
+          </div>
+        </ScrollFade>
+      </div>
     </header>
   )
 }

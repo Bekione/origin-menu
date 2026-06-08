@@ -62,6 +62,7 @@ import {
 } from '@/lib/device-fingerprint'
 import { submitFeedback } from '@/server/feedback.functions'
 import { getMyOrders, type TableOrder } from '@/server/table.functions'
+import { LoyaltyFloatingButton } from '@/components/LoyaltyCard'
 import { AIChatDrawer } from '@/components/AIChatDrawer'
 import { Drawer } from 'vaul'
 import { optimizeImage } from '@/lib/image'
@@ -147,6 +148,11 @@ function MenuPageInner({
 
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [submittingFeedback, setSubmittingFeedback] = useState(false)
+  const [deviceId, setDeviceId] = useState<string | null>(null)
+
+  useEffect(() => {
+    getDeviceId().then(setDeviceId)
+  }, [])
 
   const FEEDBACK_SKIP_KEY = 'origin_feedback_skips'
   const MAX_DAILY_SKIPS = 2
@@ -415,7 +421,7 @@ function MenuPageInner({
             // Dynamic Dietary Tags mapping label -> id
             const tags = ((i as any).dietary as string[]) || []
             const tagObj = ((info as any)?.dietary_tags as any[])?.find(
-              (t) => t.label === f,
+              (tg) => tg.label === f,
             )
             return tagObj && tags.includes(tagObj.id)
           })
@@ -444,7 +450,7 @@ function MenuPageInner({
           // Dynamic Dietary Tags mapping label -> id
           const tags = ((i as any).dietary as string[]) || []
           const tagObj = ((info as any)?.dietary_tags as any[])?.find(
-            (t) => t.label === f,
+            (tg) => tg.label === f,
           )
           return tagObj && tags.includes(tagObj.id)
         })
@@ -1057,12 +1063,13 @@ function MenuPageInner({
         </div>
       )}
 
-      {/* Ask AI floating button — sits above cart bar if visible */}
+      {/* Floating action row: Loyalty + Ask AI — both sit above cart bar when visible */}
       <div
-        className={`fixed z-40 transition-all duration-300 ${
+        className={`fixed z-40 flex items-center gap-2 transition-all duration-300 ${
           count > 0 ? 'bottom-20' : 'bottom-3 md:bottom-5'
         } right-4`}
       >
+        {deviceId && <LoyaltyFloatingButton deviceId={deviceId} />}
         <button
           onClick={() => setAiOpen(true)}
           className="group flex items-center gap-2 rounded-full border border-primary/30 bg-card/90 px-4 py-2.5 text-sm font-semibold text-primary shadow-lg backdrop-blur-sm transition hover:bg-primary hover:text-primary-foreground"
@@ -1358,7 +1365,7 @@ function ItemCard({
                 ((item as any).dietary as string[]).map((tagId) => {
                   const tag = (
                     (restaurantInfo as any)?.dietary_tags as any[]
-                  )?.find((t) => t.id === tagId)
+                  )?.find((tg) => tg.id === tagId)
                   if (!tag) return null
 
                   // Simple circle badge for grid
@@ -1505,7 +1512,7 @@ function ItemCard({
               ((item as any).dietary as string[]).map((tagId) => {
                 const tag = (
                   (restaurantInfo as any)?.dietary_tags as any[]
-                )?.find((t) => t.id === tagId)
+                )?.find((tg) => tg.id === tagId)
                 if (!tag) return null
                 return (
                   <Tag key={tagId} tone="primary">
@@ -1722,9 +1729,7 @@ function BillDrawer({
     if (!tableSession || items.length === 0) return
     setIsOrdering(true)
     try {
-      const deviceId = await import('@/lib/device-fingerprint').then((m) =>
-        m.getDeviceId(),
-      )
+      const deviceId = await getDeviceId()
       await placeOrder({
         data: {
           table_id: tableSession.tableId,

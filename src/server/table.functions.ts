@@ -440,6 +440,12 @@ export const updateOrderStatus = createServerFn({ method: 'POST' })
       payload: fullOrder,
     })
 
+    // Trigger Loyalty Stamp if completed
+    if (data.status === 'completed' && fullOrder) {
+      const { issueStamp } = await import('./loyalty.functions')
+      await issueStamp(fullOrder.device_id, fullOrder.id)
+    }
+
     return { ok: true }
   })
 

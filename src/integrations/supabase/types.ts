@@ -223,6 +223,79 @@ export type Database = {
         }
         Relationships: []
       }
+      loyalty_programs: {
+        Row: {
+          id: string
+          name: string
+          stamps_required: number
+          reward_description: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name?: string
+          stamps_required?: number
+          reward_description?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          stamps_required?: number
+          reward_description?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      loyalty_cards: {
+        Row: {
+          id: string
+          device_id: string
+          program_id: string
+          current_stamps: number
+          rewards_available: number
+          loyalty_secret: string | null
+          last_stamp_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          device_id: string
+          program_id: string
+          current_stamps?: number
+          rewards_available?: number
+          loyalty_secret?: string | null
+          last_stamp_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          device_id?: string
+          program_id?: string
+          current_stamps?: number
+          rewards_available?: number
+          loyalty_secret?: string | null
+          last_stamp_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'loyalty_cards_program_id_fkey'
+            columns: ['program_id']
+            referencedRelation: 'loyalty_programs'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       table_orders: {
         Row: {
           id: string

@@ -35,4 +35,7 @@ export default defineConfig({
     }),
     viteReact(),
   ],
+  optimizeDeps: {
+    include: ['framer-motion'],
+  },
 })

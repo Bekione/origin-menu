@@ -29,7 +29,7 @@ export function TabButton({
     <button
       ref={ref}
       onClick={onClick}
-      className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition ${className} ${active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+      className={`-mb-px inline-flex items-center gap-2 border-b-2 px-4 py-3 text-xs font-semibold uppercase tracking-wider transition ${className} ${active ? 'border-primary text-primary' : 'border-transparent whitespace-nowrap text-muted-foreground hover:text-foreground'}`}
     >
       {icon} {children}
     </button>
