@@ -24,9 +24,9 @@ export function OrdersTab() {
   const [offset, setOffset] = useState(0)
   const LIMIT = 20
 
-  const fetchOrders = async (isLoadMore = false) => {
+  const fetchOrders = async (isLoadMore = false, silent = false) => {
     if (isLoadMore) setDoneLoadingMore(true)
-    else setLoading(true)
+    else if (!silent) setLoading(true)
 
     try {
       const currentOffset = isLoadMore ? offset + LIMIT : 0
@@ -48,7 +48,7 @@ export function OrdersTab() {
     } catch (err: any) {
       toast.error(err.message)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
       setDoneLoadingMore(false)
     }
   }
@@ -68,10 +68,10 @@ export function OrdersTab() {
     let interval: any
     if (refreshInterval !== 'Live' && refreshInterval !== 'Off') {
       const ms = refreshInterval === '1m' ? 60000 : 300000
-      interval = setInterval(fetchOrders, ms)
+      interval = setInterval(() => fetchOrders(false, true), ms)
     }
 
-    const handleReload = () => fetchOrders()
+    const handleReload = () => fetchOrders(false, true)
     window.addEventListener('reload-orders', handleReload)
 
     return () => {
@@ -89,9 +89,11 @@ export function OrdersTab() {
     setBusyId(id)
     try {
       await updateOrderStatus({ data: { id, status } })
+
+      // Update local state ONLY after server success
       setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)))
 
-      // Dispatch event to refresh Dashboard/Info tabs
+      // Silently refresh other tabs (Dashboard, etc.) without affecting this tab's skeleton
       window.dispatchEvent(new CustomEvent('reload-orders'))
 
       if (status === 'accepted') toast.success(t('order_accepted_toast'))

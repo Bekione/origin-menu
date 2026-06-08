@@ -1368,10 +1368,10 @@ function ItemCard({
                   )?.find((tg) => tg.id === tagId)
                   if (!tag) return null
 
-                  // Simple circle badge for grid
+                  const label = dt(tag, 'label')
                   return (
                     <Tag key={tagId} tone="primary">
-                      <div className="h-1.5 w-1.5 rounded-full bg-current" />
+                      {label}
                     </Tag>
                   )
                 })}

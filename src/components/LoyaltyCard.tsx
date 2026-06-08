@@ -24,7 +24,6 @@ export function LoyaltyFloatingButton({
   deviceId,
 }: {
   deviceId: string
-  className: string
 }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
