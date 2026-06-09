@@ -9,7 +9,6 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "build": "vite build",
-    "export": "cross-env NITRO_PRESET=static BETTER_AUTH_SECRET=dummy_secret_for_build BETTER_AUTH_URL=http://localhost:3000 DATABASE_URL=postgres://dummy:dummy@localhost:5432/dummy vite build",
     "preview": "vite preview",
     "test": "vitest run",
     "lint": "eslint",
