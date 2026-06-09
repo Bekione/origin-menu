@@ -246,9 +246,20 @@ export function DashboardTab() {
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Primary KPIs (Large) */}
         {!kpis ? (
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-5 space-y-6">
             {[1, 2].map((i) => (
-              <Skeleton key={i} className="h-[160px] w-full rounded-3xl" />
+              <div
+                key={i}
+                className="h-[160px] rounded-3xl border border-white/5 bg-card/40 p-8 flex flex-col justify-between"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <Skeleton className="h-12 w-12 rounded-2xl" />
+                  <Skeleton className="h-3 w-32 opacity-40" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-10 w-34" />
+                </div>
+              </div>
             ))}
           </div>
         ) : (
@@ -295,9 +306,21 @@ export function DashboardTab() {
 
         {/* Secondary KPIs (2x2 Grid) */}
         {!kpis ? (
-          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-6">
             {[1, 2, 3, 4].map((i) => (
-              <Skeleton key={i} className="h-[160px] w-full rounded-3xl" />
+              <div
+                key={i}
+                className="rounded-3xl border border-white/5 bg-card/40 p-6 flex flex-col gap-4"
+              >
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-10 w-10 rounded-xl" />
+                  <Skeleton className="h-3 w-24 opacity-40" />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-7 w-32" />
+                  <Skeleton className="h-3 w-20 opacity-40" />
+                </div>
+              </div>
             ))}
           </div>
         ) : (
