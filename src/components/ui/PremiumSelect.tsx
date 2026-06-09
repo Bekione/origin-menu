@@ -47,6 +47,19 @@ export function PremiumSelect({
   }, [isOpen])
 
   useEffect(() => {
+    if (focusedIndex >= 0 && isOpen) {
+      const container = containerRef.current?.querySelector('.overflow-y-auto')
+      const focusedElement = container?.children[focusedIndex] as HTMLElement
+      if (focusedElement) {
+        focusedElement.scrollIntoView({
+          block: 'nearest',
+          behavior: 'smooth',
+        })
+      }
+    }
+  }, [focusedIndex, isOpen])
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         containerRef.current &&
