@@ -206,7 +206,7 @@ function AdminPage() {
           <MemoCategoriesTab data={data} onChange={refresh} />
         </div>
         <div className={tab === 'info' ? undefined : 'hidden'}>
-          <MemoInfoTab info={data.info} onChange={refresh} />
+          <MemoInfoTab info={data.info} items={data.items} onChange={refresh} />
         </div>
         <div className={tab === 'tables' ? undefined : 'hidden'}>
           <MemoTablesTab />

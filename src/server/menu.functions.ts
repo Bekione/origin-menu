@@ -246,7 +246,9 @@ const InfoSchema = z.object({
   service_charge_pct: z.number().min(0).max(100).nullable().optional(),
   promo_banner_active: z.boolean().nullable().optional(),
   promo_banner_text: z.string().max(300).nullable().optional(),
+  promo_banner_text_am: z.string().max(300).nullable().optional(),
   promo_banner_url: z.string().max(500).nullable().optional(),
+  promo_banner_item_id: z.string().uuid().nullable().optional(),
   payment_methods: z.any().nullable().optional(),
   dietary_tags: z
     .array(
@@ -280,6 +282,8 @@ export const updateRestaurantInfo = createServerFn({ method: 'POST' })
       youtube_url: (payload as any).youtube_url || null,
       map_url: payload.map_url || null,
       map_embed_url: payload.map_embed_url || null,
+      promo_banner_item_id: payload.promo_banner_item_id || null,
+      promo_banner_text_am: payload.promo_banner_text_am || null,
       updated_at: new Date().toISOString(),
     }
     if (existing) {

@@ -20,6 +20,7 @@ import {
   Wifi,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Copy,
   Star,
   Loader2,
@@ -463,9 +464,13 @@ function MenuPageInner({
   const scrollTo = (id: string) => {
     setActiveCat(id)
     setNavOpen(false)
-    document
-      .getElementById(`cat-${id}`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const el = document.getElementById(`cat-${id}`)
+    if (el) {
+      const headerOffset = 160
+      const elementPosition = el.getBoundingClientRect().top
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+      window.scrollTo({ top: offsetPosition, behavior: 'smooth' })
+    }
   }
 
   return (
@@ -483,18 +488,42 @@ function MenuPageInner({
         }}
       />
       {/* Global Promo Banner */}
-      {info?.promo_banner_active && info?.promo_banner_text && (
-        <a
-          href={info.promo_banner_url || '#'}
-          target={info.promo_banner_url ? '_blank' : undefined}
-          className="flex w-full cursor-pointer items-center justify-center bg-primary px-4 py-2 text-center text-xs font-bold uppercase tracking-widest text-primary-foreground hover:opacity-90"
-        >
-          <span>{info.promo_banner_text}</span>
-          {info.promo_banner_url && (
-            <ChevronRight className="ml-1 h-3 w-3 shrink-0" />
-          )}
-        </a>
-      )}
+      {info?.promo_banner_active &&
+        (info?.promo_banner_text || (info as any)?.promo_banner_text_am) && (
+          <button
+            onClick={(e) => {
+              const itemId = (info as any).promo_banner_item_id
+              if (itemId) {
+                const el = document.getElementById(`item-${itemId}`)
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                  el.classList.add(
+                    'border-primary',
+                    'scale-[1.02]',
+                    'shadow-[0_0_15px_rgba(234,88,12,0.3)]',
+                  )
+                  setTimeout(() => {
+                    el.classList.remove(
+                      'border-primary',
+                      'scale-[1.02]',
+                      'shadow-[0_0_15px_rgba(234,88,12,0.3)]',
+                    )
+                  }, 2000)
+                }
+              } else if (info.promo_banner_url) {
+                window.open(info.promo_banner_url, '_blank')
+              }
+            }}
+            className="flex min-h-[40px] w-full cursor-pointer items-center justify-center bg-primary px-4 py-2 text-center text-xs font-bold uppercase leading-none tracking-widest text-primary-foreground hover:opacity-90"
+          >
+            <span className="translate-y-[0.5px]">
+              {dt(info as any, 'promo_banner_text')}
+            </span>
+            {(info.promo_banner_url || (info as any).promo_banner_item_id) && (
+              <ChevronDown className="ml-1 h-3 w-3 shrink-0 translate-y-[0.5px]" />
+            )}
+          </button>
+        )}
 
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-lg">
@@ -775,9 +804,11 @@ function MenuPageInner({
                 }`}
               >
                 {list.length === 0 ? (
-                  <p className="text-sm text-muted-foreground col-span-full">
-                    {t('no_items_in_cat')}
-                  </p>
+                  <div className="mt-4 pt-4 border-t border-border/50">
+                    <p className="text-sm text-muted-foreground col-span-full">
+                      {t('no_items_in_cat')}
+                    </p>
+                  </div>
                 ) : (
                   list.map((i) => (
                     <ItemCard

@@ -8,6 +8,7 @@ import {
   updateRestaurantInfo,
   uploadItemImage,
   type RestaurantInfo,
+  type MenuItem,
 } from '@/server/menu.functions'
 import {
   setStaffPin,
@@ -16,6 +17,7 @@ import {
 } from '@/server/staff.functions'
 
 import { RestaurantProfileCard } from '../-components/infotab/RestaurantProfileCard'
+import { PromoBannerCard } from '../-components/infotab/PromoBannerCard'
 import { StoreUtilitiesCard } from '../-components/infotab/StoreUtilitiesCard'
 import { PaymentMethodsCard } from '../-components/infotab/PaymentMethodsCard'
 import { StaffPinCard } from '../-components/infotab/StaffPinCard'
@@ -25,9 +27,11 @@ import { ConfirmationModal } from '../-components/ConfirmationModal'
 
 export function InfoTab({
   info,
+  items,
   onChange,
 }: {
   info: RestaurantInfo | null
+  items: MenuItem[]
   onChange: () => void
 }) {
   const { t } = useTranslation()
@@ -43,9 +47,11 @@ export function InfoTab({
     max_tables: info?.max_tables ?? 999,
     wifi_password: info?.wifi_password ?? '',
     service_charge_pct: info?.service_charge_pct ?? 0,
-    promo_banner_active: info?.promo_banner_active ?? false,
-    promo_banner_text: info?.promo_banner_text ?? '',
-    promo_banner_url: info?.promo_banner_url ?? '',
+    promo_banner_active: (info as any)?.promo_banner_active ?? false,
+    promo_banner_text: (info as any)?.promo_banner_text ?? '',
+    promo_banner_text_am: (info as any)?.promo_banner_text_am ?? '',
+    promo_banner_url: (info as any)?.promo_banner_url ?? '',
+    promo_banner_item_id: (info as any)?.promo_banner_item_id ?? null,
     payment_methods: Array.isArray(info?.payment_methods)
       ? (info!.payment_methods as any[])
       : [],
@@ -72,9 +78,11 @@ export function InfoTab({
         max_tables: info.max_tables ?? 999,
         wifi_password: info.wifi_password ?? '',
         service_charge_pct: info.service_charge_pct ?? 0,
-        promo_banner_active: info.promo_banner_active ?? false,
-        promo_banner_text: info.promo_banner_text ?? '',
-        promo_banner_url: info.promo_banner_url ?? '',
+        promo_banner_active: (info as any).promo_banner_active ?? false,
+        promo_banner_text: (info as any).promo_banner_text ?? '',
+        promo_banner_text_am: (info as any).promo_banner_text_am ?? '',
+        promo_banner_url: (info as any).promo_banner_url ?? '',
+        promo_banner_item_id: (info as any).promo_banner_item_id ?? null,
         payment_methods: Array.isArray(info.payment_methods)
           ? (info.payment_methods as any[])
           : [],
@@ -235,9 +243,11 @@ export function InfoTab({
       max_tables: info?.max_tables ?? 999,
       wifi_password: info?.wifi_password ?? '',
       service_charge_pct: info?.service_charge_pct ?? 0,
-      promo_banner_active: info?.promo_banner_active ?? false,
-      promo_banner_text: info?.promo_banner_text ?? '',
-      promo_banner_url: info?.promo_banner_url ?? '',
+      promo_banner_active: (info as any)?.promo_banner_active ?? false,
+      promo_banner_text: (info as any)?.promo_banner_text ?? '',
+      promo_banner_text_am: (info as any)?.promo_banner_text_am ?? '',
+      promo_banner_url: (info as any)?.promo_banner_url ?? '',
+      promo_banner_item_id: (info as any)?.promo_banner_item_id ?? null,
       payment_methods: Array.isArray(info?.payment_methods)
         ? (info!.payment_methods as any[])
         : [],
@@ -274,6 +284,7 @@ export function InfoTab({
       className="mx-auto max-w-4xl space-y-12 pb-32 animate-in fade-in duration-700"
     >
       <RestaurantProfileCard form={form} setForm={setForm} />
+      <PromoBannerCard form={form} setForm={setForm} items={items} />
 
       <DietaryTagsCard form={form} setForm={setForm} />
 
