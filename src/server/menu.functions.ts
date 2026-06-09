@@ -1,6 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import type { Tables } from '@/integrations/supabase/types'
 import { getRequest } from '@tanstack/react-start/server'
 import { auth } from '#/lib/auth'
@@ -17,9 +16,16 @@ export type MenuData = {
   info: RestaurantInfo | null
 }
 
+const getDb = async () => {
+  const { supabaseAdmin } =
+    await import('@/integrations/supabase/client.server')
+  return supabaseAdmin
+}
+
 export const getMenuData = createServerFn({ method: 'GET' }).handler(
   async (): Promise<MenuData> => {
     try {
+      const supabaseAdmin = await getDb()
       const [cats, items, info] = await Promise.all([
         supabaseAdmin.from('categories').select('*').order('sort_order'),
         supabaseAdmin.from('menu_items').select('*').order('sort_order'),
@@ -84,6 +90,7 @@ export const upsertMenuItem = createServerFn({ method: 'POST' })
   .inputValidator((d) => ItemSchema.parse(d))
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { id, ...payload } = data
     if (id) {
       const { error } = await supabaseAdmin
@@ -115,6 +122,7 @@ export const deleteMenuItem = createServerFn({ method: 'POST' })
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { error } = await supabaseAdmin
       .from('menu_items')
       .delete()
@@ -129,6 +137,7 @@ export const toggleAvailability = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { error } = await supabaseAdmin
       .from('menu_items')
       .update({ is_available: data.is_available })
@@ -156,6 +165,7 @@ export const upsertCategory = createServerFn({ method: 'POST' })
   .inputValidator((d) => CategorySchema.parse(d))
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { id, ...payload } = data
     if (id) {
       const { error } = await supabaseAdmin
@@ -178,6 +188,7 @@ export const deleteCategory = createServerFn({ method: 'POST' })
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { error } = await supabaseAdmin
       .from('categories')
       .delete()
@@ -198,6 +209,7 @@ export const reorderMenuItems = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     for (const { id, sort_order } of data.updates) {
       await supabaseAdmin
         .from('menu_items')
@@ -219,6 +231,7 @@ export const reorderCategories = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     for (const { id, sort_order } of data.updates) {
       await supabaseAdmin.from('categories').update({ sort_order }).eq('id', id)
     }
@@ -266,6 +279,7 @@ export const updateRestaurantInfo = createServerFn({ method: 'POST' })
   .inputValidator((d) => InfoSchema.parse(d))
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const payload = data
     const { data: existing } = await supabaseAdmin
       .from('restaurant_info')
@@ -313,6 +327,7 @@ export const uploadItemImage = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const ext = data.filename.split('.').pop()?.toLowerCase() ?? 'jpg'
     const path = `${crypto.randomUUID()}.${ext}`
     const buffer = Buffer.from(data.base64, 'base64')

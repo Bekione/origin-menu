@@ -1,6 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import { getRequest } from '@tanstack/react-start/server'
 import { auth } from '#/lib/auth'
 
@@ -11,11 +10,18 @@ async function checkAuth() {
   return session
 }
 
+const getDb = async () => {
+  const { supabaseAdmin } =
+    await import('@/integrations/supabase/client.server')
+  return supabaseAdmin
+}
+
 /** Public — Get loyalty status for a device */
 export const getLoyaltyStatus = createServerFn({ method: 'GET' })
   .inputValidator((d) => z.object({ device_id: z.string() }).parse(d))
   .handler(async ({ data }) => {
     // 1. Get active program
+    const supabaseAdmin = await getDb()
     const { data: program, error: progErr } = await supabaseAdmin
       .from('loyalty_programs')
       .select('*')
@@ -63,6 +69,7 @@ export const requestRewardRedemption = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     // This just broadcasts that a user is ready to redeem.
     // The actual deduction happens in verifyAndFulfillReward (Admin)
+    const supabaseAdmin = await getDb()
     await supabaseAdmin.channel('origin-realtime').send({
       type: 'broadcast',
       event: 'reward_redemption_requested',
@@ -75,6 +82,7 @@ export const requestRewardRedemption = createServerFn({ method: 'POST' })
 export const getLoyaltySettings = createServerFn({ method: 'GET' }).handler(
   async () => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { data, error } = await supabaseAdmin
       .from('loyalty_programs')
       .select('*')
@@ -101,6 +109,7 @@ export const updateLoyaltySettings = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
 
     if (data.id) {
       const { error } = await supabaseAdmin
@@ -130,6 +139,7 @@ export const updateLoyaltySettings = createServerFn({ method: 'POST' })
 export async function issueStamp(deviceId: string, _orderId: string) {
   try {
     // 1. Get active program
+    const supabaseAdmin = await getDb()
     const { data: program } = await supabaseAdmin
       .from('loyalty_programs')
       .select('id, stamps_required')
@@ -191,6 +201,7 @@ export const redeemRewardWithCode = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
 
     // 1. Find all cards with rewards available for this program
     const { data: cards, error } = await supabaseAdmin

@@ -1,8 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import { getRequest } from '@tanstack/react-start/server'
 import { auth } from '#/lib/auth'
+
+const getDb = async () => {
+  const { supabaseAdmin } =
+    await import('@/integrations/supabase/client.server')
+  return supabaseAdmin
+}
 
 async function checkAuth() {
   const request = getRequest()
@@ -24,6 +29,7 @@ export const submitFeedback = createServerFn({ method: 'POST' })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    const supabaseAdmin = await getDb()
     const { error } = await supabaseAdmin.from('feedback').insert({
       table_id: data.table_id ?? null,
       table_label: data.table_label ?? null,
@@ -47,6 +53,7 @@ export const getFeedback = createServerFn({ method: 'GET' })
   )
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { offset = 0, limit = 10 } = data ?? {}
     const from = offset
     const to = offset + limit - 1
@@ -68,6 +75,7 @@ export const getFeedback = createServerFn({ method: 'GET' })
 export const getFeedbackSummary = createServerFn({ method: 'GET' }).handler(
   async () => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 

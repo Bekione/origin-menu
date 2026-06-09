@@ -1,8 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import { getRequest } from '@tanstack/react-start/server'
 import { auth } from '#/lib/auth'
+
+const getDb = async () => {
+  const { supabaseAdmin } =
+    await import('@/integrations/supabase/client.server')
+  return supabaseAdmin
+}
 
 async function checkAuth() {
   const request = getRequest()
@@ -31,6 +36,7 @@ export const callWaiter = createServerFn({ method: 'POST' })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    const supabaseAdmin = await getDb()
     const { data: existing } = await supabaseAdmin
       .from('waiter_calls')
       .select('created_at')
@@ -74,6 +80,7 @@ export const callWaiter = createServerFn({ method: 'POST' })
 export const getWaiterCalls = createServerFn({ method: 'GET' }).handler(
   async () => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { data, error } = await supabaseAdmin
       .from('waiter_calls')
       .select('*')
@@ -89,6 +96,7 @@ export const acknowledgeCall = createServerFn({ method: 'POST' })
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { error } = await supabaseAdmin
       .from('waiter_calls')
       .update({ status: 'acknowledged' })
@@ -110,6 +118,7 @@ export const dismissCall = createServerFn({ method: 'POST' })
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { error } = await supabaseAdmin
       .from('waiter_calls')
       .update({ status: 'rejected' })
@@ -132,6 +141,7 @@ export const dismissCall = createServerFn({ method: 'POST' })
 export const verifyTableToken = createServerFn({ method: 'POST' })
   .inputValidator((d) => z.object({ token: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
+    const supabaseAdmin = await getDb()
     const { data: table, error } = await supabaseAdmin
       .from('restaurant_tables')
       .select('id, label, is_active')
@@ -155,6 +165,7 @@ export const recordQrScan = createServerFn({ method: 'POST' })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    const supabaseAdmin = await getDb()
     const { error } = await supabaseAdmin.from('qr_scans').insert({
       table_id: data.table_id ?? null,
       table_label: data.table_label ?? null,
@@ -180,6 +191,7 @@ export const recordQrScan = createServerFn({ method: 'POST' })
 /** Admin — list all tables */
 export const getTables = createServerFn({ method: 'GET' }).handler(async () => {
   await checkAuth()
+  const supabaseAdmin = await getDb()
   const { data, error } = await supabaseAdmin
     .from('restaurant_tables')
     .select('*')
@@ -197,6 +209,7 @@ export const upsertTable = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     if (data.id) {
       const { error } = await supabaseAdmin
         .from('restaurant_tables')
@@ -217,6 +230,7 @@ export const regenerateTableToken = createServerFn({ method: 'POST' })
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const newToken = crypto.randomUUID()
     const { error: updateError } = await supabaseAdmin
       .from('restaurant_tables')
@@ -231,6 +245,7 @@ export const deleteTable = createServerFn({ method: 'POST' })
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { error } = await supabaseAdmin
       .from('restaurant_tables')
       .delete()
@@ -263,6 +278,7 @@ export const placeOrder = createServerFn({ method: 'POST' })
       .parse(d),
   )
   .handler(async ({ data }) => {
+    const supabaseAdmin = await getDb()
     const { data: recent } = await supabaseAdmin
       .from('table_orders')
       .select('created_at')
@@ -360,6 +376,7 @@ export const getTableOrders = createServerFn({ method: 'GET' })
   )
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
     const { offset = 0, limit = 20 } = data ?? {}
 
     const { data: orders, error } = await supabaseAdmin
@@ -376,6 +393,7 @@ export const getTableOrders = createServerFn({ method: 'GET' })
 export const getMyOrders = createServerFn({ method: 'GET' })
   .inputValidator((d) => z.object({ device_id: z.string() }).parse(d))
   .handler(async ({ data }) => {
+    const supabaseAdmin = await getDb()
     const { data: orders, error } = await supabaseAdmin
       .from('table_orders')
       .select('*')
@@ -399,6 +417,7 @@ export const updateOrderStatus = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await checkAuth()
+    const supabaseAdmin = await getDb()
 
     // Guard: fetch current status before updating
     const { data: current, error: fetchErr } = await supabaseAdmin

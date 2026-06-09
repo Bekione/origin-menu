@@ -1,8 +1,13 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import { getRequest } from '@tanstack/react-start/server'
 import { auth } from '#/lib/auth'
+
+const getDb = async () => {
+  const { supabaseAdmin } =
+    await import('@/integrations/supabase/client.server')
+  return supabaseAdmin
+}
 
 async function checkAdminAuth() {
   const request = getRequest()
@@ -39,6 +44,7 @@ export const setStaffPin = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await checkAdminAuth()
+    const supabaseAdmin = await getDb()
     const storedValue = await hashPin(data.pin)
     // Update the first (and only) restaurant_info row
     const { error } = await supabaseAdmin
@@ -65,6 +71,7 @@ export const verifyStaffPin = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     // 1. Fetch the stored value (salt:hash)
+    const supabaseAdmin = await getDb()
     const { data: info, error } = await supabaseAdmin
       .from('restaurant_info')
       .select('staff_pin_hash')
@@ -124,6 +131,7 @@ export const verifyStaffPin = createServerFn({ method: 'POST' })
 export const getActiveStaffSessions = createServerFn({ method: 'GET' }).handler(
   async () => {
     await checkAdminAuth()
+    const supabaseAdmin = await getDb()
     const staffEmail = process.env.STAFF_ACCOUNT_EMAIL
     if (!staffEmail) return []
 
@@ -153,6 +161,7 @@ export const revokeStaffSession = createServerFn({ method: 'POST' })
   .inputValidator((d) => z.object({ id: z.string().min(1) }).parse(d))
   .handler(async ({ data }) => {
     await checkAdminAuth()
+    const supabaseAdmin = await getDb()
     const { error } = await supabaseAdmin
       .from('session' as any)
       .delete()

@@ -1,7 +1,12 @@
 import { createServerFn } from '@tanstack/react-start'
-import { supabaseAdmin } from '@/integrations/supabase/client.server'
 import { getRequest } from '@tanstack/react-start/server'
 import { auth } from '#/lib/auth'
+
+const getDb = async () => {
+  const { supabaseAdmin } =
+    await import('@/integrations/supabase/client.server')
+  return supabaseAdmin
+}
 
 async function checkAdminAuth() {
   const request = getRequest()
@@ -35,6 +40,7 @@ export type TopStats = {
 export const getDashboardKPIs = createServerFn({ method: 'GET' }).handler(
   async (): Promise<DashboardKPIs> => {
     await checkAdminAuth()
+    const supabaseAdmin = await getDb()
     const todayISO = new Date().toISOString().split('T')[0] + 'T00:00:00Z'
 
     const { data: orders, error } = await supabaseAdmin
@@ -69,6 +75,7 @@ export const getDashboardKPIs = createServerFn({ method: 'GET' }).handler(
 export const getDashboardTrends = createServerFn({ method: 'GET' }).handler(
   async (): Promise<DashboardTrends> => {
     await checkAdminAuth()
+    const supabaseAdmin = await getDb()
     const rangeStart = new Date()
     rangeStart.setDate(rangeStart.getDate() - 30)
     const rangeISO = rangeStart.toISOString().split('T')[0] + 'T00:00:00Z'
@@ -110,6 +117,7 @@ export const getDashboardTrends = createServerFn({ method: 'GET' }).handler(
 export const getDashboardTopStats = createServerFn({ method: 'GET' }).handler(
   async (): Promise<TopStats> => {
     await checkAdminAuth()
+    const supabaseAdmin = await getDb()
     const todayISO = new Date().toISOString().split('T')[0] + 'T00:00:00Z'
 
     const { data: orders, error } = await supabaseAdmin
@@ -150,6 +158,7 @@ export const getDashboardTopStats = createServerFn({ method: 'GET' }).handler(
 export const getOutOfStockItems = createServerFn({ method: 'GET' }).handler(
   async () => {
     await checkAdminAuth()
+    const supabaseAdmin = await getDb()
     const { data, error } = await supabaseAdmin
       .from('menu_items')
       .select('id, name, name_am')
@@ -164,6 +173,7 @@ export const getPendingOrderCount = createServerFn({
   method: 'GET',
 }).handler(async () => {
   await checkAdminAuth()
+  const supabaseAdmin = await getDb()
   const { count, error } = await supabaseAdmin
     .from('table_orders')
     .select('*', { count: 'exact', head: true })
@@ -183,6 +193,7 @@ export type QrScanStats = {
 export const getQrScanCount = createServerFn({ method: 'GET' }).handler(
   async (): Promise<QrScanStats> => {
     await checkAdminAuth()
+    const supabaseAdmin = await getDb()
     const todayISO = new Date().toISOString().split('T')[0] + 'T00:00:00Z'
 
     // Fetch all scans to compute unique devices client-side (Supabase free tier has no COUNT DISTINCT)
