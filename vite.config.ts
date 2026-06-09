@@ -7,8 +7,6 @@ import { readFileSync } from 'node:fs'
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'))
 
-const isStatic = process.env.NITRO_PRESET === 'static'
-
 export default defineConfig({
   resolve: { tsconfigPaths: true },
   define: {
@@ -21,16 +19,6 @@ export default defineConfig({
       router: {
         routeFileIgnorePattern:
           '((components|hooks|tabs|utils)\\.(tsx|ts|jsx|js))|((components|hooks|tabs|utils)\\/)',
-      },
-      spa: {
-        enabled: isStatic,
-        prerender: {
-          outputPath: '/index.html',
-        },
-      },
-      prerender: {
-        enabled: isStatic,
-        crawlLinks: true,
       },
     }),
     viteReact(),
