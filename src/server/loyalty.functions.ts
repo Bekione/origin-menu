@@ -101,8 +101,10 @@ export const updateLoyaltySettings = createServerFn({ method: 'POST' })
       .object({
         id: z.string().uuid().optional(),
         name: z.string().min(1),
+        name_am: z.string().min(1).optional(),
         stamps_required: z.number().int().min(1),
         reward_description: z.string().min(1),
+        reward_description_am: z.string().min(1).optional(),
         is_active: z.boolean().optional(),
       })
       .parse(d),
@@ -116,8 +118,10 @@ export const updateLoyaltySettings = createServerFn({ method: 'POST' })
         .from('loyalty_programs')
         .update({
           name: data.name,
+          name_am: data.name_am,
           stamps_required: data.stamps_required,
           reward_description: data.reward_description,
+          reward_description_am: data.reward_description_am,
           is_active: data.is_active,
         })
         .eq('id', data.id)
@@ -125,8 +129,10 @@ export const updateLoyaltySettings = createServerFn({ method: 'POST' })
     } else {
       const { error } = await supabaseAdmin.from('loyalty_programs').insert({
         name: data.name,
+        name_am: data.name_am,
         stamps_required: data.stamps_required,
         reward_description: data.reward_description,
+        reward_description_am: data.reward_description_am,
         is_active: data.is_active ?? true,
       })
       if (error) throw new Error(error.message)

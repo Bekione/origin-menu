@@ -15,7 +15,8 @@ import {
 } from '@/server/loyalty.functions'
 import { useTranslation } from '@/lib/i18n'
 import { toast } from 'sonner'
-import { Field, inputCls, Toggle } from '../-components/FormPrimitives'
+import { Field, inputCls } from '@/routes/admin/-components/FormPrimitives'
+import { Toggle } from '../-components/FormPrimitives'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export function LoyaltyTab() {
@@ -39,8 +40,10 @@ export function LoyaltyTab() {
       const data = await fetchSettings()
       const initialProgram = data || {
         name: 'Origin Rewards',
+        name_am: 'ኦሪጅን የቀናት ማስታወሻ',
         stamps_required: 10,
         reward_description: 'One Free Drink',
+        reward_description_am: 'አንድ ነፃ መጠጥ',
         is_active: true,
       }
       setProgram(initialProgram)
@@ -126,7 +129,7 @@ export function LoyaltyTab() {
         </p>
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+      <div className="grid gap-8 lg:grid-cols-[1fr_340px]">
         {/* Left Column: Form */}
         <form onSubmit={handleSave} className="space-y-6">
           <div
@@ -151,66 +154,126 @@ export function LoyaltyTab() {
             </div>
 
             <div className="grid gap-8">
-              <Field label={t('program_name')}>
-                <input
-                  type="text"
-                  disabled={!program.is_active}
-                  value={program.name}
-                  onChange={(e) => {
-                    setProgram({ ...program, name: e.target.value })
-                    setIsDirty(true)
-                  }}
-                  className={inputCls}
-                  placeholder="e.g. Origin Rewards"
-                  required
-                />
-              </Field>
-
               <div className="grid gap-6 sm:grid-cols-2">
-                <Field label={t('stamps_required')}>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      disabled={!program.is_active}
-                      value={program.stamps_required}
-                      onChange={(e) => {
-                        setProgram({
-                          ...program,
-                          stamps_required: parseInt(e.target.value) || 0,
-                        })
-                        setIsDirty(true)
-                      }}
-                      className={`${inputCls} pr-16 `}
-                      min="1"
-                      max="50"
-                      required
-                    />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase text-muted-foreground pointer-events-none">
-                      Stamps
-                    </div>
-                  </div>
+                <Field
+                  label={t('program_name')}
+                  hint={t('max_chars', { count: 30 })}
+                >
+                  <input
+                    type="text"
+                    maxLength={30}
+                    disabled={!program.is_active}
+                    value={program.name}
+                    onChange={(e) => {
+                      setProgram({ ...program, name: e.target.value })
+                      setIsDirty(true)
+                    }}
+                    className={inputCls}
+                    placeholder="e.g. Origin Rewards"
+                    required
+                  />
                 </Field>
 
-                <Field label={t('reward_description')}>
-                  <div className="relative">
-                    <Gift className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <input
-                      type="text"
-                      disabled={!program.is_active}
-                      value={program.reward_description}
-                      onChange={(e) => {
-                        setProgram({
-                          ...program,
-                          reward_description: e.target.value,
-                        })
-                        setIsDirty(true)
-                      }}
-                      className={`${inputCls} pl-10`}
-                      placeholder="e.g. Free Main Dish"
-                      required
-                    />
-                  </div>
+                <Field
+                  label={t('program_name_am')}
+                  hint={t('max_chars', { count: 30 })}
+                >
+                  <input
+                    type="text"
+                    maxLength={30}
+                    disabled={!program.is_active}
+                    value={program.name_am}
+                    onChange={(e) => {
+                      setProgram({ ...program, name_am: e.target.value })
+                      setIsDirty(true)
+                    }}
+                    className={`${inputCls} font-amharic`}
+                    placeholder="ለምሳሌ፡ ኦሪጅን የታማኝነት"
+                    required
+                  />
                 </Field>
+              </div>
+
+              <div className="grid gap-6">
+                
+
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <Field
+                    label={t('reward_description')}
+                    hint={t('max_chars', { count: 60 })}
+                  >
+                    <div className="relative">
+                      <Gift className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <input
+                        type="text"
+                        maxLength={60}
+                        disabled={!program.is_active}
+                        value={program.reward_description}
+                        onChange={(e) => {
+                          setProgram({
+                            ...program,
+                            reward_description: e.target.value,
+                          })
+                          setIsDirty(true)
+                        }}
+                        className={`${inputCls} pl-10`}
+                        placeholder="e.g. Free Main Dish"
+                        required
+                      />
+                    </div>
+                  </Field>
+
+                  <Field
+                    label={t('reward_description_am')}
+                    hint={t('max_chars', { count: 60 })}
+                  >
+                    <div className="relative">
+                      <Gift className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                      <input
+                        type="text"
+                        maxLength={60}
+                        disabled={!program.is_active}
+                        value={program.reward_description_am}
+                        onChange={(e) => {
+                          setProgram({
+                            ...program,
+                            reward_description_am: e.target.value,
+                          })
+                          setIsDirty(true)
+                        }}
+                        className={`${inputCls} pl-10 font-amharic`}
+                        placeholder="ለምሳሌ፡ አንድ ነፃ ምግብ"
+                        required
+                      />
+                    </div>
+                  </Field>
+                </div>
+
+                <div className="grid gap-6 sm:grid-cols-2">
+                  <Field label={t('stamps_required')}>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        disabled={!program.is_active}
+                        value={program.stamps_required}
+                        onChange={(e) => {
+                          setProgram({
+                            ...program,
+                            stamps_required: parseInt(e.target.value) || 0,
+                          })
+                          setIsDirty(true)
+                        }}
+                        className={`${inputCls} pr-16 `}
+                        min="1"
+                        max="50"
+                        required
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black uppercase text-muted-foreground pointer-events-none">
+                        {t('stamps')}
+                      </div>
+                    </div>
+                  </Field>
+                </div>
               </div>
             </div>
           </div>
@@ -218,8 +281,8 @@ export function LoyaltyTab() {
           <div className="flex items-start gap-4 rounded-2xl bg-amber-500/5 p-5 ring-1 ring-amber-500/20 border border-amber-500/10">
             <AlertCircle className="mt-0.5 h-5 w-5 text-amber-500 shrink-0" />
             <p className="text-xs font-medium text-amber-500/80 leading-relaxed italic">
-              Pro-tip: Guests receive stamps automatically on order completion.
-              Keep the reward description short and enticing!
+              <strong>{t('loyalty_pro_tip')}:</strong>{' '}
+              {t('loyalty_pro_tip_desc')}
             </p>
           </div>
         </form>

@@ -3,16 +3,25 @@ export const inputCls =
 
 export function Field({
   label,
+  hint,
   children,
 }: {
   label: string
+  hint?: string
   children: React.ReactNode
 }) {
   return (
     <div>
-      <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </label>
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <label className="block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {label}
+        </label>
+        {hint && (
+          <span className="text-[10px] font-medium text-muted-foreground/50 italic">
+            {hint}
+          </span>
+        )}
+      </div>
       {children}
     </div>
   )

@@ -98,7 +98,7 @@ export function LoyaltyFloatingButton({ deviceId }: { deviceId: string }) {
 }
 
 function LoyaltyModal({ data, deviceId, onClose, onRefresh }: any) {
-  const { t } = useTranslation()
+  const { t, dt } = useTranslation()
   const { card, program } = data
   const [isRedeeming, setIsRedeeming] = useState(false)
   const [step, setStep] = useState<'stamps' | 'code' | 'confirmed'>('stamps')
@@ -179,7 +179,7 @@ function LoyaltyModal({ data, deviceId, onClose, onRefresh }: any) {
               </div>
               <div>
                 <h3 className="font-display text-lg font-bold uppercase tracking-tight text-white leading-tight">
-                  {program.name}
+                  {dt(program, 'name')}
                 </h3>
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">
                   {t('digital_stamp_card')}
@@ -206,8 +206,8 @@ function LoyaltyModal({ data, deviceId, onClose, onRefresh }: any) {
                     <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-0.5">
                       {t('next_reward')}
                     </h4>
-                    <p className="text-sm font-bold text-white line-clamp-1 italic">
-                      {program.reward_description}
+                    <p className="text-sm font-bold text-white italic leading-relaxed">
+                      {dt(program, 'reward_description')}
                     </p>
                   </div>
                 </div>
@@ -341,9 +341,9 @@ function LoyaltyModal({ data, deviceId, onClose, onRefresh }: any) {
                   {t('enjoy_your_reward')}
                 </h3>
                 <p className="text-sm font-medium leading-relaxed text-white/50">
-                  Your{' '}
+                  {t('your')}{' '}
                   <span className="font-bold text-emerald-400">
-                    {program.reward_description}
+                    {dt(program, 'reward_description')}
                   </span>{' '}
                   {t('reward_confirmed_message')}
                 </p>
