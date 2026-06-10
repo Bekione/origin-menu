@@ -231,5 +231,12 @@ export const redeemRewardWithCode = createServerFn({ method: 'POST' })
 
     if (updateErr) throw new Error(updateErr.message)
 
+    // 4. Broadcast for instant guest sync
+    await supabaseAdmin.channel('origin-realtime').send({
+      type: 'broadcast',
+      event: 'reward_redemption_confirmed',
+      payload: { device_id: match.device_id },
+    })
+
     return { ok: true, device_id: match.device_id }
   })

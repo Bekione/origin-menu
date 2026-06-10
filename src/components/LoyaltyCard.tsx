@@ -18,13 +18,10 @@ import {
 import { useTranslation } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import ScrollFade from './ScrollFade'
+import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 
 // This component renders the pill button inline — parent controls positioning
-export function LoyaltyFloatingButton({
-  deviceId,
-}: {
-  deviceId: string
-}) {
+export function LoyaltyFloatingButton({ deviceId }: { deviceId: string }) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [data, setData] = useState<any>(null)
@@ -122,30 +119,33 @@ function LoyaltyModal({ data, deviceId, onClose, onRefresh }: any) {
     }
   }
 
-  // Poll while on the code screen — detect when waiter redeems
+  // Real-time listener for redemption confirmation
   useEffect(() => {
     if (step !== 'code') return
-    const interval = setInterval(async () => {
-      await onRefresh()
-      const newData = await new Promise<any>((resolve) => {
-        // Use the fact that onRefresh updates parent state, re-check from data
-        resolve(data)
-      })
-      // If rewards dropped to 0, the waiter just redeemed it
-      if (newData.card.rewards_available === 0) {
-        setStep('confirmed')
-        clearInterval(interval)
-      }
-    }, 3000)
-    return () => clearInterval(interval)
-  }, [step])
 
-  // Watch for data change from parent to detect redemption
+    const channel = supabaseBrowser
+      .channel('loyalty-sync')
+      .on('broadcast', { event: 'reward_redemption_confirmed' }, (payload) => {
+        if (payload.payload.device_id === deviceId) {
+          setStep('confirmed')
+        }
+      })
+      .subscribe()
+
+    return () => {
+      supabaseBrowser.removeChannel(channel)
+    }
+  }, [step, deviceId])
+
+  // Optional: Fallback check if data updates via parent refresh
   useEffect(() => {
-    if (step === 'code' && card.rewards_available === 0) {
+    if (
+      step === 'code' &&
+      card.rewards_available < (data?.card?.rewards_available ?? 0)
+    ) {
       setStep('confirmed')
     }
-  }, [card.rewards_available, step])
+  }, [card.rewards_available, step, data?.card?.rewards_available])
 
   const stamps = card.current_stamps
   const totalSlots = program.stamps_required
