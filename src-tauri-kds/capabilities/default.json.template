@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "main-capability",
-  "description": "Core capabilities for Origin Console desktop window",
+  "description": "Core capabilities for Origin KDS desktop window",
   "windows": ["main"],
   "permissions": [
     "core:default",
@@ -14,6 +14,6 @@
     "shell:default"
   ],
   "remote": {
-    "urls": ["https://originrestaurant-menu.vercel.app/**"]
+    "urls": ["%VITE_VERCEL_URL%/**"]
   }
 }

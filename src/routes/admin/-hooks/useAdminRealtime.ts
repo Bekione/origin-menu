@@ -4,7 +4,10 @@ import { useNavigate } from '@tanstack/react-router'
 import { supabaseBrowser } from '@/integrations/supabase/client.browser'
 import { useTranslation } from '@/lib/i18n'
 import { playAdminAlert } from '@/lib/audio-utils'
-import { sendDesktopNotification } from '@/lib/desktop-utils'
+import {
+  sendDesktopNotification,
+  updateTaskbarBadge,
+} from '@/lib/desktop-utils'
 import { getPendingOrderCount } from '@/server/admin.functions'
 import type { WaiterCall } from '@/server/table.functions'
 
@@ -12,12 +15,18 @@ interface RealtimeProps {
   setCalls: (fn: (prev: WaiterCall[]) => WaiterCall[]) => void
   setPendingOrderCount: (n: number) => void
   setCallsOpen: (v: boolean) => void
+  /** Current active waiter call count — for composite taskbar badge */
+  activeWaiterCallCount: number
+  /** Current pending order count — for composite taskbar badge */
+  pendingOrderCount: number
 }
 
 export function useAdminRealtime({
   setCalls,
   setPendingOrderCount,
   setCallsOpen,
+  activeWaiterCallCount,
+  pendingOrderCount,
 }: RealtimeProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -33,6 +42,11 @@ export function useAdminRealtime({
       console.error('Failed to fetch pending count', err)
     }
   }
+
+  // Update the taskbar badge whenever either count changes (orders + waiter calls)
+  useEffect(() => {
+    updateTaskbarBadge(pendingOrderCount + activeWaiterCallCount)
+  }, [pendingOrderCount, activeWaiterCallCount])
 
   useEffect(() => {
     const channel = supabaseBrowser
@@ -67,12 +81,14 @@ export function useAdminRealtime({
               },
             )
 
-            // Native Desktop Notification
+            // Native Desktop Notification — click opens Waiter Calls panel
             sendDesktopNotification(
               t('waiter_calling_admin_toast').replace(
                 '{tableLabel}',
                 newCall.table_label ?? '',
               ),
+              undefined,
+              'waiter',
             )
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as WaiterCall
@@ -109,10 +125,11 @@ export function useAdminRealtime({
           },
         )
 
-        // Native Desktop Notification
+        // Native Desktop Notification — click opens Orders tab
         sendDesktopNotification(
           t('new_order_toast').replace('{tableLabel}', order.table_label ?? ''),
           order.total_amount ? `${t('total')}: ${order.total_amount} ETB` : '',
+          'order',
         )
       })
       .on('broadcast', { event: 'order_status_updated' }, (payload) => {

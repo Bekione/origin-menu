@@ -64,7 +64,9 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFFQjUwNUM3RDEwOTcwQjQKUldTMGNBblJ4d1cxcnQ0YUR6angyTFh4azFmcTgweEtxT1I1WjZEWVpzT3BISEprcUxSZFNPMHAK",
-      "endpoints": ["https://originrestaurant-menu.vercel.app/updater-admin.json"],
+      "endpoints": [
+        "%VITE_UPDATER_ENDPOINT%"
+      ],
       "windows": {
         "installMode": "quiet"
       }

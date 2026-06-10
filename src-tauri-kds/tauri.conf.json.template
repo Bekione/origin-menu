@@ -1,25 +1,25 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Origin Console",
+  "productName": "Origin KDS",
   "version": "1.0.1",
-  "identifier": "com.origin.console",
+  "identifier": "com.origin.kds",
   "build": {
     "beforeDevCommand": "",
     "beforeBuildCommand": "",
     "frontendDist": "ui",
-    "devUrl": "http://localhost:3000/admin"
+    "devUrl": "http://localhost:3000/staff"
   },
   "app": {
     "withGlobalTauri": true,
     "windows": [
       {
         "label": "main",
-        "title": "Origin Console",
+        "title": "Origin KDS",
         "url": "index.html",
-        "width": 1280,
-        "height": 820,
-        "minWidth": 1024,
-        "minHeight": 680,
+        "width": 1024,
+        "height": 768,
+        "minWidth": 800,
+        "minHeight": 600,
         "center": true,
         "decorations": true,
         "visible": true
@@ -40,8 +40,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "license": "MIT",
-    "licenseFile": "assets/license.rtf",
     "resources": ["icons/badge-dot.ico"],
     "windows": {
       "certificateThumbprint": null,
@@ -64,7 +62,9 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFFQjUwNUM3RDEwOTcwQjQKUldTMGNBblJ4d1cxcnQ0YUR6angyTFh4azFmcTgweEtxT1I1WjZEWVpzT3BISEprcUxSZFNPMHAK",
-      "endpoints": ["https://originrestaurant-menu.vercel.app/updater-admin.json"],
+      "endpoints": [
+        "%VITE_KDS_UPDATER_ENDPOINT%"
+      ],
       "windows": {
         "installMode": "quiet"
       }

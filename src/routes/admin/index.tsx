@@ -14,6 +14,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAdminRealtime } from './-hooks/useAdminRealtime'
 import { AdminHeader } from './-components/AdminHeader'
 import { WaiterCallsPanel } from './-components/WaiterCallsPanel'
+import {
+  initNotificationActions,
+  listenNotificationActions,
+} from '@/lib/desktop-utils'
 
 // Tab imports
 import { ItemsTab } from './-tabs/ItemsTab'
@@ -124,10 +128,28 @@ function AdminPage() {
       const orders = (data as any[]) || []
       setPendingOrderCount(orders.filter((o) => o.status === 'pending').length)
     })
-  }, [])
+
+    // Init Desktop Integration
+    initNotificationActions().then(() => {
+      listenNotificationActions({
+        onOrder: () => setTab('orders'),
+        onWaiterCall: () => setCallsOpen(true),
+      })
+    })
+  }, [setTab])
+
+  const activeWaiterCallCount = calls.filter(
+    (c) => c.status === 'pending',
+  ).length
 
   // Hook up realtime
-  useAdminRealtime({ setCalls, setPendingOrderCount, setCallsOpen })
+  useAdminRealtime({
+    setCalls,
+    setPendingOrderCount,
+    setCallsOpen,
+    activeWaiterCallCount,
+    pendingOrderCount,
+  })
 
   const handleAcknowledge = useCallback(async (id: string) => {
     setAcknowledgingId(id)

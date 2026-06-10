@@ -40,6 +40,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": ["icons/badge-dot.ico"],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
@@ -61,9 +62,7 @@
   "plugins": {
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFFQjUwNUM3RDEwOTcwQjQKUldTMGNBblJ4d1cxcnQ0YUR6angyTFh4azFmcTgweEtxT1I1WjZEWVpzT3BISEprcUxSZFNPMHAK",
-      "endpoints": [
-        "https://originrestaurant-menu.vercel.app/updater-kds.json"
-      ],
+      "endpoints": ["https://originrestaurant-menu.vercel.app/updater-kds.json"],
       "windows": {
         "installMode": "quiet"
       }

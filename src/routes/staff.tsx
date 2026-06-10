@@ -34,7 +34,12 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@/lib/i18n'
 import { LiveTimeAgo } from '@/lib/date-utils'
-import { sendDesktopNotification } from '@/lib/desktop-utils'
+import {
+  sendDesktopNotification,
+  updateTaskbarBadge,
+  initNotificationActions,
+  listenNotificationActions,
+} from '@/lib/desktop-utils'
 
 // ── Route guard ────────────────────────────────────────────────────────────────
 export const Route = createFileRoute('/staff')({
@@ -144,6 +149,14 @@ function StaffPage() {
 
     handleFetchOrders()
     getWaiterCalls().then((d) => setCalls((d as WaiterCall[]) || []))
+
+    // Init Desktop Integration
+    initNotificationActions().then(() => {
+      listenNotificationActions({
+        onOrder: () => {}, // KDS is single view, so just focus which happens automatically in listener
+        onWaiterCall: () => {},
+      })
+    })
   }, [])
 
   // Realtime
@@ -173,6 +186,8 @@ function StaffPage() {
               '{tableLabel}',
               call.table_label ?? '',
             ),
+            undefined,
+            'waiter',
           )
         },
       )
@@ -210,6 +225,7 @@ function StaffPage() {
             (order as any).table_label ?? '',
           ),
           `${t('total')}: ${order.total_amount ?? 0} ETB`,
+          'order',
         )
       })
       .on('broadcast', { event: 'order_status_updated' }, (p: any) => {
@@ -236,6 +252,14 @@ function StaffPage() {
       supabaseBrowser.removeChannel(channel)
     }
   }, [t, navigate, currentSessionId])
+
+  const pendingOrderCount = orders.filter((o) => o.status === 'pending').length
+  const pendingCallCount = calls.filter((c) => c.status === 'pending').length
+
+  // Update taskbar badge
+  useEffect(() => {
+    updateTaskbarBadge(pendingOrderCount + pendingCallCount)
+  }, [pendingOrderCount, pendingCallCount])
 
   const handleStatus = async (id: string, status: string) => {
     setBusyId(id)

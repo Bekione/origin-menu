@@ -14,10 +14,11 @@
     "lint": "eslint",
     "format": "prettier --write . && eslint --fix",
     "check": "prettier --check .",
-    "tauri:admin": "cd src-tauri-admin && npx tauri dev",
-    "tauri:admin:build": "cd src-tauri-admin && npx tauri build",
-    "tauri:kds": "cd src-tauri-kds && npx tauri dev",
-    "tauri:kds:build": "cd src-tauri-kds && npx tauri build"
+    "tauri:admin": "node scripts/prepare-desktop.js && cd src-tauri-admin && npx tauri dev",
+    "tauri:admin:build": "node scripts/prepare-desktop.js && node scripts/release-desktop.js admin",
+    "tauri:kds": "node scripts/prepare-desktop.js && cd src-tauri-kds && npx tauri dev",
+    "tauri:kds:build": "node scripts/prepare-desktop.js && node scripts/release-desktop.js kds",
+    "desktop:prepare": "node scripts/prepare-desktop.js"
   },
   "dependencies": {
     "@ai-sdk/openai": "^0.0.40",
@@ -30,6 +31,7 @@
     "@tanstack/react-router-ssr-query": "latest",
     "@tanstack/react-start": "latest",
     "@tanstack/router-plugin": "^1.132.0",
+    "@tauri-apps/plugin-notification": "^2.3.3",
     "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-updater": "^2.10.1",
     "@vercel/analytics": "^2.0.1",

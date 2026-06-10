@@ -14,6 +14,6 @@
     "shell:default"
   ],
   "remote": {
-    "urls": ["https://originrestaurant-menu.vercel.app/**"]
+    "urls": ["%VITE_VERCEL_URL%/**"]
   }
 }
