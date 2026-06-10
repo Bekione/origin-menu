@@ -33,10 +33,6 @@ import {
   MessageCircle,
   LayoutGrid,
   LayoutList,
-  Salad,
-  Wheat,
-  MilkOff,
-  Bean,
   Heart,
 } from 'lucide-react'
 import {
@@ -519,7 +515,7 @@ function MenuPageInner({
       {info?.promo_banner_active &&
         (info?.promo_banner_text || (info as any)?.promo_banner_text_am) && (
           <button
-            onClick={(e) => {
+            onClick={() => {
               const itemId = (info as any).promo_banner_item_id
               if (itemId) {
                 const el = document.getElementById(`item-${itemId}`)
@@ -749,7 +745,7 @@ function MenuPageInner({
         </div>
 
         {/* Tag Filters */}
-        <div className="scrollbar-none sticky top-32 z-30 -mx-4 mb-8 flex gap-2 overflow-x-auto px-4 py-1 backdrop-blur-md shadow-sm [mask-image:linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)]">
+        <div className="scrollbar-none sticky top-32 z-30 -mx-4 mb-8 flex gap-2 overflow-x-auto px-4 py-1 backdrop-blur-md shadow-sm mask-[linear-gradient(to_right,transparent,black_16px,black_calc(100%-16px),transparent)]">
           <button
             onClick={() => toggleFilter('special')}
             className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wider transition ${
@@ -1822,7 +1818,7 @@ function BillDrawer({
   categories: Category[]
   tableSession?: { token: string; tableId: string; tableLabel: string } | null
 }) {
-  const { lang, t } = useTranslation()
+  const { t } = useTranslation()
   const {
     items,
     increment,
@@ -2193,7 +2189,7 @@ function FeedbackModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-300">
       <div className="w-full max-w-sm rounded-[24px] border border-white/10 bg-card p-8 shadow-2xl animate-in zoom-in-95 duration-300">
         <div className="text-center">
           <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
