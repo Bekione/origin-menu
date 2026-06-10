@@ -603,14 +603,36 @@ function KDSOrderCard({
       </div>
       <ul className="mb-3 space-y-1">
         {order.items.map((item, i) => (
-          <li key={i} className="flex items-center justify-between text-sm">
-            <span>
-              <span className="mr-2 font-bold text-primary">×{item.qty}</span>
-              {dt(item, 'name')}
-            </span>
-            <span className="text-muted-foreground">
-              {(item.qty * item.price).toLocaleString()} {t('currency')}
-            </span>
+          <li
+            key={i}
+            className="flex flex-col border-b border-border/50 py-2 last:border-0"
+          >
+            <div className="flex items-center justify-between text-sm">
+              <span>
+                <span className="mr-2 font-bold text-primary">×{item.qty}</span>
+                {dt(item, 'name')}
+              </span>
+              <span className="ml-4 whitespace-nowrap text-muted-foreground">
+                {(item.qty * item.price).toLocaleString()} {t('currency')}
+              </span>
+            </div>
+            {((item.notes?.length ?? 0) > 0 || item.customNote) && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {item.notes?.map((n: string) => (
+                  <span
+                    key={n}
+                    className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary"
+                  >
+                    {n}
+                  </span>
+                ))}
+                {item.customNote && (
+                  <span className="rounded border border-white/5 bg-white/10 px-1.5 py-0.5 text-[9px] font-medium italic text-foreground/80">
+                    {item.customNote}
+                  </span>
+                )}
+              </div>
+            )}
           </li>
         ))}
       </ul>

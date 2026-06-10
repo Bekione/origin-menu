@@ -12,6 +12,7 @@ import {
   Clock,
   Phone,
   UtensilsCrossed,
+  Utensils,
   ShoppingBag,
   Plus,
   Minus,
@@ -36,6 +37,7 @@ import {
   Wheat,
   MilkOff,
   Bean,
+  Heart,
 } from 'lucide-react'
 import {
   getMenuData,
@@ -150,10 +152,36 @@ function MenuPageInner({
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [submittingFeedback, setSubmittingFeedback] = useState(false)
   const [deviceId, setDeviceId] = useState<string | null>(null)
+  const [pastOrders, setPastOrders] = useState<TableOrder[]>([])
+  const [isReturning, setIsReturning] = useState(false)
 
   useEffect(() => {
-    getDeviceId().then(setDeviceId)
+    getDeviceId().then((id) => {
+      setDeviceId(id)
+      if (id) {
+        getMyOrders({ data: { device_id: id } }).then((orders) => {
+          setPastOrders(orders)
+          if (orders.length > 0) setIsReturning(true)
+        })
+      }
+    })
   }, [])
+
+  // Calculate favorites (top 3 most ordered items)
+  const favorites = useMemo(() => {
+    if (pastOrders.length === 0) return []
+    const counts: Record<string, number> = {}
+    pastOrders.forEach((o) => {
+      o.items.forEach((it) => {
+        counts[it.id] = (counts[it.id] ?? 0) + it.qty
+      })
+    })
+    const sortedIds = Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([id]) => id)
+    return liveItems.filter((i) => sortedIds.includes(i.id))
+  }, [pastOrders, liveItems])
 
   const FEEDBACK_SKIP_KEY = 'origin_feedback_skips'
   const MAX_DAILY_SKIPS = 2
@@ -664,12 +692,36 @@ function MenuPageInner({
             />
           </div>
           <h1 className="relative z-10 font-display text-5xl tracking-widest text-primary drop-shadow-sm">
-            {t('welcome')}
+            {isReturning ? t('welcome_back') : t('welcome')}
           </h1>
           <p className="relative z-10 mt-3 text-sm text-muted-foreground max-w-xl mx-auto leading-relaxed">
-            {dt(info, 'hero_text') || t('tagline')}
+            {isReturning
+              ? t('returning_subtitle') ||
+                "Ready for your favorites? Here's what you loved last time."
+              : dt(info, 'hero_text') || t('tagline')}
           </p>
         </section>
+
+        {/* Your Favorites (CRM Lite) */}
+        {favorites.length > 0 && query === '' && (
+          <section className="mb-8">
+            <SectionTitle
+              label={t('your_favorites')}
+              icon={<Heart className="h-3.5 w-3.5 fill-primary" />}
+            />
+            <ScrollFade direction="horizontal" className="-mx-4 mt-3">
+              <div className="scrollbar-none flex gap-3 overflow-x-auto px-4">
+                {favorites.map((i) => (
+                  <FeaturedCard
+                    key={`fav-${i.id}`}
+                    item={i}
+                    onPreview={setPreviewMedia}
+                  />
+                ))}
+              </div>
+            </ScrollFade>
+          </section>
+        )}
 
         {/* Search + Layout Toggle */}
         <div className="relative mb-4 flex items-center gap-2">
@@ -1115,6 +1167,7 @@ function MenuPageInner({
         open={billOpen}
         onClose={() => setBillOpen(false)}
         info={info}
+        categories={categories}
         tableSession={tableSession}
       />
 
@@ -1425,7 +1478,17 @@ function ItemCard({
                 )}
                 <button
                   onClick={() =>
-                    add({ id: item.id, name, price: Number(item.price) })
+                    add({
+                      id: item.id,
+                      name,
+                      price: Number(item.price),
+                      category_id: item.category_id || undefined,
+                      tags: [
+                        item.is_vegetarian ? 'veg' : '',
+                        item.is_fasting ? 'fasting' : '',
+                        item.is_spicy ? 'spicy' : '',
+                      ].filter(Boolean),
+                    })
                   }
                   className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90 active:scale-95"
                 >
@@ -1573,7 +1636,17 @@ function ItemCard({
                 aria-label="Add to cart"
                 title="Add to cart"
                 onClick={() =>
-                  add({ id: item.id, name, price: Number(item.price) })
+                  add({
+                    id: item.id,
+                    name,
+                    price: Number(item.price),
+                    category_id: item.category_id || undefined,
+                    tags: [
+                      item.is_vegetarian ? 'veg' : '',
+                      item.is_fasting ? 'fasting' : '',
+                      item.is_spicy ? 'spicy' : '',
+                    ].filter(Boolean),
+                  })
                 }
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm transition hover:opacity-90 active:scale-95"
               >
@@ -1740,15 +1813,25 @@ function BillDrawer({
   onClose,
   open,
   info,
+  categories,
   tableSession,
 }: {
   onClose: () => void
   open: boolean
   info?: any
+  categories: Category[]
   tableSession?: { token: string; tableId: string; tableLabel: string } | null
 }) {
   const { lang, t } = useTranslation()
-  const { items, increment, decrement, remove, clear, total } = useCart()
+  const {
+    items,
+    increment,
+    decrement,
+    remove,
+    updateCustomizations,
+    clear,
+    total,
+  } = useCart()
   const [isOrdering, setIsOrdering] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
 
@@ -1770,6 +1853,8 @@ function BillDrawer({
             name: i.name,
             qty: i.qty,
             price: i.price,
+            notes: i.notes,
+            customNote: i.customNote,
           })),
           device_id: deviceId,
         },
@@ -1815,9 +1900,9 @@ function BillDrawer({
             {/* Handle */}
             <div className="mx-auto mt-4 mb-2 h-1.5 w-12 shrink-0 rounded-full bg-border" />
 
-            <div className="flex flex-col flex-1 overflow-y-auto px-4 pb-12 pt-2">
+            <div className="flex flex-col flex-1 overflow-hidden px-4 pb-12 pt-2">
               {/* Header */}
-              <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="flex shrink-0 items-center justify-between border-b border-border pb-3">
                 <Drawer.Title className="font-display text-lg uppercase tracking-widest text-primary">
                   {t('your_bill')}
                 </Drawer.Title>
@@ -1840,57 +1925,163 @@ function BillDrawer({
                 </div>
               </div>
 
-              {/* Item list */}
-              <div className="max-h-[50vh] overflow-y-auto py-2">
+              {/* Items List */}
+              <div className="relative mt-2 flex min-h-0 flex-1 flex-col overflow-hidden">
                 {items.length === 0 ? (
-                  <p className="py-8 text-center text-sm text-muted-foreground">
-                    {lang === 'am' ? 'ምናሌ ባዶ ነው' : 'Your cart is empty'}
-                  </p>
+                  <div className="flex h-40 flex-col items-center justify-center gap-3 text-muted-foreground opacity-50">
+                    <Utensils className="h-8 w-8" />
+                    <p className="text-sm font-medium">{t('cart_empty')}</p>
+                  </div>
                 ) : (
-                  <ul className="divide-y divide-border">
-                    {items.map((item) => (
-                      <li
-                        key={item.id}
-                        className="flex items-center gap-3 py-3"
-                      >
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium">
-                            {item.name}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {formatBirr(item.price)} {t('currency')} ×{' '}
-                            {item.qty}
-                          </p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-1.5">
-                          <button
-                            onClick={() => decrement(item.id)}
-                            className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
-                          >
-                            <Minus className="h-3 w-3" />
-                          </button>
-                          <span className="w-5 text-center text-sm font-bold">
-                            {item.qty}
-                          </span>
-                          <button
-                            onClick={() => increment(item.id)}
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
-                          >
-                            <Plus className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={() => remove(item.id)}
-                            className="ml-1 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:text-destructive"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                        <div className="w-20 shrink-0 text-right font-display text-sm text-primary">
-                          {formatBirr(item.price * item.qty)}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <ScrollFade
+                    fadeSize={40}
+                    direction="vertical"
+                    className="flex-1 flex flex-col"
+                  >
+                    <ul className="h-full space-y-4 overflow-y-auto px-1 pr-4 custom-scrollbar">
+                      {items.map((item) => (
+                        <li
+                          key={`${item.id}-${(item.notes ?? []).join(',')}`}
+                          className="flex flex-col py-3 space-y-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium">
+                                {item.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {formatBirr(item.price)} {t('currency')} ×{' '}
+                                {item.qty}
+                              </p>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1.5">
+                              <button
+                                onClick={() => decrement(item.id, item.notes)}
+                                className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground transition hover:border-primary hover:text-primary"
+                              >
+                                <Minus className="h-3 w-3" />
+                              </button>
+                              <span className="w-5 text-center text-sm font-bold">
+                                {item.qty}
+                              </span>
+                              <button
+                                onClick={() => increment(item.id, item.notes)}
+                                className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground transition hover:opacity-90"
+                              >
+                                <Plus className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={() => remove(item.id, item.notes)}
+                                className="ml-1 flex h-6 w-6 items-center justify-center rounded-full text-muted-foreground transition hover:text-destructive"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                            <div className="w-20 shrink-0 text-right font-display text-sm text-primary">
+                              {formatBirr(item.price * item.qty)}
+                            </div>
+                          </div>
+
+                          {/* Quick Notes Chips */}
+                          <div className="flex flex-wrap gap-2">
+                            {(() => {
+                              const cat = categories?.find(
+                                (c: any) => c.id === item.category_id,
+                              )
+                              const searchStr = (
+                                (cat?.name || '') + (item.name || '')
+                              ).toLowerCase()
+
+                              const isDrink =
+                                searchStr.includes('drink') ||
+                                searchStr.includes('beverag') ||
+                                searchStr.includes('soft') ||
+                                searchStr.includes('tea') ||
+                                searchStr.includes('coffe') ||
+                                searchStr.includes('juice') ||
+                                searchStr.includes('smoothie') ||
+                                searchStr.includes('wine') ||
+                                searchStr.includes('beer') ||
+                                searchStr.includes('cocktail') ||
+                                searchStr.includes('water') ||
+                                searchStr.includes('milk')
+
+                              const options = isDrink
+                                ? [
+                                    'No Ice',
+                                    'Extra Cold',
+                                    'With Lemon',
+                                    'Take-away',
+                                  ]
+                                : [
+                                    ...(item.tags?.includes('spicy') ||
+                                    searchStr.includes('pizza') ||
+                                    searchStr.includes('burger')
+                                      ? ['Extra Spicy', 'Mild']
+                                      : []),
+                                    ...(searchStr.includes('burger') ||
+                                    searchStr.includes('sandwich')
+                                      ? ['No Lettuce', 'No Tomato']
+                                      : []),
+                                    'No Onions',
+                                    'No Salt',
+                                    'Take-away',
+                                  ]
+
+                              return options.map((opt) => {
+                                const active = item.notes?.includes(opt)
+                                return (
+                                  <button
+                                    key={opt}
+                                    onClick={() => {
+                                      const next = active
+                                        ? (item.notes ?? []).filter(
+                                            (n) => n !== opt,
+                                          )
+                                        : [...(item.notes ?? []), opt]
+                                      updateCustomizations(
+                                        item.id,
+                                        item.notes,
+                                        item.customNote,
+                                        next,
+                                        item.customNote || '',
+                                      )
+                                    }}
+                                    className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition ${
+                                      active
+                                        ? 'border-primary bg-primary text-primary-foreground'
+                                        : 'border-border bg-muted/20 text-muted-foreground hover:border-primary/50 hover:text-primary'
+                                    }`}
+                                  >
+                                    {opt}
+                                  </button>
+                                )
+                              })
+                            })()}
+                          </div>
+
+                          {/* Custom Note Input */}
+                          <div className="mt-3">
+                            <input
+                              type="text"
+                              placeholder={t('ingredients_placeholder')}
+                              value={item.customNote || ''}
+                              onChange={(e) => {
+                                updateCustomizations(
+                                  item.id,
+                                  item.notes,
+                                  item.customNote,
+                                  item.notes || [],
+                                  e.target.value,
+                                )
+                              }}
+                              className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-white placeholder:text-white/20 transition-all focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/20"
+                            />
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </ScrollFade>
                 )}
               </div>
 

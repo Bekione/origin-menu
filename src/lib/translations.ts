@@ -6,6 +6,10 @@ export const translations = {
     origin: 'ORIGIN',
     fearless_flavor: 'FEARLESS FLAVOR',
     welcome: 'Welcome to Origin',
+    welcome_back: 'Welcome Back!',
+    returning_subtitle:
+      'Ready for your favorites? Here is what you loved last time.',
+    your_favorites: 'Your Favorites',
     tagline:
       'Fearless flavor, served fresh. Browse the menu and order with your server.',
     search_placeholder: 'Search the menu...',
@@ -442,6 +446,9 @@ export const translations = {
     origin: 'ኦሪጅን',
     fearless_flavor: 'ደፋር ጣዕም',
     welcome: 'እንኳን ደህና መጡ',
+    welcome_back: 'እንኳን ደህና መጡ!',
+    returning_subtitle: 'የሚወዱትን ምግብ ለመዘዝ ዝግጁ ነዎት? ካለፈው ጊዜ የመረጡዋቸው እዚህ አሉ።',
+    your_favorites: 'የእርስዎ ምርጫዎች',
     tagline: 'ደፋር ጣዕም — በትኩስ ምግብና በፍቅር ይዘጋጅ',
     search_placeholder: 'ምግብ ይፈልጉ...',
     todays_special: 'የዛሬ ልዩ',

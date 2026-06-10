@@ -365,17 +365,18 @@ export const generateItemDescription = createServerFn({ method: 'POST' })
       .filter(Boolean)
       .join(', ')
 
-    const prompt = `You are a creative food copywriter for "Origin Restaurant" in Addis Ababa, Ethiopia.
-Write a short, appetizing menu description for the dish below. Be sensory and evocative. Max 2 sentences per language.
+    const prompt = `You are an artisanal food critic and menu designer for "Origin", a high-end modern bistro in Addis Ababa.
+Write a punchy, sensory, and authentic menu description for the dish below.
+Avoid generic AI cliches like "Savor the flavor" or "Delicious blend". Instead, use evocative, chef-driven language.
+Keep it to one single short paragraph (max 25 words) that sounds human-written and confident.
 
 Dish: ${data.name}${data.name_am ? ` (${data.name_am})` : ''}
-Price: ${data.price ?? ''}  ETB
 Attributes: ${flags || 'none'}
 
-Respond ONLY with a JSON object in this exact format (no extra text):
+Respond ONLY with a JSON object in this exact format:
 {"description": "...", "description_am": "..."}
 
-For description_am, write in Amharic script. Keep both descriptions concise and appetizing.`
+For description_am, write a similarly punchy version in Amharic script.`
 
     const { text } = await generateText({
       model: openai('gpt-4o-mini'),

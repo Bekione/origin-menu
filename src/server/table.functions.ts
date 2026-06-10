@@ -262,6 +262,8 @@ const OrderItemSchema = z.object({
   name_am: z.string().nullable().optional(),
   qty: z.number().int().min(1),
   price: z.number(),
+  notes: z.array(z.string()).optional(),
+  customNote: z.string().optional(),
 })
 
 /** Public — place an order from the menu */
@@ -324,6 +326,8 @@ export const placeOrder = createServerFn({ method: 'POST' })
         name_am: match?.name_am || null,
         qty: cartItem.qty,
         price: match?.price ?? cartItem.price,
+        notes: cartItem.notes || [],
+        customNote: cartItem.customNote || null,
       }
     })
 
@@ -486,6 +490,8 @@ export type TableOrder = {
     name_am?: string | null
     qty: number
     price: number
+    notes?: string[]
+    customNote?: string | null
   }>
   note: string | null
   status: 'pending' | 'accepted' | 'rejected' | 'completed' | string

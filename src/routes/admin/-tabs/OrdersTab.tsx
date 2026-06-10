@@ -165,14 +165,38 @@ export function OrdersTab() {
 
         <ul className="mb-3 space-y-1">
           {order.items.map((item, i) => (
-            <li key={i} className="flex items-center justify-between text-sm">
-              <span className="truncate mr-4">
-                <span className="mr-2 font-bold text-primary">×{item.qty}</span>
-                {dt(item, 'name')}
-              </span>
-              <span className="text-muted-foreground whitespace-nowrap">
-                {(item.qty * item.price).toLocaleString()} {t('currency')}
-              </span>
+            <li
+              key={i}
+              className="flex flex-col border-b border-border/50 py-2 last:border-0"
+            >
+              <div className="flex items-center justify-between text-sm">
+                <span className="mr-4 truncate">
+                  <span className="mr-2 font-bold text-primary">
+                    ×{item.qty}
+                  </span>
+                  {dt(item, 'name')}
+                </span>
+                <span className="whitespace-nowrap text-muted-foreground">
+                  {(item.qty * item.price).toLocaleString()} {t('currency')}
+                </span>
+              </div>
+              {((item.notes?.length ?? 0) > 0 || item.customNote) && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {item.notes?.map((n: string) => (
+                    <span
+                      key={n}
+                      className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary"
+                    >
+                      {n}
+                    </span>
+                  ))}
+                  {item.customNote && (
+                    <span className="rounded border border-border/5 bg-muted/20 px-1.5 py-0.5 text-[9px] font-medium italic text-muted-foreground">
+                      {item.customNote}
+                    </span>
+                  )}
+                </div>
+              )}
             </li>
           ))}
         </ul>
