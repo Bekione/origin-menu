@@ -23,7 +23,7 @@ import { PaymentMethodsCard } from '../-components/infotab/PaymentMethodsCard'
 import { StaffPinCard } from '../-components/infotab/StaffPinCard'
 import { ActiveSessionsCard } from '../-components/infotab/ActiveSessionsCard'
 import { DietaryTagsCard } from '../-components/infotab/DietaryTagsCard'
-import { ConfirmationModal } from '../-components/ConfirmationModal'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 export function InfoTab({
   info,

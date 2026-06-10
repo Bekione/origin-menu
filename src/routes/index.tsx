@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import {
   Search,
   MapPin,
@@ -1098,7 +1098,13 @@ function MenuPageInner({
             </div>
             <p className="text-center text-[11px] uppercase tracking-widest text-muted-foreground">
               © {new Date().getFullYear()} {info?.name ?? 'Origin'} ·{' '}
-              {t('all_rights_reserved')}
+              {t('all_rights_reserved')} ·{' '}
+              <Link
+                to="/privacy"
+                className="underline hover:text-primary transition-colors"
+              >
+                {t('privacy_policy')}
+              </Link>
             </p>
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
               {t('crafted_by')}{' '}

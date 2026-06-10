@@ -14,6 +14,7 @@ import {
   QrCode,
 } from 'lucide-react'
 import { supabaseBrowser } from '@/integrations/supabase/client.browser'
+import { ConfirmationModal } from '@/components/ui/ConfirmationModal'
 
 import { useTranslation } from '@/lib/i18n'
 import { useTheme } from '@/components/ThemeProvider'
@@ -96,6 +97,8 @@ export function SettingsTab() {
   const [showDescriptions, setShowDescriptions] = useState(true)
   const [qrSize, setQrSize] = useState('Medium')
   const [isApiHealthy, setIsApiHealthy] = useState(true)
+  const [isClearing, setIsClearing] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
 
   // Real API Health Check
   useEffect(() => {
@@ -154,6 +157,13 @@ export function SettingsTab() {
 
   const handleTestAdminSound = () => {
     playAdminAlert(adminVolume / 100)
+  }
+
+  const handleClearCache = async () => {
+    setIsClearing(true)
+    await new Promise((r) => setTimeout(r, 800))
+    localStorage.clear()
+    window.location.reload()
   }
 
   return (
@@ -454,17 +464,17 @@ export function SettingsTab() {
                 <span
                   className={`text-[10px] font-black uppercase tracking-widest ${isApiHealthy ? 'text-emerald-500' : 'text-destructive'}`}
                 >
-                  {isApiHealthy ? t('optimal_status') : t('unstable_connection')}
+                  {isApiHealthy
+                    ? t('optimal_status')
+                    : t('unstable_connection')}
                 </span>
               </div>
             </div>
 
             <button
-              onClick={() => {
-                localStorage.clear()
-                window.location.reload()
-              }}
-              className="w-full flex items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 py-3 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 transition-all"
+              onClick={() => setShowConfirm(true)}
+              disabled={isClearing}
+              className="w-full flex items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/5 py-3 text-[10px] font-black uppercase tracking-widest text-destructive hover:bg-destructive/10 transition-all disabled:opacity-50"
             >
               <HardDrive className="h-3 w-3" />
               {t('clear_cache')}
@@ -472,6 +482,16 @@ export function SettingsTab() {
           </div>
         </div>
       </div>
+
+      <ConfirmationModal
+        open={showConfirm}
+        busy={isClearing}
+        title={t('clear_cache')}
+        description={t('privacy_clear_confirm')}
+        confirmLabel={t('clear_cache')}
+        onConfirm={handleClearCache}
+        onCancel={() => setShowConfirm(false)}
+      />
     </div>
   )
 }

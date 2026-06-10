@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { ChevronDown, Check } from 'lucide-react'
 import { inputCls } from '@/routes/admin/-components/FormPrimitives'
+import { useTranslation } from '#/lib/i18n'
 import ScrollFade from '@/components/ScrollFade'
 
 interface Option {
@@ -25,6 +26,7 @@ export function PremiumSelect({
   className = '',
   label,
 }: PremiumSelectProps) {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [focusedIndex, setFocusedIndex] = useState(-1)
@@ -149,7 +151,7 @@ export function PremiumSelect({
               <div className="max-h-[220px] overflow-y-auto thin-scrollbar space-y-0.5 px-0.5">
                 {filteredOptions.length === 0 ? (
                   <p className="p-4 text-center text-xs text-muted-foreground">
-                    No matches found {/* TODO: translate */}
+                    {t('no_matches_found')}
                   </p>
                 ) : (
                   filteredOptions.map((option, idx) => (

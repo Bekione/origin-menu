@@ -142,6 +142,52 @@ export const translations = {
     delete_confirm_desc:
       'Are you sure you want to delete "{name}"? This action cannot be undone.',
     order: 'Order',
+    your: 'Your',
+    waiter_verification_hint:
+      'Show this code to the waiter to verify your reward.',
+    redemption_code: 'Redemption Code',
+    cancel_request: 'Cancel Request',
+    privacy_policy: 'Privacy Policy',
+    back_to_menu: 'Back to Menu',
+    privacy_title: 'Privacy & Terms',
+    privacy_subtitle: 'Last updated: June 10, 2026',
+    privacy_data_title: 'What We Collect',
+    privacy_data_desc:
+      'We value your privacy. We do not collect personal information like your name, email, or phone number unless you explicitly provide it (e.g., during feedback).',
+    privacy_device_id: 'Anonymous Device ID',
+    privacy_device_id_desc:
+      'We use a locally stored identifier to remember your loyalty stamps and favorite dishes.',
+    privacy_orders: 'Order History',
+    privacy_orders_desc:
+      'Your past order items are stored locally to suggest "Your Favorites" and provide a better experience.',
+    privacy_loyalty_title: 'Digital Loyalty Stamps',
+    privacy_loyalty_desc:
+      'Our digital stamp card system uses your anonymous Device ID to track your progress. Stamps are not transferable and have no cash value.',
+    privacy_third_party_title: 'Third-Party Services',
+    privacy_third_party_desc:
+      'We use Supabase for secure data storage and real-time updates. Your data is protected by industry-standard encryption.',
+    privacy_control_title: 'Your Control',
+    privacy_control_desc:
+      'Because we store most data locally on your device, you have full control over it. You can clear all your data at any time.',
+    privacy_clear_button: 'Clear All My Data',
+    privacy_clear_confirm:
+      'Are you sure you want to clear all your local data? This will remove your loyalty stamps and favorites history.',
+    privacy_cleared_success: 'All local data has been cleared.',
+    privacy_clear_warning:
+      '*Warning: This action cannot be undone. You will lose all your loyalty stamps and favorites history.',
+    privacy_copyright: 'Origin Restaurant Platform',
+    menu_link: 'Menu',
+    support_link: 'Support',
+    clearing: 'Clearing...',
+    program_name_am: 'Program Name (AM)',
+    reward_description_am: 'Reward Description (AM)',
+    max_chars: 'Max {count} characters',
+    clearing_cache: 'Clearing Cache...',
+    stamps: 'Stamps',
+    no_matches_found: 'No matches found',
+    loyalty_pro_tip: 'Pro-tip',
+    loyalty_pro_tip_desc:
+      'Guests receive stamps automatically on order completion. Keep the reward description short and enticing!',
 
     // Admin
     admin_dashboard: 'Dashboard',
@@ -405,7 +451,6 @@ export const translations = {
     feedback_error: 'Failed to submit feedback. Please try again.',
     loyalty_program: 'Loyalty Program',
     reward_ready: 'Reward Ready!',
-    stamps: 'Stamps',
     digital_stamp_card: 'Digital Stamp Card',
     next_reward: 'Your Next Reward',
     rewards_available: 'Rewards Available',
@@ -413,10 +458,6 @@ export const translations = {
     earn_more_stamps_hint:
       'Earn {count} more stamps to unlock your next reward!',
     show_to_waiter: 'Show to Waiter',
-    waiter_verification_hint:
-      'Please show this screen to your waiter to claim your reward.',
-    redemption_code: 'Redemption Code',
-    cancel_request: 'Cancel Request',
     loyalty_settings: 'Loyalty Settings',
     stamps_required: 'Stamps Required',
     reward_description: 'Reward Description',
@@ -467,6 +508,45 @@ export const translations = {
     total: 'ጠቅላላ',
     place_order: 'ዘዝ',
     order_success: 'ትዕዛዝዎ በተሳካ ሁኔታ ተልኳል!',
+    your: 'የእርስዎ',
+    waiter_verification_hint: 'ሽልማትዎን ለማረጋገጥ ይህንን ኮድ ለአስተናጋጁ ያሳዩ።',
+    redemption_code: 'የመቤዠት ኮድ',
+    cancel_request: 'ጥያቄውን ሰርዝ',
+    privacy_policy: 'የግላዊነት ፖሊሲ',
+    back_to_menu: 'ወደ ሜኑ ተመለስ',
+    privacy_title: 'የግላዊነት እና ውሎች',
+    privacy_subtitle: 'መጨረሻ የተሻሻለው: ሰኔ 3 ቀን 2018 ዓ.ም',
+    privacy_data_title: 'ምን አይነት መረጃ እንሰበስባለን?',
+    privacy_data_desc:
+      'ለግላዊነትዎ ትልቅ ቦታ እንሰጣለን። የእርስዎን ስም፣ ኢሜይል ወይም ስልክ ቁጥር እርስዎ ካልሰጡን በስተቀር አንሰበስብም።',
+    privacy_device_id: 'የማይታወቅ የመሣሪያ መለያ',
+    privacy_device_id_desc:
+      'የታማኝነት ማህተሞችዎን እና ተወዳጅ ምግቦችዎን ለማስታወስ በአካባቢው የተከማቸ መለያ እንጠቀማለን።',
+    privacy_orders: 'የትዕዛዝ ታሪክ',
+    privacy_orders_desc: 'የተሻለ ተሞክሮ ለመስጠት የእርስዎ ያለፉ የትዕዛዝ ዕቃዎች በአካባቢው ይከማቻሉ።',
+    privacy_loyalty_title: 'ዲጂታል የታማኝነት ማህተሞች',
+    privacy_loyalty_desc:
+      'የእኛ የዲጂታል ማህተም ካርድ ስርዓት የእርስዎን እድገት ለመከታተል የእርስዎን የማይታወቅ የመሣሪያ መለያ ይጠቀማል።',
+    privacy_third_party_title: 'የሶስተኛ ወገን አገልግሎቶች',
+    privacy_third_party_desc:
+      'ለአስተማማኝ የመረጃ ማከማቻ ሱፓቤዝ (Supabase) እንጠቀማለን። የእርስዎ መረጃ በኢንዱስትሪ ደረጃ ጥበቃ ይደረግለታል።',
+    privacy_control_title: 'የእርስዎ ቁጥጥር',
+    privacy_control_desc:
+      'አብዛኛው መረጃ በመሳሪያዎ ላይ ስለሚከማች ሙሉ ቁጥጥር አለዎት። በማንኛውም ጊዜ መረጃዎን መሰረዝ ይችላሉ።',
+    privacy_clear_button: 'ሁሉንም መረጃዎቼን ሰርዝ',
+    privacy_clear_confirm:
+      'ሁሉንም መረጃዎችዎን መሰረዝ እንደሚፈልጉ እርግጠኛ ነዎት? ይህ የታማኝነት ማህተሞችዎን እና ተወዳጅ ምግቦችዎን ያስወግዳል።',
+    privacy_cleared_success: 'ሁሉም መረጃዎች ተሰርዘዋል።',
+    privacy_clear_warning:
+      '*ማስጠንቀቂያ፡ ይህ ድርጊት ሊመለስ አይችልም። ሁሉንም የታማኝነት ማህተሞችዎን እና የታሪክ መረጃዎችዎን ያጣሉ።',
+    privacy_copyright: 'ኦሪጅን የሬስቶራንት ፕላትፎርም',
+    menu_link: 'ሜኑ',
+    support_link: 'ድጋፍ',
+    clearing: 'በማጽዳት ላይ...',
+    program_name_am: 'የፕሮግራም ስም (አማርኛ)',
+    reward_description_am: 'የሽልማት መግለጫ (አማርኛ)',
+    max_chars: 'ከ {count} ቁምፊዎች ያልበለጠ',
+    clearing_cache: 'መሸጎጫ በማጽዳት ላይ...',
     order_error: 'ትዕዛዙ አልተሳካም፤ እባክዎ እንደገና ይሞክሩ።',
     table: 'ጠረጴዛ',
     promo_banner_default: 'አዳዲስ ቅናሾቻችንን ይመልገቱ!',
@@ -503,6 +583,11 @@ export const translations = {
     logout_device: 'መሳሪያውን አስወጣ',
     delete_payment: 'ክፍያ ሰርዝ',
     add_item: 'ምግብ ጨምር',
+    stamps: 'ስታምፕ',
+    no_matches_found: 'ምንም አልተገኘም',
+    loyalty_pro_tip: 'ጠቃሚ ምክር',
+    loyalty_pro_tip_desc:
+      'እንግዶች ትዕዛዝ ሲያጠናቅቁ በራስ-ሰር ስታምፕ ያገኛሉ። የሽልማት መግለጫውን አጭር እና ማራኪ ያድርጉት!',
 
     // Admin
     admin_dashboard: 'ዳሽቦርድ',
@@ -824,16 +909,13 @@ export const translations = {
     feedback_error: 'አስተያየት መላክ አልተቻለም። እባክዎ እንደገና ይሞክሩ።',
     loyalty_program: 'ታማኝነት ፕሮግራም',
     reward_ready: 'ሽልማት ዝግጁ ነው!',
-    stamps: 'ማህተሞች',
+
     digital_stamp_card: 'ዲጂታል ማህተም ካርድ',
     next_reward: 'የሚቀጥለው ሽልማትዎ',
     rewards_available: 'ሽልማቶች አሉ',
     claim_reward: 'ሽልማት ይጠይቁ',
     earn_more_stamps_hint: 'ቀጣዩን ሽልማት ለማግኘት ገና {count} ማህተሞች ይቀሩዎታል!',
     show_to_waiter: 'ለአስተናጋጅ ያሳዩ',
-    waiter_verification_hint: 'እባክዎን ሽልማትዎን ለመጠየቅ ይህንን ስክሪን ለአስተናጋጅ ያሳዩ።',
-    redemption_code: 'የመቤዠት ኮድ',
-    cancel_request: 'ጥያቄውን ሰርዝ',
     loyalty_settings: 'የታማኝነት ቅንብሮች',
     stamps_required: 'የሚያስፈልጉ ማህተሞች',
     reward_description: 'የሽልማት መግለጫ',
