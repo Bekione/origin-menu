@@ -109,28 +109,40 @@
         RETRY.style.display = 'none'
 
         try {
-          // Detect if we are in a local development session
+          // Detect if we are in a local development session or Tauri protocol
           const isLocal =
             window.location.hostname === 'localhost' ||
-            window.location.hostname === '127.0.0.1'
-          const targetUrl = isLocal ? 'http://localhost:3000/admin' : VERCEL_URL
+            window.location.hostname === '127.0.0.1' ||
+            window.location.hostname.includes('tauri.localhost')
 
-          if (!isLocal) {
-            // Only ping Vercel if we are actually going to the cloud
-            const controller = new AbortController()
-            const timeoutId = setTimeout(() => controller.abort(), 6000)
-            await fetch('https://originrestaurant-menu.vercel.app/', {
-              mode: 'no-cors',
-              cache: 'no-store',
-              signal: controller.signal,
-            })
-            clearTimeout(timeoutId)
+          const targetUrl =
+            isLocal && !window.location.href.startsWith('http')
+              ? VERCEL_URL
+              : isLocal
+                ? 'http://localhost:3000/admin'
+                : VERCEL_URL
+
+          // In production, we don't strict-ping, just attempt to reach the cloud
+          if (!isLocal || window.location.protocol.startsWith('tauri')) {
+            STATUS.innerText = 'Connecting to Origin Cloud...'
+
+            // Optional: very quick ping just to check basic internet
+            try {
+              const controller = new AbortController()
+              const timeoutId = setTimeout(() => controller.abort(), 8000)
+              await fetch(VERCEL_URL, {
+                mode: 'no-cors',
+                cache: 'no-store',
+                signal: controller.signal,
+              })
+              clearTimeout(timeoutId)
+            } catch (e) {
+              console.warn('Ping failed, but attempting redirect anyway...')
+            }
+          } else {
+            STATUS.innerText = 'Connecting to local dashboard...'
           }
 
-          STATUS.innerText = isLocal
-            ? 'Connecting to local dashboard...'
-            : 'Connecting to Origin Cloud...'
-          // Cache success so ALL future launches skip the splash
           localStorage.setItem('origin_ready', '1')
           setTimeout(() => {
             window.location.replace(targetUrl)
@@ -138,7 +150,8 @@
         } catch (err) {
           LOADER.style.display = 'none'
           RETRY.style.display = 'inline-block'
-          STATUS.innerText = 'Origin Cloud is unreachable. Check your internet.'
+          STATUS.innerText =
+            'Unable to reach Origin Cloud. Please check your connection.'
         }
       }
 
