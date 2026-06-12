@@ -8,12 +8,20 @@
     "core:window:allow-set-badge-count",
     "core:window:allow-set-overlay-icon",
     "core:window:allow-set-focus",
+    "core:window:allow-unminimize",
+    "core:window:allow-show",
+    "core:image:allow-from-path",
+    "core:image:allow-rgba",
+    "core:image:allow-new",
     "notification:default",
-    "notification:allow-register-action-types",
     "updater:default",
     "shell:default"
   ],
   "remote": {
-    "urls": ["%VITE_VERCEL_URL%/**"]
+    "urls": [
+      "%VITE_VERCEL_URL%/**",
+      "https://*.vercel.app/**",
+      "http://localhost:3000/**"
+    ]
   }
 }

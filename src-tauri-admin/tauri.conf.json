@@ -42,7 +42,7 @@
     ],
     "license": "MIT",
     "licenseFile": "assets/license.rtf",
-    "resources": ["icons/badge-dot.ico"],
+    "resources": [],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",
