@@ -1,128 +1,42 @@
 /**
  * Utilities for interacting with the Tauri v2 desktop shell.
- * All functions are safe to call in a browser — they no-op gracefully if not in Tauri.
+ * Focused strictly on Windows/Desktop functionality.
  */
-
-// ─── Types ─────────────────────────────────────────────────────────────────
-
-export type NotificationType = 'order' | 'waiter'
-
-// Action IDs sent with notifications so we can route clicks
-const ACTION_OPEN_ORDERS = 'open-orders'
-const ACTION_OPEN_WAITER_CALLS = 'open-waiter-calls'
 
 // ─── Environment ───────────────────────────────────────────────────────────
 
 /**
- * Checks if the app is running inside a Tauri shell.
+ * Robust check for Tauri environment.
  */
-export const isDesktop = (): boolean =>
-  typeof window !== 'undefined' && !!(window as any).__TAURI_INTERNALS__
+export const isDesktop = (): boolean => {
+  if (typeof window === 'undefined') return false
+  const win = window as any
+  return !!(win.__TAURI_INTERNALS__ || win.__TAURI__ || win.__TAURI_METADATA__)
+}
 
 // ─── Notification ──────────────────────────────────────────────────────────
 
 /**
- * Registers notification action categories for deep-linking on click.
- * Call this ONCE on admin mount.
+ * Listens for notification-related window focus events.
+ * On Windows, clicking a notification focuses the app automatically via the OS.
+ * We just ensure the window is restored if it was minimized/hidden.
  */
-export async function initNotificationActions() {
-  if (!isDesktop()) return
-  try {
-    const { registerActionTypes } =
-      await import('@tauri-apps/plugin-notification')
-    await registerActionTypes([
-      {
-        id: 'order',
-        actions: [
-          {
-            id: ACTION_OPEN_ORDERS,
-            title: 'View Orders',
-            foreground: true,
-          },
-        ],
-      },
-      {
-        id: 'waiter',
-        actions: [
-          {
-            id: ACTION_OPEN_WAITER_CALLS,
-            title: 'View Waiter Calls',
-            foreground: true,
-          },
-        ],
-      },
-    ])
-  } catch (err) {
-    console.error('[Desktop] Failed to register notification action types', err)
-  }
-}
-
-/**
- * Proactively restores and focuses the application window.
- */
-async function focusWindow() {
-  if (!isDesktop()) return
-  try {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window')
-    const appWindow = getCurrentWindow()
-    await appWindow.unminimize()
-    await appWindow.show()
-    await appWindow.setFocus()
-  } catch (err) {
-    console.error('[Desktop] Failed to focus window', err)
-  }
-}
-
-/**
- * Listens for clicks on desktop notifications and routes accordingly.
- * @param callbacks - { onOrder: () => void, onWaiterCall: () => void }
- * Call this ONCE on admin mount after initNotificationActions.
- */
-export async function listenNotificationActions(callbacks: {
+export async function listenNotificationActions(_callbacks: {
   onOrder: () => void
   onWaiterCall: () => void
 }) {
-  if (!isDesktop()) return
-  try {
-    const { onAction } = await import('@tauri-apps/plugin-notification')
-
-    onAction(async (notification) => {
-      // Focus/restore the window first
-      await focusWindow()
-
-      const actionId = (notification as any).action?.id
-      const channelId =
-        (notification as any).notification?.channelId ??
-        (notification as any).channelId
-
-      if (actionId === ACTION_OPEN_ORDERS || channelId === 'order') {
-        callbacks.onOrder()
-      } else if (
-        actionId === ACTION_OPEN_WAITER_CALLS ||
-        channelId === 'waiter'
-      ) {
-        callbacks.onWaiterCall()
-      }
-    })
-  } catch (err) {
-    console.error(
-      '[Desktop] Failed to set up notification action listener',
-      err,
-    )
-  }
+  // On Windows, native notification clicks are handled by the OS shell.
+  // The window is raised automatically. No custom listener needed.
+  // Deep-linking not supported on Desktop in Tauri v2 without mobile actions.
+  return
 }
 
 /**
  * Sends a native desktop notification if running in Tauri.
- * @param title - Notification title
- * @param body - Optional subtitle
- * @param type - 'order' | 'waiter' — determines channelId for deep-linking on click
+ * Kept intentionally minimal — additional fields like channelId or id
+ * can cause silent failures on Windows when not registered.
  */
-export async function sendDesktopNotification(
-  title: string,
-  body?: string,
-  type: NotificationType = 'order',
-) {
+export async function sendDesktopNotification(title: string, body?: string) {
   if (!isDesktop()) return
   try {
     const { isPermissionGranted, requestPermission, sendNotification } =
@@ -135,12 +49,7 @@ export async function sendDesktopNotification(
     }
 
     if (granted) {
-      sendNotification({
-        title,
-        body,
-        // channelId maps to the action type registered in initNotificationActions
-        channelId: type,
-      } as any)
+      sendNotification({ title, body })
     }
   } catch (err) {
     console.error('[Desktop] Failed to send desktop notification', err)
@@ -150,11 +59,53 @@ export async function sendDesktopNotification(
 // ─── Taskbar Badge ──────────────────────────────────────────────────────────
 
 /**
+ * Generates a dynamic notification badge icon using Canvas.
+ */
+function generateBadgeRGBA(count: number): {
+  data: Uint8Array
+  width: number
+  height: number
+} {
+  const size = 32
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+
+  if (!ctx) throw new Error('Canvas context not available')
+
+  // Draw Circle (Red)
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size / 2 - 2, 0, Math.PI * 2)
+  ctx.fillStyle = '#ff4b4b'
+  ctx.fill()
+
+  // Draw Border (White)
+  ctx.strokeStyle = 'white'
+  ctx.lineWidth = 2
+  ctx.stroke()
+
+  // Draw Number (White)
+  ctx.fillStyle = 'white'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  const displayText = count > 99 ? '99+' : count.toString()
+  const fontSize = count > 9 ? size * 0.5 : size * 0.7
+  ctx.font = `bold ${fontSize}px Inter, system-ui, sans-serif`
+
+  ctx.fillText(displayText, size / 2, size / 2 + 1)
+
+  const imageData = ctx.getImageData(0, 0, size, size)
+  return {
+    data: new Uint8Array(imageData.data),
+    width: size,
+    height: size,
+  }
+}
+
+/**
  * Updates the taskbar icon badge with the total notification count.
- * - Windows: uses setOverlayIcon with badge-dot.ico (on/off only; no numeric)
- * - macOS / Linux: uses setBadgeCount for numeric badge
- *
- * @param totalCount - Sum of pending orders + active waiter calls
  */
 export async function updateTaskbarBadge(totalCount: number) {
   if (!isDesktop()) return
@@ -162,16 +113,27 @@ export async function updateTaskbarBadge(totalCount: number) {
     const { getCurrentWindow } = await import('@tauri-apps/api/window')
     const appWindow = getCurrentWindow()
 
-    // Windows: use overlay icon (binary on/off)
+    // Windows Dynamic Numeric Overlay
     if (navigator.userAgent.includes('Windows')) {
       try {
         if (totalCount > 0) {
-          const { resolveResource } = await import('@tauri-apps/api/path')
           const { Image } = await import('@tauri-apps/api/image')
 
-          // Resolve path to the bundled resource we added in tauri.conf.json
-          const resourcePath = await resolveResource('icons/badge-dot.ico')
-          const img = await Image.fromPath(resourcePath)
+          if (typeof (appWindow as any).setOverlayIcon !== 'function') {
+            return
+          }
+
+          const { data, width, height } = generateBadgeRGBA(totalCount)
+          const ImageClass = Image as any
+
+          let img
+          if (typeof ImageClass.fromRgbaBytes === 'function') {
+            img = await ImageClass.fromRgbaBytes(data, width, height)
+          } else if (typeof ImageClass.new === 'function') {
+            img = await ImageClass.new(data, width, height)
+          } else {
+            return
+          }
 
           await (appWindow as any).setOverlayIcon(img)
         } else {
@@ -183,15 +145,20 @@ export async function updateTaskbarBadge(totalCount: number) {
       return
     }
 
-    // macOS / Linux: numeric badge
+    // macOS / Linux Native Numeric Badge
     try {
-      await (appWindow as any).setBadgeCount(
-        totalCount > 0 ? totalCount : undefined,
-      )
+      if ((appWindow as any).setBadgeCount) {
+        await (appWindow as any).setBadgeCount(
+          totalCount > 0 ? totalCount : undefined,
+        )
+      }
     } catch {
-      // fail silently on platforms that don't support it
+      // Fail silently
     }
   } catch (err) {
     console.error('[Desktop] Failed to update taskbar badge', err)
   }
 }
+
+// ─── Legacy Cleanup ────────────────────────────────────────────────────────
+export async function initNotificationActions() {}

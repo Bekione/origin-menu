@@ -195,8 +195,6 @@ export function LoyaltyTab() {
               </div>
 
               <div className="grid gap-6">
-                
-
                 <div className="grid gap-6 sm:grid-cols-2">
                   <Field
                     label={t('reward_description')}

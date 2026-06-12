@@ -14,7 +14,7 @@ export function OrdersTab() {
   const { t } = useTranslation()
   const [orders, setOrders] = useState<TableOrder[]>([])
   const [loading, setLoading] = useState(true)
-  const [busyId, setBusyId] = useState<string | null>(null)
+  const [busyIds, setBusyIds] = useState<Set<string>>(new Set())
   const [doneLoadingMore, setDoneLoadingMore] = useState(false)
   const [refreshInterval, setRefreshInterval] = useState(() => {
     if (typeof window === 'undefined') return 'Live'
@@ -86,7 +86,7 @@ export function OrdersTab() {
     id: string,
     status: 'accepted' | 'rejected' | 'completed',
   ) => {
-    setBusyId(id)
+    setBusyIds((prev) => new Set(prev).add(id))
     try {
       await updateOrderStatus({ data: { id, status } })
 
@@ -102,7 +102,11 @@ export function OrdersTab() {
     } catch (err: any) {
       toast.error(err.message)
     } finally {
-      setBusyId(null)
+      setBusyIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
     }
   }
 
@@ -116,7 +120,7 @@ export function OrdersTab() {
     const { t, dt } = useTranslation()
     const isPending = order.status === 'pending'
     const isAccepted = order.status === 'accepted'
-    const busy = busyId === order.id
+    const busy = busyIds.has(order.id)
 
     return (
       <div

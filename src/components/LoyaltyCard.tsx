@@ -104,6 +104,7 @@ function LoyaltyModal({ data, deviceId, onClose, onRefresh }: any) {
   const [step, setStep] = useState<'stamps' | 'code' | 'confirmed'>('stamps')
 
   const requestRedeem = useServerFn(requestRewardRedemption)
+  const fetchStatus = useServerFn(getLoyaltyStatus)
 
   const handleRedeemClick = async () => {
     setIsRedeeming(true)
@@ -120,11 +121,12 @@ function LoyaltyModal({ data, deviceId, onClose, onRefresh }: any) {
   }
 
   // Real-time listener for redemption confirmation
+  // Server broadcasts on 'origin-realtime' channel — must match here
   useEffect(() => {
     if (step !== 'code') return
 
     const channel = supabaseBrowser
-      .channel('loyalty-sync')
+      .channel('origin-realtime')
       .on('broadcast', { event: 'reward_redemption_confirmed' }, (payload) => {
         if (payload.payload.device_id === deviceId) {
           setStep('confirmed')
@@ -137,15 +139,23 @@ function LoyaltyModal({ data, deviceId, onClose, onRefresh }: any) {
     }
   }, [step, deviceId])
 
-  // Optional: Fallback check if data updates via parent refresh
+  // Polling fallback: re-fetch every 3s while waiting, in case broadcast is delayed
   useEffect(() => {
-    if (
-      step === 'code' &&
-      card.rewards_available < (data?.card?.rewards_available ?? 0)
-    ) {
-      setStep('confirmed')
-    }
-  }, [card.rewards_available, step, data?.card?.rewards_available])
+    if (step !== 'code') return
+
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetchStatus({ data: { device_id: deviceId } })
+        if (res?.card && res.card.rewards_available < card.rewards_available) {
+          setStep('confirmed')
+        }
+      } catch {
+        // ignore poll errors
+      }
+    }, 3000)
+
+    return () => clearInterval(poll)
+  }, [step, deviceId, card.rewards_available])
 
   const stamps = card.current_stamps
   const totalSlots = program.stamps_required
