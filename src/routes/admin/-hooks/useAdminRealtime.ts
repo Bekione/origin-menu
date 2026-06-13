@@ -7,6 +7,7 @@ import { playAdminAlert } from '@/lib/audio-utils'
 import {
   sendDesktopNotification,
   updateTaskbarBadge,
+  consumeNavIntent,
 } from '@/lib/desktop-utils'
 import { getPendingOrderCount } from '@/server/admin.functions'
 import type { WaiterCall } from '@/server/table.functions'
@@ -47,6 +48,27 @@ export function useAdminRealtime({
   useEffect(() => {
     updateTaskbarBadge(pendingOrderCount + activeWaiterCallCount)
   }, [pendingOrderCount, activeWaiterCallCount])
+
+  // Deep-link on notification click:
+  // When the OS brings the window to focus (user clicked a toast),
+  // read the intent we stored in localStorage and navigate.
+  useEffect(() => {
+    const onFocus = () => {
+      const intent = consumeNavIntent()
+      if (!intent) return
+      if (intent === 'order') {
+        navigate({
+          to: '/admin',
+          search: { tab: 'orders' } as any,
+          replace: true,
+        })
+      } else if (intent === 'waiter') {
+        setCallsOpen(true)
+      }
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [navigate, setCallsOpen])
 
   useEffect(() => {
     const channel = supabaseBrowser

@@ -33,12 +33,25 @@ export async function listenNotificationActions(_callbacks: {
 
 /**
  * Sends a native desktop notification if running in Tauri.
+ * routeIntent is stored in localStorage so the focus listener can deep-link.
  * Kept intentionally minimal — additional fields like channelId or id
  * can cause silent failures on Windows when not registered.
  */
-export async function sendDesktopNotification(title: string, body?: string) {
+export async function sendDesktopNotification(
+  title: string,
+  body?: string,
+  routeIntent?: 'order' | 'waiter',
+) {
   if (!isDesktop()) return
   try {
+    // Store intent BEFORE firing so window focus has something to read
+    if (routeIntent) {
+      localStorage.setItem(
+        '_desktop_nav_intent',
+        JSON.stringify({ route: routeIntent, ts: Date.now() }),
+      )
+    }
+
     const { isPermissionGranted, requestPermission, sendNotification } =
       await import('@tauri-apps/plugin-notification')
 
@@ -53,6 +66,24 @@ export async function sendDesktopNotification(title: string, body?: string) {
     }
   } catch (err) {
     console.error('[Desktop] Failed to send desktop notification', err)
+  }
+}
+
+/** Read and clear any pending navigation intent (call on window focus) */
+export function consumeNavIntent(): 'order' | 'waiter' | null {
+  try {
+    const raw = localStorage.getItem('_desktop_nav_intent')
+    if (!raw) return null
+    const { route, ts } = JSON.parse(raw)
+    // Intents older than 60s are stale — ignore
+    if (Date.now() - ts > 60_000) {
+      localStorage.removeItem('_desktop_nav_intent')
+      return null
+    }
+    localStorage.removeItem('_desktop_nav_intent')
+    return route
+  } catch {
+    return null
   }
 }
 
