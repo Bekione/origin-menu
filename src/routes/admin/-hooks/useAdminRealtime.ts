@@ -7,7 +7,6 @@ import { playAdminAlert } from '@/lib/audio-utils'
 import {
   sendDesktopNotification,
   updateTaskbarBadge,
-  consumeNavIntent,
 } from '@/lib/desktop-utils'
 import { getPendingOrderCount } from '@/server/admin.functions'
 import type { WaiterCall } from '@/server/table.functions'
@@ -49,27 +48,6 @@ export function useAdminRealtime({
     updateTaskbarBadge(pendingOrderCount + activeWaiterCallCount)
   }, [pendingOrderCount, activeWaiterCallCount])
 
-  // Deep-link on notification click:
-  // When the OS brings the window to focus (user clicked a toast),
-  // read the intent we stored in localStorage and navigate.
-  useEffect(() => {
-    const onFocus = () => {
-      const intent = consumeNavIntent()
-      if (!intent) return
-      if (intent === 'order') {
-        navigate({
-          to: '/admin',
-          search: { tab: 'orders' } as any,
-          replace: true,
-        })
-      } else if (intent === 'waiter') {
-        setCallsOpen(true)
-      }
-    }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [navigate, setCallsOpen])
-
   useEffect(() => {
     const channel = supabaseBrowser
       .channel('origin-realtime')
@@ -103,14 +81,11 @@ export function useAdminRealtime({
               },
             )
 
-            // Native Desktop Notification — click opens Waiter Calls panel
             sendDesktopNotification(
               t('waiter_calling_admin_toast').replace(
                 '{tableLabel}',
                 newCall.table_label ?? '',
               ),
-              undefined,
-              'waiter',
             )
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as WaiterCall
@@ -147,11 +122,11 @@ export function useAdminRealtime({
           },
         )
 
-        // Native Desktop Notification — click opens Orders tab
         sendDesktopNotification(
           t('new_order_toast').replace('{tableLabel}', order.table_label ?? ''),
-          order.total_amount ? `${t('total')}: ${order.total_amount} ETB` : '',
-          'order',
+          order.total_amount
+            ? `${t('total')}: ${order.total_amount} ETB`
+            : undefined,
         )
       })
       .on('broadcast', { event: 'order_status_updated' }, (payload) => {
