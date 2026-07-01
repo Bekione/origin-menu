@@ -232,19 +232,10 @@ function MenuPageInner({
           const order = payload as TableOrder
           const did = await getDeviceId()
           if (order.device_id === did && order.status === 'completed') {
-            // Only show if not already submitted today AND hasn't been skipped enough times
-            const today = new Date().toDateString()
-            const lastDone = localStorage.getItem(FEEDBACK_DONE_KEY)
-            if (lastDone === today) return
-            try {
-              const skipRaw = localStorage.getItem(FEEDBACK_SKIP_KEY)
-              const skips = skipRaw ? JSON.parse(skipRaw) : {}
-              if (skips.date === today && (skips.count ?? 0) >= MAX_DAILY_SKIPS)
-                return
-            } catch {
-              /* ignore */
-            }
-            setFeedbackOpen(true)
+            // Delay by 25 seconds after order is marked completed to ask for feedback
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('origin:feedback:trigger'))
+            }, 25000)
           }
         },
       )
@@ -254,15 +245,15 @@ function MenuPageInner({
       supabaseBrowser.removeChannel(channel)
       supabaseBrowser.removeChannel(orderChannel)
     }
-  }, [FEEDBACK_DONE_KEY]) // Added FEEDBACK_DONE_KEY to deps although it's constant
+  }, [])
 
-  // Check for completed orders on mount (in case status changed while offline/reloading)
+  // Centralized feedback modal trigger and validation
   useEffect(() => {
-    const check = async () => {
+    const handleFeedbackTrigger = () => {
       const today = new Date().toDateString()
       const lastDone = localStorage.getItem(FEEDBACK_DONE_KEY)
       if (lastDone === today) return
-      // Also skip if already skipped too many times today
+
       try {
         const skipRaw = localStorage.getItem(FEEDBACK_SKIP_KEY)
         const skips = skipRaw ? JSON.parse(skipRaw) : {}
@@ -271,20 +262,35 @@ function MenuPageInner({
       } catch {
         /* ignore */
       }
+      setFeedbackOpen(true)
+    }
 
+    window.addEventListener('origin:feedback:trigger', handleFeedbackTrigger)
+    return () => {
+      window.removeEventListener(
+        'origin:feedback:trigger',
+        handleFeedbackTrigger,
+      )
+    }
+  }, [FEEDBACK_DONE_KEY])
+
+  // Check for completed orders on mount (delayed to avoid bad UX)
+  useEffect(() => {
+    const timer = setTimeout(async () => {
       try {
         const did = await getDeviceId()
         const myOrders = await getMyOrders({ data: { device_id: did } })
         const hasCompleted = myOrders.some((o) => o.status === 'completed')
         if (hasCompleted) {
-          setFeedbackOpen(true)
+          window.dispatchEvent(new CustomEvent('origin:feedback:trigger'))
         }
       } catch (err) {
         console.error('Failed to check orders for feedback:', err)
       }
-    }
-    check()
-  }, [FEEDBACK_DONE_KEY])
+    }, 45000) // Delay by 45 seconds on very first page load
+
+    return () => clearTimeout(timer)
+  }, [])
 
   // Table session state (from QR scan) — intentionally starts null to avoid SSR/client hydration mismatch
   const [tableSession, setTableSession] = useState<TableSession | null>(null)
@@ -1109,13 +1115,13 @@ function MenuPageInner({
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
               {t('crafted_by')}{' '}
               <a
-                href="https://kidusportfoloio.netlify.app/"
+                href="https://bereketkinfe.pro.et"
                 target="_blank"
                 rel="noreferrer"
                 className="font-medium text-foreground hover:text-primary"
               >
                 {' '}
-                Kidus{' '}
+                Bereket K.{' '}
               </a>
             </p>
           </div>

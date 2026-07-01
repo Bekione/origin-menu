@@ -161,7 +161,7 @@ function PrivacyPage() {
                 {t('menu_link')}
               </Link>
               <a
-                href="https://kidusportfoloio.netlify.app/"
+                href="https://bereketkinfe.pro.et"
                 target="_blank"
                 className="hover:text-primary"
               >

@@ -14,10 +14,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useAdminRealtime } from './-hooks/useAdminRealtime'
 import { AdminHeader } from './-components/AdminHeader'
 import { WaiterCallsPanel } from './-components/WaiterCallsPanel'
-import {
-  initNotificationActions,
-  listenNotificationActions,
-} from '@/lib/desktop-utils'
 
 // Tab imports
 import { ItemsTab } from './-tabs/ItemsTab'
@@ -127,14 +123,6 @@ function AdminPage() {
     getTableOrders().then((data) => {
       const orders = (data as any[]) || []
       setPendingOrderCount(orders.filter((o) => o.status === 'pending').length)
-    })
-
-    // Init Desktop Integration
-    initNotificationActions().then(() => {
-      listenNotificationActions({
-        onOrder: () => setTab('orders'),
-        onWaiterCall: () => setCallsOpen(true),
-      })
     })
   }, [setTab])
 

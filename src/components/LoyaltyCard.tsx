@@ -364,6 +364,11 @@ function LoyaltyModal({ data, deviceId, onClose, onRefresh }: any) {
                   setStep('stamps')
                   onRefresh()
                   onClose()
+                  setTimeout(() => {
+                    window.dispatchEvent(
+                      new CustomEvent('origin:feedback:trigger'),
+                    )
+                  }, 5000)
                 }}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-500 py-4 text-sm font-black uppercase tracking-widest text-white shadow-xl shadow-emerald-500/20 transition-all hover:opacity-90 active:scale-[0.98]"
               >

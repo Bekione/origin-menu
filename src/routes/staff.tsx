@@ -37,8 +37,6 @@ import { LiveTimeAgo } from '@/lib/date-utils'
 import {
   sendDesktopNotification,
   updateTaskbarBadge,
-  initNotificationActions,
-  listenNotificationActions,
 } from '@/lib/desktop-utils'
 
 // ── Route guard ────────────────────────────────────────────────────────────────
@@ -149,14 +147,6 @@ function StaffPage() {
 
     handleFetchOrders()
     getWaiterCalls().then((d) => setCalls((d as WaiterCall[]) || []))
-
-    // Init Desktop Integration
-    initNotificationActions().then(() => {
-      listenNotificationActions({
-        onOrder: () => {}, // KDS is single view, so just focus which happens automatically in listener
-        onWaiterCall: () => {},
-      })
-    })
   }, [])
 
   // Realtime
@@ -187,7 +177,6 @@ function StaffPage() {
               call.table_label ?? '',
             ),
             undefined,
-            'waiter',
           )
         },
       )
@@ -225,7 +214,6 @@ function StaffPage() {
             (order as any).table_label ?? '',
           ),
           `${t('total')}: ${order.total_amount ?? 0} ETB`,
-          'order',
         )
       })
       .on('broadcast', { event: 'order_status_updated' }, (p: any) => {
