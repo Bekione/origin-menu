@@ -304,7 +304,7 @@ function RootInner() {
 
     // Post-Update Welcome Logic
     const currentVersion =
-      typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.1'
+      typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '1.0.2'
     const lastSeenVersion = localStorage.getItem('origin_app_last_version')
     if (lastSeenVersion && lastSeenVersion !== currentVersion) {
       const cachedNotes = localStorage.getItem('origin_app_pending_notes')

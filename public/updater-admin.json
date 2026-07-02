@@ -1,11 +1,11 @@
 {
-  "version": "1.0.1",
-  "notes": "✨ New desktop update experience with download progress and localization. 🛡️ Added live API health monitoring and improved reliability. 🔔 Native Windows notifications for realtime orders. 🎨 Enhanced branding, installers, and desktop experience.",
-  "pub_date": "2026-06-02T13:00:00Z",
+  "version": "1.0.2",
+  "notes": "🎁 Loyalty stamp card system with real-time redemption. 💬 Smart guest feedback system with timed prompts. 📸 Multi-image gallery per menu item. 🛡️ Guest data sovereignty center. ✨ Your Favorites, Fast Customization, smart promo banners, dietary filtering, and more.",
+  "pub_date": "2026-07-02T07:00:00Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTMGNBblJ4d1cxcnFFVXFGRHpSRHVNSDFUK1o2d3lIRVFNem1UZFozT1JlS3ZTenBrRVM5SGRvdXpUNVAveEFMb09qVjN0dEFSTWNyWUZYbHRILzdXeEowSlRudzREUUFFPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgwNjIzOTcyCWZpbGU6T3JpZ2luIENvbnNvbGVfMS4wLjFfeDY0LXNldHVwLmV4ZQp6YWlncDVFczVxT3A4NmFyakpmSlNWUVN1TW1kVktWTUFCbmZZVXNGRW54dW5YVE0yb1dUNlZMeC9tTVpuU0YvcmFzTTh5VmRManlNYUE1V1YveFJDQT09Cg==",
-      "url": "https://github.com/Bekione/origin-menu/releases/download/v1.0.1/Origin.Console_1.0.1_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVTMGNBblJ4d1cxcmdTOEFsbUZKb1RkbkM2cUhOQmtYQ3ZacnRNcVJwcGRHWlpRT2FLU0p3VlpCTUNOSll2VnlOcnJaMHZ0cTdKSktneTVjVjRJRjBwWTYxK2FJQWMySWdnPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzgyOTY1NDc1CWZpbGU6T3JpZ2luIENvbnNvbGVfMS4wLjJfeDY0LXNldHVwLmV4ZQo2YXpJYVU1MEJVTElQK00xNEpoWnJGNkpjVkkwNmd1QlNlQitQMmt5QUpqSkY2V3Q1c0F3ZVZaVVMxaFNheEk5ek1mVjYzNlgrL2hBMHExMHNLWklCZz09Cg==",
+      "url": "https://github.com/Bekione/origin-menu/releases/download/v1.0.1/Origin.Console_1.0.2_x64-setup.exe"
     }
   }
 }
